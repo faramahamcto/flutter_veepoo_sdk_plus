@@ -233,4 +233,187 @@ class VeepooSDK {
       rethrow;
     }
   }
+
+  // ==================== Sleep Data ====================
+
+  /// Read sleep data from the device.
+  Future<SleepData?> readSleepData() => _platform.readSleepData();
+
+  /// Stream of sleep data updates.
+  Future<List<SleepData>> readSleepHistory(DateTime startDate, DateTime endDate) =>
+      _platform.readSleepHistory(startDate, endDate);
+
+  // ==================== Step Data ====================
+
+  /// Read current step data from the device.
+  Future<StepData?> readStepData() => _platform.readStepData();
+
+  /// Read step data for a specific date.
+  Future<StepData?> readStepDataForDate(DateTime date) =>
+      _platform.readStepDataForDate(date);
+
+  /// Stream of real-time step data updates.
+  Stream<StepData?> get stepData => _platform.stepData;
+
+  /// Read step history for a date range.
+  Future<List<StepData>> readStepHistory(DateTime startDate, DateTime endDate) =>
+      _platform.readStepHistory(startDate, endDate);
+
+  // ==================== Blood Pressure ====================
+
+  /// Start blood pressure detection.
+  Future<void> startDetectBloodPressure() =>
+      _platform.startDetectBloodPressure();
+
+  /// Stop blood pressure detection.
+  Future<void> stopDetectBloodPressure() => _platform.stopDetectBloodPressure();
+
+  /// Set blood pressure alarm thresholds.
+  /// [systolicHigh] - High systolic threshold (mmHg)
+  /// [systolicLow] - Low systolic threshold (mmHg)
+  /// [diastolicHigh] - High diastolic threshold (mmHg)
+  /// [diastolicLow] - Low diastolic threshold (mmHg)
+  /// [enabled] - Enable or disable alarm
+  Future<void> setBloodPressureAlarm(
+    int systolicHigh,
+    int systolicLow,
+    int diastolicHigh,
+    int diastolicLow,
+    bool enabled,
+  ) =>
+      _platform.setBloodPressureAlarm(
+        systolicHigh,
+        systolicLow,
+        diastolicHigh,
+        diastolicLow,
+        enabled,
+      );
+
+  /// Read blood pressure data.
+  Future<BloodPressure?> readBloodPressure() => _platform.readBloodPressure();
+
+  /// Stream of real-time blood pressure updates.
+  Stream<BloodPressure?> get bloodPressure => _platform.bloodPressure;
+
+  /// Read blood pressure history for a date range.
+  Future<List<BloodPressure>> readBloodPressureHistory(
+    DateTime startDate,
+    DateTime endDate,
+  ) =>
+      _platform.readBloodPressureHistory(startDate, endDate);
+
+  // ==================== Temperature ====================
+
+  /// Start temperature detection.
+  Future<void> startDetectTemperature() => _platform.startDetectTemperature();
+
+  /// Stop temperature detection.
+  Future<void> stopDetectTemperature() => _platform.stopDetectTemperature();
+
+  /// Read current temperature data.
+  Future<Temperature?> readTemperature() => _platform.readTemperature();
+
+  /// Stream of real-time temperature updates.
+  Stream<Temperature?> get temperature => _platform.temperature;
+
+  /// Read temperature history for a date range.
+  Future<List<Temperature>> readTemperatureHistory(
+    DateTime startDate,
+    DateTime endDate,
+  ) =>
+      _platform.readTemperatureHistory(startDate, endDate);
+
+  // ==================== Blood Glucose ====================
+
+  /// Start blood glucose detection.
+  Future<void> startDetectBloodGlucose() => _platform.startDetectBloodGlucose();
+
+  /// Stop blood glucose detection.
+  Future<void> stopDetectBloodGlucose() => _platform.stopDetectBloodGlucose();
+
+  /// Set blood glucose calibration mode.
+  Future<void> setBloodGlucoseCalibration(bool enabled) =>
+      _platform.setBloodGlucoseCalibration(enabled);
+
+  /// Read blood glucose data.
+  Future<BloodGlucose?> readBloodGlucose() => _platform.readBloodGlucose();
+
+  /// Stream of real-time blood glucose updates.
+  Stream<BloodGlucose?> get bloodGlucose => _platform.bloodGlucose;
+
+  // ==================== ECG ====================
+
+  /// Start ECG detection.
+  Future<void> startDetectEcg() => _platform.startDetectEcg();
+
+  /// Stop ECG detection.
+  Future<void> stopDetectEcg() => _platform.stopDetectEcg();
+
+  /// Read ECG data.
+  Future<EcgData?> readEcgData() => _platform.readEcgData();
+
+  /// Stream of real-time ECG data updates.
+  Stream<EcgData?> get ecgData => _platform.ecgData;
+
+  // ==================== Device Info ====================
+
+  /// Get device information including model, version, battery, etc.
+  Future<DeviceInfo?> getDeviceInfo() => _platform.getDeviceInfo();
+
+  // ==================== User Profile ====================
+
+  /// Set user profile information (height, weight, age, gender, etc.).
+  /// This information is used for accurate health calculations.
+  Future<void> setUserProfile(UserProfile profile) =>
+      _platform.setUserProfile(profile);
+
+  /// Get stored user profile information.
+  Future<UserProfile?> getUserProfile() => _platform.getUserProfile();
+
+  // ==================== Device Settings ====================
+
+  /// Set device settings (screen brightness, time format, language, etc.).
+  Future<void> setDeviceSettings(DeviceSettings settings) =>
+      _platform.setDeviceSettings(settings);
+
+  /// Get current device settings.
+  Future<DeviceSettings?> getDeviceSettings() => _platform.getDeviceSettings();
+
+  /// Set screen brightness (0-5).
+  Future<void> setScreenBrightness(int brightness) =>
+      _platform.setScreenBrightness(brightness);
+
+  /// Set screen duration in seconds.
+  Future<void> setScreenDuration(int seconds) =>
+      _platform.setScreenDuration(seconds);
+
+  /// Set time format (12-hour or 24-hour).
+  Future<void> setTimeFormat(bool is24Hour) =>
+      _platform.setTimeFormat(is24Hour);
+
+  /// Set device language.
+  Future<void> setLanguage(String languageCode) =>
+      _platform.setLanguage(languageCode);
+
+  /// Set wrist raise to wake feature.
+  /// [enabled] - Enable or disable wrist raise to wake
+  /// [sensitivity] - Sensitivity level (0-2: low, medium, high)
+  Future<void> setWristRaiseToWake(bool enabled, int sensitivity) =>
+      _platform.setWristRaiseToWake(enabled, sensitivity);
+
+  /// Set do not disturb mode.
+  /// [enabled] - Enable or disable do not disturb
+  /// [startMinutes] - Start time in minutes from midnight (0-1439)
+  /// [endMinutes] - End time in minutes from midnight (0-1439)
+  Future<void> setDoNotDisturb(bool enabled, int startMinutes, int endMinutes) =>
+      _platform.setDoNotDisturb(enabled, startMinutes, endMinutes);
+
+  // ==================== Historical Data ====================
+
+  /// Read heart rate history for a date range.
+  Future<List<HeartRate>> readHeartRateHistory(
+    DateTime startDate,
+    DateTime endDate,
+  ) =>
+      _platform.readHeartRateHistory(startDate, endDate);
 }

@@ -146,6 +146,236 @@ abstract class FlutterVeepooSdkPlatform extends PlatformInterface {
     throw UnimplementedError('readBattery() has not been implemented.');
   }
 
+  // ==================== Sleep Data ====================
+
+  /// Read sleep data.
+  Future<SleepData?> readSleepData() {
+    throw UnimplementedError('readSleepData() has not been implemented.');
+  }
+
+  // ==================== Step Data ====================
+
+  /// Read step data.
+  Future<StepData?> readStepData() {
+    throw UnimplementedError('readStepData() has not been implemented.');
+  }
+
+  /// Read step data for a specific date.
+  Future<StepData?> readStepDataForDate(DateTime date) {
+    throw UnimplementedError('readStepDataForDate() has not been implemented.');
+  }
+
+  // ==================== Blood Pressure ====================
+
+  /// Start blood pressure detection.
+  Future<void> startDetectBloodPressure() {
+    throw UnimplementedError(
+      'startDetectBloodPressure() has not been implemented.',
+    );
+  }
+
+  /// Stop blood pressure detection.
+  Future<void> stopDetectBloodPressure() {
+    throw UnimplementedError(
+      'stopDetectBloodPressure() has not been implemented.',
+    );
+  }
+
+  /// Set blood pressure alarm thresholds.
+  Future<void> setBloodPressureAlarm(
+    int systolicHigh,
+    int systolicLow,
+    int diastolicHigh,
+    int diastolicLow,
+    bool enabled,
+  ) {
+    throw UnimplementedError(
+      'setBloodPressureAlarm() has not been implemented.',
+    );
+  }
+
+  /// Read blood pressure data.
+  Future<BloodPressure?> readBloodPressure() {
+    throw UnimplementedError('readBloodPressure() has not been implemented.');
+  }
+
+  // ==================== Temperature ====================
+
+  /// Start temperature detection.
+  Future<void> startDetectTemperature() {
+    throw UnimplementedError(
+      'startDetectTemperature() has not been implemented.',
+    );
+  }
+
+  /// Stop temperature detection.
+  Future<void> stopDetectTemperature() {
+    throw UnimplementedError(
+      'stopDetectTemperature() has not been implemented.',
+    );
+  }
+
+  /// Read temperature data.
+  Future<Temperature?> readTemperature() {
+    throw UnimplementedError('readTemperature() has not been implemented.');
+  }
+
+  /// Read temperature data for a specific date range.
+  Future<List<Temperature>> readTemperatureHistory(
+    DateTime startDate,
+    DateTime endDate,
+  ) {
+    throw UnimplementedError(
+      'readTemperatureHistory() has not been implemented.',
+    );
+  }
+
+  // ==================== Blood Glucose ====================
+
+  /// Start blood glucose detection.
+  Future<void> startDetectBloodGlucose() {
+    throw UnimplementedError(
+      'startDetectBloodGlucose() has not been implemented.',
+    );
+  }
+
+  /// Stop blood glucose detection.
+  Future<void> stopDetectBloodGlucose() {
+    throw UnimplementedError(
+      'stopDetectBloodGlucose() has not been implemented.',
+    );
+  }
+
+  /// Set blood glucose calibration mode.
+  Future<void> setBloodGlucoseCalibration(bool enabled) {
+    throw UnimplementedError(
+      'setBloodGlucoseCalibration() has not been implemented.',
+    );
+  }
+
+  /// Read blood glucose data.
+  Future<BloodGlucose?> readBloodGlucose() {
+    throw UnimplementedError('readBloodGlucose() has not been implemented.');
+  }
+
+  // ==================== ECG ====================
+
+  /// Start ECG detection.
+  Future<void> startDetectEcg() {
+    throw UnimplementedError('startDetectEcg() has not been implemented.');
+  }
+
+  /// Stop ECG detection.
+  Future<void> stopDetectEcg() {
+    throw UnimplementedError('stopDetectEcg() has not been implemented.');
+  }
+
+  /// Read ECG data.
+  Future<EcgData?> readEcgData() {
+    throw UnimplementedError('readEcgData() has not been implemented.');
+  }
+
+  // ==================== Device Info ====================
+
+  /// Get device information.
+  Future<DeviceInfo?> getDeviceInfo() {
+    throw UnimplementedError('getDeviceInfo() has not been implemented.');
+  }
+
+  // ==================== User Profile ====================
+
+  /// Set user profile information.
+  Future<void> setUserProfile(UserProfile profile) {
+    throw UnimplementedError('setUserProfile() has not been implemented.');
+  }
+
+  /// Get user profile information.
+  Future<UserProfile?> getUserProfile() {
+    throw UnimplementedError('getUserProfile() has not been implemented.');
+  }
+
+  // ==================== Device Settings ====================
+
+  /// Set device settings.
+  Future<void> setDeviceSettings(DeviceSettings settings) {
+    throw UnimplementedError('setDeviceSettings() has not been implemented.');
+  }
+
+  /// Get device settings.
+  Future<DeviceSettings?> getDeviceSettings() {
+    throw UnimplementedError('getDeviceSettings() has not been implemented.');
+  }
+
+  /// Set screen brightness (0-5).
+  Future<void> setScreenBrightness(int brightness) {
+    throw UnimplementedError('setScreenBrightness() has not been implemented.');
+  }
+
+  /// Set screen duration in seconds.
+  Future<void> setScreenDuration(int seconds) {
+    throw UnimplementedError('setScreenDuration() has not been implemented.');
+  }
+
+  /// Set time format (12h/24h).
+  Future<void> setTimeFormat(bool is24Hour) {
+    throw UnimplementedError('setTimeFormat() has not been implemented.');
+  }
+
+  /// Set device language.
+  Future<void> setLanguage(String languageCode) {
+    throw UnimplementedError('setLanguage() has not been implemented.');
+  }
+
+  /// Set wrist raise to wake feature.
+  Future<void> setWristRaiseToWake(bool enabled, int sensitivity) {
+    throw UnimplementedError('setWristRaiseToWake() has not been implemented.');
+  }
+
+  /// Set do not disturb mode.
+  Future<void> setDoNotDisturb(bool enabled, int startMinutes, int endMinutes) {
+    throw UnimplementedError('setDoNotDisturb() has not been implemented.');
+  }
+
+  // ==================== Historical Data ====================
+
+  /// Read historical heart rate data for a date range.
+  Future<List<HeartRate>> readHeartRateHistory(
+    DateTime startDate,
+    DateTime endDate,
+  ) {
+    throw UnimplementedError(
+      'readHeartRateHistory() has not been implemented.',
+    );
+  }
+
+  /// Read historical sleep data for a date range.
+  Future<List<SleepData>> readSleepHistory(
+    DateTime startDate,
+    DateTime endDate,
+  ) {
+    throw UnimplementedError('readSleepHistory() has not been implemented.');
+  }
+
+  /// Read historical step data for a date range.
+  Future<List<StepData>> readStepHistory(
+    DateTime startDate,
+    DateTime endDate,
+  ) {
+    throw UnimplementedError('readStepHistory() has not been implemented.');
+  }
+
+  /// Read historical blood pressure data for a date range.
+  Future<List<BloodPressure>> readBloodPressureHistory(
+    DateTime startDate,
+    DateTime endDate,
+  ) {
+    throw UnimplementedError(
+      'readBloodPressureHistory() has not been implemented.',
+    );
+  }
+
+  // ==================== Streams ====================
+
   /// Stream of Bluetooth scan results.
   Stream<List<BluetoothDevice>?> get bluetoothDevices {
     throw UnimplementedError(
@@ -161,5 +391,36 @@ abstract class FlutterVeepooSdkPlatform extends PlatformInterface {
   /// Stream of blood oxygen results.
   Stream<Spoh?> get spoh {
     throw UnimplementedError('spohEventChannel has not been implemented.');
+  }
+
+  /// Stream of blood pressure results.
+  Stream<BloodPressure?> get bloodPressure {
+    throw UnimplementedError(
+      'bloodPressureEventChannel has not been implemented.',
+    );
+  }
+
+  /// Stream of temperature results.
+  Stream<Temperature?> get temperature {
+    throw UnimplementedError(
+      'temperatureEventChannel has not been implemented.',
+    );
+  }
+
+  /// Stream of blood glucose results.
+  Stream<BloodGlucose?> get bloodGlucose {
+    throw UnimplementedError(
+      'bloodGlucoseEventChannel has not been implemented.',
+    );
+  }
+
+  /// Stream of ECG results.
+  Stream<EcgData?> get ecgData {
+    throw UnimplementedError('ecgDataEventChannel has not been implemented.');
+  }
+
+  /// Stream of step data updates.
+  Stream<StepData?> get stepData {
+    throw UnimplementedError('stepDataEventChannel has not been implemented.');
   }
 }
