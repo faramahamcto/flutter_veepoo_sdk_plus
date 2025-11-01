@@ -9,7 +9,11 @@ import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.PluginRegistry
-import site.shasmatic.flutter_veepoo_sdk.utils.*
+import site.shasmatic.flutter_veepoo_sdk.utils.Battery
+import site.shasmatic.flutter_veepoo_sdk.utils.DeviceStorage
+import site.shasmatic.flutter_veepoo_sdk.utils.HeartRate
+import site.shasmatic.flutter_veepoo_sdk.utils.Spoh
+import site.shasmatic.flutter_veepoo_sdk.utils.VPBluetoothManager
 
 /**
  * Handles method calls from Flutter to perform various operations related to Bluetooth management,
@@ -30,11 +34,6 @@ class VPMethodChannelHandler(
     private var scanBluetoothEventSink: EventChannel.EventSink? = null
     private var detectHeartEventSink: EventChannel.EventSink? = null
     private var detectSpohEventSink: EventChannel.EventSink? = null
-    private var detectBloodPressureEventSink: EventChannel.EventSink? = null
-    private var detectTemperatureEventSink: EventChannel.EventSink? = null
-    private var detectBloodGlucoseEventSink: EventChannel.EventSink? = null
-    private var detectEcgEventSink: EventChannel.EventSink? = null
-    private var stepDataEventSink: EventChannel.EventSink? = null
     private lateinit var result: MethodChannel.Result
 
     @RequiresApi(Build.VERSION_CODES.S)
@@ -68,46 +67,6 @@ class VPMethodChannelHandler(
             "startDetectSpoh" -> handleStartDetectSpoh()
             "stopDetectSpoh" -> handleStopDetectSpoh()
             "readBattery" -> handleReadBattery()
-            // Blood Pressure
-            "startDetectBloodPressure" -> handleStartDetectBloodPressure()
-            "stopDetectBloodPressure" -> handleStopDetectBloodPressure()
-            "setBloodPressureAlarm" -> handleSetBloodPressureAlarm(call)
-            "readBloodPressure" -> handleReadBloodPressure()
-            // Temperature
-            "startDetectTemperature" -> handleStartDetectTemperature()
-            "stopDetectTemperature" -> handleStopDetectTemperature()
-            "readTemperature" -> handleReadTemperature()
-            "readTemperatureHistory" -> handleReadTemperatureHistory(call)
-            // Blood Glucose
-            "startDetectBloodGlucose" -> handleStartDetectBloodGlucose()
-            "stopDetectBloodGlucose" -> handleStopDetectBloodGlucose()
-            "setBloodGlucoseCalibration" -> handleSetBloodGlucoseCalibration(call)
-            "readBloodGlucose" -> handleReadBloodGlucose()
-            // ECG
-            "startDetectEcg" -> handleStartDetectEcg()
-            "stopDetectEcg" -> handleStopDetectEcg()
-            "readEcgData" -> handleReadEcgData()
-            // Sleep & Steps
-            "readSleepData" -> handleReadSleepData()
-            "readSleepHistory" -> handleReadSleepHistory(call)
-            "readStepData" -> handleReadStepData()
-            "readStepDataForDate" -> handleReadStepDataForDate(call)
-            "readStepHistory" -> handleReadStepHistory(call)
-            // Device Info & Settings
-            "getDeviceInfo" -> handleGetDeviceInfo()
-            "setUserProfile" -> handleSetUserProfile(call)
-            "getUserProfile" -> handleGetUserProfile()
-            "setDeviceSettings" -> handleSetDeviceSettings(call)
-            "getDeviceSettings" -> handleGetDeviceSettings()
-            "setScreenBrightness" -> handleSetScreenBrightness(call)
-            "setScreenDuration" -> handleSetScreenDuration(call)
-            "setTimeFormat" -> handleSetTimeFormat(call)
-            "setLanguage" -> handleSetLanguage(call)
-            "setWristRaiseToWake" -> handleSetWristRaiseToWake(call)
-            "setDoNotDisturb" -> handleSetDoNotDisturb(call)
-            // Historical Data
-            "readHeartRateHistory" -> handleReadHeartRateHistory(call)
-            "readBloodPressureHistory" -> handleReadBloodPressureHistory(call)
             else -> result.notImplemented()
         }
     }
@@ -217,204 +176,6 @@ class VPMethodChannelHandler(
         getBatteryManager(result).readBattery()
     }
 
-    // ==================== Blood Pressure Handlers ====================
-
-    private fun handleStartDetectBloodPressure() {
-        getBloodPressureManager().startDetectBloodPressure()
-        result.success(null)
-    }
-
-    private fun handleStopDetectBloodPressure() {
-        getBloodPressureManager().stopDetectBloodPressure()
-        result.success(null)
-    }
-
-    private fun handleSetBloodPressureAlarm(call: MethodCall) {
-        val systolicHigh = call.argument<Int>("systolicHigh") ?: 0
-        val systolicLow = call.argument<Int>("systolicLow") ?: 0
-        val diastolicHigh = call.argument<Int>("diastolicHigh") ?: 0
-        val diastolicLow = call.argument<Int>("diastolicLow") ?: 0
-        val enabled = call.argument<Boolean>("enabled") ?: false
-        getBloodPressureManager().setBloodPressureAlarm(systolicHigh, systolicLow, diastolicHigh, diastolicLow, enabled)
-        result.success(null)
-    }
-
-    private fun handleReadBloodPressure() {
-        result.notImplemented()
-    }
-
-    // ==================== Temperature Handlers ====================
-
-    private fun handleStartDetectTemperature() {
-        getTemperatureManager().startDetectTemperature()
-        result.success(null)
-    }
-
-    private fun handleStopDetectTemperature() {
-        getTemperatureManager().stopDetectTemperature()
-        result.success(null)
-    }
-
-    private fun handleReadTemperature() {
-        result.notImplemented()
-    }
-
-    private fun handleReadTemperatureHistory(call: MethodCall) {
-        result.notImplemented()
-    }
-
-    // ==================== Blood Glucose Handlers ====================
-
-    private fun handleStartDetectBloodGlucose() {
-        getBloodGlucoseManager().startDetectBloodGlucose()
-        result.success(null)
-    }
-
-    private fun handleStopDetectBloodGlucose() {
-        getBloodGlucoseManager().stopDetectBloodGlucose()
-        result.success(null)
-    }
-
-    private fun handleSetBloodGlucoseCalibration(call: MethodCall) {
-        val enabled = call.argument<Boolean>("enabled") ?: false
-        getBloodGlucoseManager().setBloodGlucoseCalibration(enabled)
-        result.success(null)
-    }
-
-    private fun handleReadBloodGlucose() {
-        result.notImplemented()
-    }
-
-    // ==================== ECG Handlers ====================
-
-    private fun handleStartDetectEcg() {
-        getEcgManager().startDetectEcg()
-        result.success(null)
-    }
-
-    private fun handleStopDetectEcg() {
-        getEcgManager().stopDetectEcg()
-        result.success(null)
-    }
-
-    private fun handleReadEcgData() {
-        result.notImplemented()
-    }
-
-    // ==================== Sleep Data Handlers ====================
-
-    private fun handleReadSleepData() {
-        val sleepData = getSleepDataReader().readSleepData()
-        result.success(sleepData)
-    }
-
-    private fun handleReadSleepHistory(call: MethodCall) {
-        val startTimestamp = call.argument<Long>("startTimestamp") ?: 0L
-        val endTimestamp = call.argument<Long>("endTimestamp") ?: 0L
-        val history = getSleepDataReader().readSleepHistory(startTimestamp, endTimestamp)
-        result.success(history)
-    }
-
-    // ==================== Step Data Handlers ====================
-
-    private fun handleReadStepData() {
-        val stepData = getStepDataReader().readStepData()
-        result.success(stepData)
-    }
-
-    private fun handleReadStepDataForDate(call: MethodCall) {
-        val timestamp = call.argument<Long>("timestamp") ?: 0L
-        val stepData = getStepDataReader().readStepDataForDate(timestamp)
-        result.success(stepData)
-    }
-
-    private fun handleReadStepHistory(call: MethodCall) {
-        val startTimestamp = call.argument<Long>("startTimestamp") ?: 0L
-        val endTimestamp = call.argument<Long>("endTimestamp") ?: 0L
-        val history = getStepDataReader().readStepHistory(startTimestamp, endTimestamp)
-        result.success(history)
-    }
-
-    // ==================== Device Info & Settings Handlers ====================
-
-    private fun handleGetDeviceInfo() {
-        val deviceInfo = getDeviceInfoReader().getDeviceInfo()
-        result.success(deviceInfo)
-    }
-
-    private fun handleSetUserProfile(call: MethodCall) {
-        val profileMap = call.arguments as? Map<String, Any?> ?: emptyMap()
-        getUserProfileManager().setUserProfile(profileMap)
-        result.success(null)
-    }
-
-    private fun handleGetUserProfile() {
-        val profile = getUserProfileManager().getUserProfile()
-        result.success(profile)
-    }
-
-    private fun handleSetDeviceSettings(call: MethodCall) {
-        val settingsMap = call.arguments as? Map<String, Any?> ?: emptyMap()
-        getDeviceConfiguration().setDeviceSettings(settingsMap)
-        result.success(null)
-    }
-
-    private fun handleGetDeviceSettings() {
-        val settings = getDeviceConfiguration().getDeviceSettings()
-        result.success(settings)
-    }
-
-    private fun handleSetScreenBrightness(call: MethodCall) {
-        val brightness = call.argument<Int>("brightness") ?: 3
-        getDeviceConfiguration().setScreenBrightness(brightness)
-        result.success(null)
-    }
-
-    private fun handleSetScreenDuration(call: MethodCall) {
-        val seconds = call.argument<Int>("seconds") ?: 10
-        getDeviceConfiguration().setScreenDuration(seconds)
-        result.success(null)
-    }
-
-    private fun handleSetTimeFormat(call: MethodCall) {
-        val is24Hour = call.argument<Boolean>("is24Hour") ?: true
-        getDeviceConfiguration().setTimeFormat(is24Hour)
-        result.success(null)
-    }
-
-    private fun handleSetLanguage(call: MethodCall) {
-        val languageCode = call.argument<String>("languageCode") ?: "en"
-        getDeviceConfiguration().setLanguage(languageCode)
-        result.success(null)
-    }
-
-    private fun handleSetWristRaiseToWake(call: MethodCall) {
-        val enabled = call.argument<Boolean>("enabled") ?: false
-        val sensitivity = call.argument<Int>("sensitivity") ?: 1
-        getDeviceConfiguration().setWristRaiseToWake(enabled, sensitivity)
-        result.success(null)
-    }
-
-    private fun handleSetDoNotDisturb(call: MethodCall) {
-        val enabled = call.argument<Boolean>("enabled") ?: false
-        val startMinutes = call.argument<Int>("startMinutes") ?: 0
-        val endMinutes = call.argument<Int>("endMinutes") ?: 0
-        getDeviceConfiguration().setDoNotDisturb(enabled, startMinutes, endMinutes)
-        result.success(null)
-    }
-
-    // ==================== Historical Data Handlers ====================
-
-    private fun handleReadHeartRateHistory(call: MethodCall) {
-        result.notImplemented()
-    }
-
-    private fun handleReadBloodPressureHistory(call: MethodCall) {
-        result.notImplemented()
-    }
-
-    // ==================== Setters ====================
-
     fun setActivity(activity: Activity?) {
         this.activity = activity
     }
@@ -431,28 +192,6 @@ class VPMethodChannelHandler(
         this.detectSpohEventSink = eventSink
     }
 
-    fun setDetectBloodPressureEventSink(eventSink: EventChannel.EventSink?) {
-        this.detectBloodPressureEventSink = eventSink
-    }
-
-    fun setDetectTemperatureEventSink(eventSink: EventChannel.EventSink?) {
-        this.detectTemperatureEventSink = eventSink
-    }
-
-    fun setDetectBloodGlucoseEventSink(eventSink: EventChannel.EventSink?) {
-        this.detectBloodGlucoseEventSink = eventSink
-    }
-
-    fun setDetectEcgEventSink(eventSink: EventChannel.EventSink?) {
-        this.detectEcgEventSink = eventSink
-    }
-
-    fun setStepDataEventSink(eventSink: EventChannel.EventSink?) {
-        this.stepDataEventSink = eventSink
-    }
-
-    // ==================== Manager Getters ====================
-
     private fun getBluetoothManager(result: MethodChannel.Result): VPBluetoothManager {
         return VPBluetoothManager(deviceStorage, result, activity!!, scanBluetoothEventSink, vpManager)
     }
@@ -467,41 +206,5 @@ class VPMethodChannelHandler(
 
     private fun getBatteryManager(result: MethodChannel.Result): Battery {
         return Battery(result, vpManager)
-    }
-
-    private fun getBloodPressureManager(): BloodPressure {
-        return BloodPressure(detectBloodPressureEventSink, vpManager)
-    }
-
-    private fun getTemperatureManager(): Temperature {
-        return Temperature(detectTemperatureEventSink, vpManager)
-    }
-
-    private fun getBloodGlucoseManager(): BloodGlucose {
-        return BloodGlucose(detectBloodGlucoseEventSink, vpManager)
-    }
-
-    private fun getEcgManager(): EcgDetection {
-        return EcgDetection(detectEcgEventSink, vpManager)
-    }
-
-    private fun getSleepDataReader(): SleepDataReader {
-        return SleepDataReader(vpManager)
-    }
-
-    private fun getStepDataReader(): StepDataReader {
-        return StepDataReader(stepDataEventSink, vpManager)
-    }
-
-    private fun getDeviceConfiguration(): DeviceConfiguration {
-        return DeviceConfiguration(vpManager)
-    }
-
-    private fun getUserProfileManager(): UserProfileManager {
-        return UserProfileManager(vpManager)
-    }
-
-    private fun getDeviceInfoReader(): DeviceInfoReader {
-        return DeviceInfoReader(vpManager)
     }
 }

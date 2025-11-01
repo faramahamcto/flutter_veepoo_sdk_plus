@@ -53,51 +53,6 @@ class SendEvent(private val eventSink: EventChannel.EventSink?) {
         sendEvent(spO2Data)
     }
 
-    /**
-     * Sends a blood pressure event with the given blood pressure data.
-     *
-     * @param bloodPressureData A map containing the blood pressure data.
-     */
-    fun sendBloodPressureEvent(bloodPressureData: Map<String, Any?>) {
-        sendEvent(bloodPressureData)
-    }
-
-    /**
-     * Sends a temperature event with the given temperature data.
-     *
-     * @param temperatureData A map containing the temperature data.
-     */
-    fun sendTemperatureEvent(temperatureData: Map<String, Any?>) {
-        sendEvent(temperatureData)
-    }
-
-    /**
-     * Sends a blood glucose event with the given blood glucose data.
-     *
-     * @param bloodGlucoseData A map containing the blood glucose data.
-     */
-    fun sendBloodGlucoseEvent(bloodGlucoseData: Map<String, Any?>) {
-        sendEvent(bloodGlucoseData)
-    }
-
-    /**
-     * Sends an ECG event with the given ECG data.
-     *
-     * @param ecgData A map containing the ECG data.
-     */
-    fun sendEcgEvent(ecgData: Map<String, Any?>) {
-        sendEvent(ecgData)
-    }
-
-    /**
-     * Sends a step data event with the given step data.
-     *
-     * @param stepData A map containing the step data.
-     */
-    fun sendStepDataEvent(stepData: Map<String, Any?>) {
-        sendEvent(stepData)
-    }
-
     private fun sendEvent(eventData: Any) {
         CoroutineScope(Dispatchers.Main).launch {
             eventSink?.success(eventData)
