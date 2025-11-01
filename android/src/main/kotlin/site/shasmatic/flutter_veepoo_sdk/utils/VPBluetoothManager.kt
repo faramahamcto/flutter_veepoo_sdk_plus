@@ -434,11 +434,13 @@ class VPBluetoothManager(
     private val searchResponseCallBack = object : SearchResponse {
         override fun onSearchStarted() {
             VPLogger.i("Bluetooth scan started")
+            VPLogger.i("Event sink is: ${if (bluetoothEventSink == null) "NULL" else "SET"}")
             discoveredDevices.clear()
         }
 
         override fun onDeviceFounded(result: SearchResult?) {
             result?.let {
+                VPLogger.i("Device found: name=${it.name}, address=${it.address}, rssi=${it.rssi}")
                 val deviceMap = mapOf(
                     "name" to it.name,
                     "address" to it.address,
@@ -446,11 +448,13 @@ class VPBluetoothManager(
                 )
 
                 if (discoveredDevices.put(it.address, deviceMap) == null) {
+                    VPLogger.i("New device, sending event with ${discoveredDevices.size} devices")
                     sendEvent.sendBluetoothEvent(discoveredDevices.values.toList())
                 } else {
                     val existingDevice = discoveredDevices[it.address]
                     if (existingDevice != null && abs(existingDevice["rssi"] as Int - it.rssi) > 10) {
                         discoveredDevices[it.address] = deviceMap
+                        VPLogger.i("RSSI changed significantly, sending event")
                         sendEvent.sendBluetoothEvent(discoveredDevices.values.toList())
                     }
                 }
