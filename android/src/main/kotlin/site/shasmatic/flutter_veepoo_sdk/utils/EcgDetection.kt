@@ -70,19 +70,25 @@ class EcgDetection(
         }
 
         override fun onEcgDetectStateChange(state: EcgDetectState?) {
-            // Update state based on the state object
-            currentState = when (state?.state) {
-                0 -> "idle"
-                1 -> "measuring"
-                2 -> "complete"
+            // Update state based on progress
+            currentState = when {
+                state == null -> "idle"
+                state.progress < 100 -> "measuring"
+                state.progress >= 100 -> "complete"
                 else -> "unknown"
             }
             sendEcgUpdate()
         }
 
         override fun onEcgDetectResultChange(result: EcgDetectResult?) {
-            // Store final result
-            currentResult = result?.result
+            // Store final result - result object contains many fields
+            currentResult = if (result?.isSuccess == true) "success" else "failed"
+            sendEcgUpdate()
+        }
+
+        override fun onEcgDetectDiagnosisChange(diagnosis: String?) {
+            // Store diagnosis string
+            currentResult = diagnosis
             sendEcgUpdate()
         }
 
