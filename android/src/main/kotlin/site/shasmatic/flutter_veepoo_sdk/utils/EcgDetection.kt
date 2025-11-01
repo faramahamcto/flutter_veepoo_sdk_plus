@@ -5,6 +5,7 @@ import com.veepoo.protocol.listener.data.IECGDetectListener
 import com.veepoo.protocol.model.datas.EcgDetectInfo
 import com.veepoo.protocol.model.datas.EcgDetectResult
 import com.veepoo.protocol.model.datas.EcgDetectState
+import com.veepoo.protocol.model.datas.EcgDiagnosis
 import io.flutter.plugin.common.EventChannel
 import site.shasmatic.flutter_veepoo_sdk.VPWriteResponse
 import site.shasmatic.flutter_veepoo_sdk.exceptions.VPException
@@ -86,9 +87,9 @@ class EcgDetection(
             sendEcgUpdate()
         }
 
-        override fun onEcgDetectDiagnosisChange(diagnosis: String?) {
-            // Store diagnosis string
-            currentResult = diagnosis
+        override fun onEcgDetectDiagnosisChange(diagnosis: EcgDiagnosis?) {
+            // Store diagnosis - EcgDiagnosis contains diagnostic information
+            currentResult = diagnosis?.toString() ?: "No diagnosis"
             sendEcgUpdate()
         }
 
