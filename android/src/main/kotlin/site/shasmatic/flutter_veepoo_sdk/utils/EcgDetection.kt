@@ -53,21 +53,51 @@ class EcgDetection(
         }
     }
 
+    private var currentState: String = "idle"
+    private var currentWaveform: List<Int> = emptyList()
+    private var currentResult: String? = null
+    private var samplingFrequency: Int = 0
+    private var drawFrequency: Int = 0
+
     private val ecgDataListener = object : IECGDetectListener {
         override fun onEcgDetectInfoChange(ecgInfo: EcgDetectInfo?) {
-            val waveList = ecgInfo?.waveData?.toList() ?: emptyList()
-            val ecgResult = mapOf<String, Any?>(
-                "waveformData" to waveList,
-                "heartRate" to ecgInfo?.value,
-                "state" to mapECGState(ecgInfo?.ecgDetectState),
-                "isMeasuring" to (ecgInfo?.ecgDetectState == 1),
-                "progress" to ecgInfo?.ecgProgress,
-                "diagnosticResult" to ecgInfo?.ecgDetectResult,
-                "signalQuality" to if (waveList.isNotEmpty()) 100 else 0,
-                "timestamp" to System.currentTimeMillis()
-            )
-            sendEvent.sendEcgEvent(ecgResult)
+            // Store frequency information
+            samplingFrequency = ecgInfo?.frequency ?: 0
+            drawFrequency = ecgInfo?.drawFrequency ?: 0
+            sendEcgUpdate()
         }
+
+        override fun onEcgDetectStateChange(state: Int?) {
+            // Update state
+            currentState = mapECGState(state)
+            sendEcgUpdate()
+        }
+
+        override fun onEcgDetectResultChange(result: String?) {
+            // Store final result
+            currentResult = result
+            sendEcgUpdate()
+        }
+
+        override fun onEcgADCChange(wave: IntArray?) {
+            // Update waveform data (filter out Int.MAX_VALUE which indicates invalid data)
+            currentWaveform = wave?.filter { it != Int.MAX_VALUE }?.toList() ?: emptyList()
+            sendEcgUpdate()
+        }
+    }
+
+    private fun sendEcgUpdate() {
+        val ecgResult = mapOf<String, Any?>(
+            "waveformData" to currentWaveform,
+            "state" to currentState,
+            "isMeasuring" to (currentState == "measuring"),
+            "diagnosticResult" to currentResult,
+            "samplingFrequency" to samplingFrequency,
+            "drawFrequency" to drawFrequency,
+            "signalQuality" to if (currentWaveform.isNotEmpty()) 100 else 0,
+            "timestamp" to System.currentTimeMillis()
+        )
+        sendEvent.sendEcgEvent(ecgResult)
     }
 
     private fun mapECGState(state: Int?): String {
