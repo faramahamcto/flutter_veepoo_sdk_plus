@@ -1,4 +1,4 @@
-import 'package:equatable/equatable.dart';
+part of '../../flutter_veepoo_sdk.dart';
 
 /// User profile model for device synchronization
 class UserProfile extends Equatable {

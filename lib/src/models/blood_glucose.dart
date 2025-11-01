@@ -1,4 +1,4 @@
-import 'package:equatable/equatable.dart';
+part of '../../flutter_veepoo_sdk.dart';
 
 /// Blood glucose data model
 class BloodGlucose extends Equatable {

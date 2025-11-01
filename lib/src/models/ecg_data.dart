@@ -1,4 +1,4 @@
-import 'package:equatable/equatable.dart';
+part of '../../flutter_veepoo_sdk.dart';
 
 /// ECG (Electrocardiogram) data model
 class EcgData extends Equatable {

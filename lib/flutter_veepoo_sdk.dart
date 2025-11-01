@@ -6,17 +6,6 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter/services.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 
-// Export new models
-export 'src/models/blood_glucose.dart';
-export 'src/models/blood_pressure.dart';
-export 'src/models/device_info.dart';
-export 'src/models/device_settings.dart';
-export 'src/models/ecg_data.dart';
-export 'src/models/sleep_data.dart';
-export 'src/models/step_data.dart';
-export 'src/models/temperature.dart';
-export 'src/models/user_profile.dart';
-
 part 'src/enums/battery_levels.dart';
 part 'src/enums/battery_states.dart';
 part 'src/enums/device_binding_statuses.dart';
@@ -27,9 +16,18 @@ part 'src/enums/power_statuses.dart';
 part 'src/enums/spoh_statuses.dart';
 part 'src/exceptions/veepoo_exception.dart';
 part 'src/models/battery.dart';
+part 'src/models/blood_glucose.dart';
+part 'src/models/blood_pressure.dart';
 part 'src/models/bluetooth_device.dart';
+part 'src/models/device_info.dart';
+part 'src/models/device_settings.dart';
+part 'src/models/ecg_data.dart';
 part 'src/models/heart_rate.dart';
+part 'src/models/sleep_data.dart';
 part 'src/models/spoh.dart';
+part 'src/models/step_data.dart';
+part 'src/models/temperature.dart';
+part 'src/models/user_profile.dart';
 part 'src/flutter_veepoo_sdk_method_channel.dart';
 part 'src/flutter_veepoo_sdk_platform_interface.dart';
 part 'src/veepoo_sdk.dart';

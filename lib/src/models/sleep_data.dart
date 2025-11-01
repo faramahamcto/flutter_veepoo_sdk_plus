@@ -1,4 +1,4 @@
-import 'package:equatable/equatable.dart';
+part of '../../flutter_veepoo_sdk.dart';
 
 /// Sleep data model containing sleep quality and duration information
 class SleepData extends Equatable {
