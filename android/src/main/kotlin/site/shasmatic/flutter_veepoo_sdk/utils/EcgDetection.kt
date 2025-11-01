@@ -3,6 +3,8 @@ package site.shasmatic.flutter_veepoo_sdk.utils
 import com.veepoo.protocol.VPOperateManager
 import com.veepoo.protocol.listener.data.IECGDetectListener
 import com.veepoo.protocol.model.datas.EcgDetectInfo
+import com.veepoo.protocol.model.datas.EcgDetectResult
+import com.veepoo.protocol.model.datas.EcgDetectState
 import io.flutter.plugin.common.EventChannel
 import site.shasmatic.flutter_veepoo_sdk.VPWriteResponse
 import site.shasmatic.flutter_veepoo_sdk.exceptions.VPException
@@ -67,21 +69,27 @@ class EcgDetection(
             sendEcgUpdate()
         }
 
-        override fun onEcgDetectStateChange(state: Int?) {
-            // Update state
-            currentState = mapECGState(state)
+        override fun onEcgDetectStateChange(state: EcgDetectState?) {
+            // Update state based on the state object
+            currentState = when (state?.state) {
+                0 -> "idle"
+                1 -> "measuring"
+                2 -> "complete"
+                else -> "unknown"
+            }
             sendEcgUpdate()
         }
 
-        override fun onEcgDetectResultChange(result: String?) {
+        override fun onEcgDetectResultChange(result: EcgDetectResult?) {
             // Store final result
-            currentResult = result
+            currentResult = result?.result
             sendEcgUpdate()
         }
 
-        override fun onEcgADCChange(wave: IntArray?) {
+        override fun onEcgADCChange(wave1: IntArray?, wave2: IntArray?) {
             // Update waveform data (filter out Int.MAX_VALUE which indicates invalid data)
-            currentWaveform = wave?.filter { it != Int.MAX_VALUE }?.toList() ?: emptyList()
+            // Use wave1 as primary waveform data
+            currentWaveform = wave1?.filter { it != Int.MAX_VALUE }?.toList() ?: emptyList()
             sendEcgUpdate()
         }
     }
@@ -98,16 +106,5 @@ class EcgDetection(
             "timestamp" to System.currentTimeMillis()
         )
         sendEvent.sendEcgEvent(ecgResult)
-    }
-
-    private fun mapECGState(state: Int?): String {
-        return when (state) {
-            0 -> "idle"
-            1 -> "measuring"
-            2 -> "complete"
-            3 -> "failed"
-            4 -> "poorSignal"
-            else -> "unknown"
-        }
     }
 }
