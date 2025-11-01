@@ -71,6 +71,7 @@ class VPMethodChannelHandler(
             "startDetectSpoh" -> handleStartDetectSpoh()
             "stopDetectSpoh" -> handleStopDetectSpoh()
             "readBattery" -> handleReadBattery()
+            "getDeviceInfo" -> handleGetDeviceInfo()
             "startDetectTemperature" -> handleStartDetectTemperature()
             "stopDetectTemperature" -> handleStopDetectTemperature()
             "startDetectECG" -> handleStartDetectECG(call.argument<Boolean>("needWaveform") ?: true)
@@ -182,6 +183,21 @@ class VPMethodChannelHandler(
 
     private fun handleReadBattery() {
         getBatteryManager(result).readBattery()
+    }
+
+    private fun handleGetDeviceInfo() {
+        try {
+            val deviceInfo = mapOf<String, Any?>(
+                "modelName" to vpSpGetUtil.deviceVersion,
+                "hardwareVersion" to vpSpGetUtil.deviceTestVersion,
+                "softwareVersion" to vpSpGetUtil.deviceVersion,
+                "macAddress" to vpManager.currentConnectGatt?.device?.address,
+                "manufacturer" to "Veepoo"
+            )
+            result.success(deviceInfo)
+        } catch (e: Exception) {
+            result.error("DEVICE_INFO_ERROR", "Failed to get device info: ${e.message}", null)
+        }
     }
 
     private fun handleStartDetectTemperature() {

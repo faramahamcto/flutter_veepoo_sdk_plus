@@ -23,8 +23,12 @@ enum BatteryLevels {
   final int intValue;
 
   /// Converts an integer to a [BatteryLevels].
-  factory BatteryLevels.fromInt(int value) {
-    return BatteryLevels.values.firstWhere((e) => e.intValue == value);
+  factory BatteryLevels.fromInt(int? value) {
+    if (value == null) return BatteryLevels.low;
+    return BatteryLevels.values.firstWhere(
+      (e) => e.intValue == value,
+      orElse: () => BatteryLevels.low,
+    );
   }
 
   @override
