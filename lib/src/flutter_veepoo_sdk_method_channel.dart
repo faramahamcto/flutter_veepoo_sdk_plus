@@ -397,11 +397,11 @@ class MethodChannelFlutterVeepooSdk extends FlutterVeepooSdkPlatform {
   /// Returns a [Stream] of [List] of [BluetoothDevice] objects.
   @override
   Stream<List<BluetoothDevice>> get bluetoothDevices {
-    _bluetoothDevicesStream ??= bluetoothEventChannel.receiveBroadcastStream().map((event) {
-      if (event == null) return [];
+    _bluetoothDevicesStream ??= bluetoothEventChannel.receiveBroadcastStream().map<List<BluetoothDevice>>((event) {
+      if (event == null) return <BluetoothDevice>[];
 
       if (event is List) {
-        return event.map((item) {
+        return event.map<BluetoothDevice>((item) {
           if (item is Map<Object?, Object?>) {
             final convertedMap = Map<String, dynamic>.from(
               item.map((key, value) => MapEntry(key.toString(), value)),
