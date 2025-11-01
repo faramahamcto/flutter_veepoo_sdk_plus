@@ -38,7 +38,7 @@ class EcgDetection(
      */
     fun stopDetectECG() {
         executeECGOperation {
-            vpManager.stopDetectECG(writeResponse)
+            vpManager.stopDetectECG(writeResponse, ecgDataListener, ecgDataListener)
         }
     }
 
@@ -52,18 +52,21 @@ class EcgDetection(
         }
     }
 
-    private val ecgDataListener = IECGDetectListener { state, progress, wave, result, value ->
-        val ecgResult = mapOf<String, Any?>(
-            "waveformData" to wave?.toList(),
-            "heartRate" to value,
-            "state" to mapECGState(state),
-            "isMeasuring" to (state == 1), // 1 = measuring
-            "progress" to progress,
-            "diagnosticResult" to result,
-            "signalQuality" to if (wave != null && wave.isNotEmpty()) 100 else 0,
-            "timestamp" to System.currentTimeMillis()
-        )
-        sendEvent.sendEcgEvent(ecgResult)
+    private val ecgDataListener = object : IECGDetectListener {
+        override fun onECGDetectInfoChange(state: Int?, progress: Int?, wave: IntArray?, result: String?, value: Int?) {
+            val waveList = wave?.toList() ?: emptyList()
+            val ecgResult = mapOf<String, Any?>(
+                "waveformData" to waveList,
+                "heartRate" to value,
+                "state" to mapECGState(state),
+                "isMeasuring" to (state == 1),
+                "progress" to progress,
+                "diagnosticResult" to result,
+                "signalQuality" to if (waveList.isNotEmpty()) 100 else 0,
+                "timestamp" to System.currentTimeMillis()
+            )
+            sendEvent.sendEcgEvent(ecgResult)
+        }
     }
 
     private fun mapECGState(state: Int?): String {

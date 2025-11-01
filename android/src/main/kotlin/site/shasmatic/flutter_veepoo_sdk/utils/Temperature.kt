@@ -36,7 +36,7 @@ class Temperature(
      */
     fun stopDetectTemperature() {
         executeTemperatureOperation {
-            vpManager.stopDetectTempture(writeResponse)
+            vpManager.stopDetectTempture(writeResponse, temperatureDataListener)
         }
     }
 
@@ -58,9 +58,9 @@ class Temperature(
             "temperatureCelsius" to data?.tempture,
             "temperatureFahrenheit" to fahrenheit,
             "wristTemperatureCelsius" to data?.wristTempture,
-            "state" to if (data?.isDetecting == true) "measuring" else "complete",
-            "isMeasuring" to data?.isDetecting,
-            "progress" to data?.progress,
+            "state" to if (data != null) "complete" else "idle",
+            "isMeasuring" to false,
+            "progress" to 100,
             "timestamp" to System.currentTimeMillis()
         )
         sendEvent.sendTemperatureEvent(temperatureResult)
