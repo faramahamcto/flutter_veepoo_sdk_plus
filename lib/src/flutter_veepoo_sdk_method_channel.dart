@@ -25,6 +25,16 @@ class MethodChannelFlutterVeepooSdk extends FlutterVeepooSdkPlatform {
   final EventChannel stepDataEventChannel =
       const EventChannel('$_channelName/step_data_event_channel');
 
+  // Cached streams
+  Stream<List<BluetoothDevice>>? _bluetoothDevicesStream;
+  Stream<HeartRate?>? _heartRateStream;
+  Stream<Spoh?>? _spohStream;
+  Stream<BloodPressure?>? _bloodPressureStream;
+  Stream<Temperature?>? _temperatureStream;
+  Stream<BloodGlucose?>? _bloodGlucoseStream;
+  Stream<EcgData?>? _ecgDataStream;
+  Stream<StepData?>? _stepDataStream;
+
   /// Requests Bluetooth permissions.
   ///
   /// Returns a [PermissionStatuses] if the request is successful, otherwise null.
@@ -387,7 +397,7 @@ class MethodChannelFlutterVeepooSdk extends FlutterVeepooSdkPlatform {
   /// Returns a [Stream] of [List] of [BluetoothDevice] objects.
   @override
   Stream<List<BluetoothDevice>> get bluetoothDevices {
-    return bluetoothEventChannel.receiveBroadcastStream().map((event) {
+    _bluetoothDevicesStream ??= bluetoothEventChannel.receiveBroadcastStream().map((event) {
       if (event == null) return [];
 
       if (event is List) {
@@ -407,7 +417,9 @@ class MethodChannelFlutterVeepooSdk extends FlutterVeepooSdkPlatform {
       throw VeepooException(
         message: 'Unexpected event type: ${event.runtimeType}',
       );
-    });
+    }).asBroadcastStream();
+
+    return _bluetoothDevicesStream!;
   }
 
   /// Stream of heart rate detection results.
@@ -415,7 +427,7 @@ class MethodChannelFlutterVeepooSdk extends FlutterVeepooSdkPlatform {
   /// Returns a [Stream] of [HeartRate] objects.
   @override
   Stream<HeartRate?> get heartRate {
-    return heartRateEventChannel.receiveBroadcastStream().map((dynamic event) {
+    _heartRateStream ??= heartRateEventChannel.receiveBroadcastStream().map((dynamic event) {
       if (event is Map) {
         final result =
             event.map((key, value) => MapEntry(key.toString(), value));
@@ -426,7 +438,9 @@ class MethodChannelFlutterVeepooSdk extends FlutterVeepooSdkPlatform {
           message: 'Unexpected event type: ${event.runtimeType}',
         );
       }
-    });
+    }).asBroadcastStream();
+
+    return _heartRateStream!;
   }
 
   /// Stream of blood oxygen results.
@@ -434,7 +448,7 @@ class MethodChannelFlutterVeepooSdk extends FlutterVeepooSdkPlatform {
   /// Returns a [Stream] of [Spoh] objects.
   @override
   Stream<Spoh?> get spoh {
-    return spohEventChannel.receiveBroadcastStream().map((dynamic event) {
+    _spohStream ??= spohEventChannel.receiveBroadcastStream().map((dynamic event) {
       if (event is Map<Object?, Object?>) {
         final result =
             event.map((key, value) => MapEntry(key.toString(), value));
@@ -445,7 +459,9 @@ class MethodChannelFlutterVeepooSdk extends FlutterVeepooSdkPlatform {
           message: 'Unexpected event type: ${event.runtimeType}',
         );
       }
-    });
+    }).asBroadcastStream();
+
+    return _spohStream!;
   }
 
   // ==================== Sleep Data ====================
@@ -1039,7 +1055,7 @@ class MethodChannelFlutterVeepooSdk extends FlutterVeepooSdkPlatform {
 
   @override
   Stream<BloodPressure?> get bloodPressure {
-    return bloodPressureEventChannel
+    _bloodPressureStream ??= bloodPressureEventChannel
         .receiveBroadcastStream()
         .map((dynamic event) {
       if (event is Map<Object?, Object?>) {
@@ -1051,12 +1067,14 @@ class MethodChannelFlutterVeepooSdk extends FlutterVeepooSdkPlatform {
           message: 'Unexpected event type: ${event.runtimeType}',
         );
       }
-    });
+    }).asBroadcastStream();
+
+    return _bloodPressureStream!;
   }
 
   @override
   Stream<Temperature?> get temperature {
-    return temperatureEventChannel.receiveBroadcastStream().map((dynamic event) {
+    _temperatureStream ??= temperatureEventChannel.receiveBroadcastStream().map((dynamic event) {
       if (event is Map<Object?, Object?>) {
         final result =
             event.map((key, value) => MapEntry(key.toString(), value));
@@ -1066,12 +1084,14 @@ class MethodChannelFlutterVeepooSdk extends FlutterVeepooSdkPlatform {
           message: 'Unexpected event type: ${event.runtimeType}',
         );
       }
-    });
+    }).asBroadcastStream();
+
+    return _temperatureStream!;
   }
 
   @override
   Stream<BloodGlucose?> get bloodGlucose {
-    return bloodGlucoseEventChannel
+    _bloodGlucoseStream ??= bloodGlucoseEventChannel
         .receiveBroadcastStream()
         .map((dynamic event) {
       if (event is Map<Object?, Object?>) {
@@ -1083,12 +1103,14 @@ class MethodChannelFlutterVeepooSdk extends FlutterVeepooSdkPlatform {
           message: 'Unexpected event type: ${event.runtimeType}',
         );
       }
-    });
+    }).asBroadcastStream();
+
+    return _bloodGlucoseStream!;
   }
 
   @override
   Stream<EcgData?> get ecgData {
-    return ecgEventChannel.receiveBroadcastStream().map((dynamic event) {
+    _ecgDataStream ??= ecgEventChannel.receiveBroadcastStream().map((dynamic event) {
       if (event is Map<Object?, Object?>) {
         final result =
             event.map((key, value) => MapEntry(key.toString(), value));
@@ -1098,12 +1120,14 @@ class MethodChannelFlutterVeepooSdk extends FlutterVeepooSdkPlatform {
           message: 'Unexpected event type: ${event.runtimeType}',
         );
       }
-    });
+    }).asBroadcastStream();
+
+    return _ecgDataStream!;
   }
 
   @override
   Stream<StepData?> get stepData {
-    return stepDataEventChannel.receiveBroadcastStream().map((dynamic event) {
+    _stepDataStream ??= stepDataEventChannel.receiveBroadcastStream().map((dynamic event) {
       if (event is Map<Object?, Object?>) {
         final result =
             event.map((key, value) => MapEntry(key.toString(), value));
@@ -1113,6 +1137,8 @@ class MethodChannelFlutterVeepooSdk extends FlutterVeepooSdkPlatform {
           message: 'Unexpected event type: ${event.runtimeType}',
         );
       }
-    });
+    }).asBroadcastStream();
+
+    return _stepDataStream!;
   }
 }
