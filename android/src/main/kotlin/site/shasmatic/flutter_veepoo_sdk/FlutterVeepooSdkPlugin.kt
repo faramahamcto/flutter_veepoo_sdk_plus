@@ -36,6 +36,8 @@ class FlutterVeepooSdkPlugin: FlutterPlugin, ActivityAware {
     private const val SCAN_BLUETOOTH_EVENT_CHANNEL = "$CHANNEL/scan_bluetooth_event_channel"
     private const val DETECT_HEART_EVENT_CHANNEL = "$CHANNEL/detect_heart_event_channel"
     private const val DETECT_SPOH_EVENT_CHANNEL = "$CHANNEL/detect_spoh_event_channel"
+    private const val DETECT_TEMPERATURE_EVENT_CHANNEL = "$CHANNEL/detect_temperature_event_channel"
+    private const val DETECT_ECG_EVENT_CHANNEL = "$CHANNEL/detect_ecg_event_channel"
   }
 
   override fun onAttachedToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
@@ -53,6 +55,8 @@ class FlutterVeepooSdkPlugin: FlutterPlugin, ActivityAware {
     setupEventChannels(messenger, SCAN_BLUETOOTH_EVENT_CHANNEL) { methodChannelHandler.setScanBluetoothEventSink(it) }
     setupEventChannels(messenger, DETECT_HEART_EVENT_CHANNEL) { methodChannelHandler.setDetectHeartEventSink(it) }
     setupEventChannels(messenger, DETECT_SPOH_EVENT_CHANNEL) { methodChannelHandler.setDetectSpohEventSink(it) }
+    setupEventChannels(messenger, DETECT_TEMPERATURE_EVENT_CHANNEL) { methodChannelHandler.setDetectTemperatureEventSink(it) }
+    setupEventChannels(messenger, DETECT_ECG_EVENT_CHANNEL) { methodChannelHandler.setDetectEcgEventSink(it) }
   }
 
   private fun stopChannels() {

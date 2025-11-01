@@ -10,9 +10,14 @@ import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.PluginRegistry
 import site.shasmatic.flutter_veepoo_sdk.utils.Battery
+import site.shasmatic.flutter_veepoo_sdk.utils.DeviceSettings
 import site.shasmatic.flutter_veepoo_sdk.utils.DeviceStorage
+import site.shasmatic.flutter_veepoo_sdk.utils.EcgDetection
 import site.shasmatic.flutter_veepoo_sdk.utils.HeartRate
+import site.shasmatic.flutter_veepoo_sdk.utils.OriginDataReader
 import site.shasmatic.flutter_veepoo_sdk.utils.Spoh
+import site.shasmatic.flutter_veepoo_sdk.utils.Temperature
+import site.shasmatic.flutter_veepoo_sdk.utils.UserProfileManager
 import site.shasmatic.flutter_veepoo_sdk.utils.VPBluetoothManager
 
 /**
@@ -34,6 +39,8 @@ class VPMethodChannelHandler(
     private var scanBluetoothEventSink: EventChannel.EventSink? = null
     private var detectHeartEventSink: EventChannel.EventSink? = null
     private var detectSpohEventSink: EventChannel.EventSink? = null
+    private var detectTemperatureEventSink: EventChannel.EventSink? = null
+    private var detectEcgEventSink: EventChannel.EventSink? = null
     private lateinit var result: MethodChannel.Result
 
     @RequiresApi(Build.VERSION_CODES.S)
@@ -67,6 +74,16 @@ class VPMethodChannelHandler(
             "startDetectSpoh" -> handleStartDetectSpoh()
             "stopDetectSpoh" -> handleStopDetectSpoh()
             "readBattery" -> handleReadBattery()
+            "startDetectTemperature" -> handleStartDetectTemperature()
+            "stopDetectTemperature" -> handleStopDetectTemperature()
+            "startDetectECG" -> handleStartDetectECG(call.argument<Boolean>("needWaveform") ?: true)
+            "stopDetectECG" -> handleStopDetectECG()
+            "readSleepData" -> handleReadSleepData()
+            "readStepData" -> handleReadStepData()
+            "setUserProfile" -> handleSetUserProfile(call)
+            "getUserProfile" -> handleGetUserProfile()
+            "setDeviceSettings" -> handleSetDeviceSettings(call)
+            "getDeviceSettings" -> handleGetDeviceSettings()
             else -> result.notImplemented()
         }
     }
@@ -176,6 +193,83 @@ class VPMethodChannelHandler(
         getBatteryManager(result).readBattery()
     }
 
+    private fun handleStartDetectTemperature() {
+        getTemperatureManager().startDetectTemperature()
+    }
+
+    private fun handleStopDetectTemperature() {
+        getTemperatureManager().stopDetectTemperature()
+    }
+
+    private fun handleStartDetectECG(needWaveform: Boolean) {
+        getEcgManager().startDetectECG(needWaveform)
+    }
+
+    private fun handleStopDetectECG() {
+        getEcgManager().stopDetectECG()
+    }
+
+    private fun handleReadSleepData() {
+        getOriginDataReader(result).readSleepData()
+    }
+
+    private fun handleReadStepData() {
+        getOriginDataReader(result).readStepData()
+    }
+
+    private fun handleSetUserProfile(call: MethodCall) {
+        val heightCm = call.argument<Int>("heightCm")
+        val weightKg = call.argument<Double>("weightKg")
+        val age = call.argument<Int>("age")
+        val gender = call.argument<String>("gender")
+        val targetSteps = call.argument<Int>("targetSteps")
+        val targetSleepMinutes = call.argument<Int>("targetSleepMinutes")
+
+        val sex = when (gender) {
+            "male" -> 1
+            "female" -> 0
+            else -> null
+        }
+
+        getUserProfileManager(result).setUserProfile(heightCm, weightKg, age, sex, targetSteps, targetSleepMinutes)
+    }
+
+    private fun handleGetUserProfile() {
+        getUserProfileManager(result).getUserProfile()
+    }
+
+    private fun handleSetDeviceSettings(call: MethodCall) {
+        val screenBrightness = call.argument<Int>("screenBrightness")
+        val screenDurationSeconds = call.argument<Int>("screenDurationSeconds")
+        val is24HourFormat = call.argument<Boolean>("is24HourFormat")
+        val language = call.argument<String>("language")
+        val temperatureUnit = call.argument<String>("temperatureUnit")
+        val distanceUnit = call.argument<String>("distanceUnit")
+        val wristRaiseToWake = call.argument<Boolean>("wristRaiseToWake")
+        val doNotDisturb = call.argument<Boolean>("doNotDisturb")
+        val doNotDisturbStart = call.argument<Int>("doNotDisturbStart")
+        val doNotDisturbEnd = call.argument<Int>("doNotDisturbEnd")
+
+        val languageCode = null // Language mapping would be needed
+        val tempUnit = when (temperatureUnit) {
+            "fahrenheit" -> 1
+            else -> 0
+        }
+        val distUnit = when (distanceUnit) {
+            "imperial" -> 1
+            else -> 0
+        }
+
+        getDeviceSettingsManager(result).setDeviceSettings(
+            screenBrightness, screenDurationSeconds, is24HourFormat, languageCode,
+            tempUnit, distUnit, wristRaiseToWake, doNotDisturb, doNotDisturbStart, doNotDisturbEnd
+        )
+    }
+
+    private fun handleGetDeviceSettings() {
+        getDeviceSettingsManager(result).getDeviceSettings()
+    }
+
     fun setActivity(activity: Activity?) {
         this.activity = activity
     }
@@ -192,6 +286,14 @@ class VPMethodChannelHandler(
         this.detectSpohEventSink = eventSink
     }
 
+    fun setDetectTemperatureEventSink(eventSink: EventChannel.EventSink?) {
+        this.detectTemperatureEventSink = eventSink
+    }
+
+    fun setDetectEcgEventSink(eventSink: EventChannel.EventSink?) {
+        this.detectEcgEventSink = eventSink
+    }
+
     private fun getBluetoothManager(result: MethodChannel.Result): VPBluetoothManager {
         return VPBluetoothManager(deviceStorage, result, activity!!, scanBluetoothEventSink, vpManager)
     }
@@ -206,5 +308,25 @@ class VPMethodChannelHandler(
 
     private fun getBatteryManager(result: MethodChannel.Result): Battery {
         return Battery(result, vpManager)
+    }
+
+    private fun getTemperatureManager(): Temperature {
+        return Temperature(detectTemperatureEventSink, vpManager)
+    }
+
+    private fun getEcgManager(): EcgDetection {
+        return EcgDetection(detectEcgEventSink, vpManager)
+    }
+
+    private fun getOriginDataReader(result: MethodChannel.Result): OriginDataReader {
+        return OriginDataReader(result, vpManager)
+    }
+
+    private fun getUserProfileManager(result: MethodChannel.Result): UserProfileManager {
+        return UserProfileManager(result, vpManager)
+    }
+
+    private fun getDeviceSettingsManager(result: MethodChannel.Result): DeviceSettings {
+        return DeviceSettings(result, vpManager)
     }
 }

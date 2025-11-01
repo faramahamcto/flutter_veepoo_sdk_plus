@@ -53,6 +53,24 @@ class SendEvent(private val eventSink: EventChannel.EventSink?) {
         sendEvent(spO2Data)
     }
 
+    /**
+     * Sends a temperature event with the given temperature data.
+     *
+     * @param temperatureData A map containing the temperature data.
+     */
+    fun sendTemperatureEvent(temperatureData: Map<String, Any?>) {
+        sendEvent(temperatureData)
+    }
+
+    /**
+     * Sends an ECG event with the given ECG data.
+     *
+     * @param ecgData A map containing the ECG data.
+     */
+    fun sendEcgEvent(ecgData: Map<String, Any?>) {
+        sendEvent(ecgData)
+    }
+
     private fun sendEvent(eventData: Any) {
         CoroutineScope(Dispatchers.Main).launch {
             eventSink?.success(eventData)
