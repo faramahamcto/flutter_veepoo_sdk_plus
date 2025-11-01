@@ -2,6 +2,7 @@ package site.shasmatic.flutter_veepoo_sdk.utils
 
 import com.veepoo.protocol.VPOperateManager
 import com.veepoo.protocol.listener.data.IECGDetectListener
+import com.veepoo.protocol.model.datas.EcgDetectInfo
 import io.flutter.plugin.common.EventChannel
 import site.shasmatic.flutter_veepoo_sdk.VPWriteResponse
 import site.shasmatic.flutter_veepoo_sdk.exceptions.VPException
@@ -53,15 +54,15 @@ class EcgDetection(
     }
 
     private val ecgDataListener = object : IECGDetectListener {
-        override fun onEcgDetectInfoChange(state: Int?, progress: Int?, wave: IntArray?, result: String?, value: Int?) {
-            val waveList = wave?.toList() ?: emptyList()
+        override fun onEcgDetectInfoChange(ecgInfo: EcgDetectInfo?) {
+            val waveList = ecgInfo?.waveData?.toList() ?: emptyList()
             val ecgResult = mapOf<String, Any?>(
                 "waveformData" to waveList,
-                "heartRate" to value,
-                "state" to mapECGState(state),
-                "isMeasuring" to (state == 1),
-                "progress" to progress,
-                "diagnosticResult" to result,
+                "heartRate" to ecgInfo?.value,
+                "state" to mapECGState(ecgInfo?.ecgDetectState),
+                "isMeasuring" to (ecgInfo?.ecgDetectState == 1),
+                "progress" to ecgInfo?.ecgProgress,
+                "diagnosticResult" to ecgInfo?.ecgDetectResult,
                 "signalQuality" to if (waveList.isNotEmpty()) 100 else 0,
                 "timestamp" to System.currentTimeMillis()
             )
