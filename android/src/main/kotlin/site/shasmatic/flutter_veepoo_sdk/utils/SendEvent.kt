@@ -4,6 +4,7 @@ import io.flutter.plugin.common.EventChannel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import site.shasmatic.flutter_veepoo_sdk.VPLogger
 
 /**
  * Utility class for sending various types of events, such as Bluetooth, heart rate, heart warning,
@@ -72,8 +73,17 @@ class SendEvent(private val eventSink: EventChannel.EventSink?) {
     }
 
     private fun sendEvent(eventData: Any) {
+        if (eventSink == null) {
+            VPLogger.w("Event sink is null, cannot send event: $eventData")
+            return
+        }
         CoroutineScope(Dispatchers.Main).launch {
-            eventSink?.success(eventData)
+            try {
+                eventSink.success(eventData)
+                VPLogger.i("Event sent successfully: ${if (eventData is List<*>) "List with ${eventData.size} items" else eventData.javaClass.simpleName}")
+            } catch (e: Exception) {
+                VPLogger.e("Failed to send event: ${e.message}")
+            }
         }
     }
 }
