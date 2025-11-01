@@ -38,7 +38,7 @@ class EcgDetection(
      */
     fun stopDetectECG() {
         executeECGOperation {
-            vpManager.stopDetectECG(writeResponse, ecgDataListener, ecgDataListener)
+            vpManager.stopDetectECG(writeResponse, false, ecgDataListener)
         }
     }
 
@@ -53,7 +53,7 @@ class EcgDetection(
     }
 
     private val ecgDataListener = object : IECGDetectListener {
-        override fun onECGDetectInfoChange(state: Int?, progress: Int?, wave: IntArray?, result: String?, value: Int?) {
+        override fun onEcgDetectInfoChange(state: Int?, progress: Int?, wave: IntArray?, result: String?, value: Int?) {
             val waveList = wave?.toList() ?: emptyList()
             val ecgResult = mapOf<String, Any?>(
                 "waveformData" to waveList,

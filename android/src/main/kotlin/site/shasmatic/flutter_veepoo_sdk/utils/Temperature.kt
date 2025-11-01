@@ -57,7 +57,6 @@ class Temperature(
         val temperatureResult = mapOf<String, Any?>(
             "temperatureCelsius" to data?.tempture,
             "temperatureFahrenheit" to fahrenheit,
-            "wristTemperatureCelsius" to data?.wristTempture,
             "state" to if (data != null) "complete" else "idle",
             "isMeasuring" to false,
             "progress" to 100,
