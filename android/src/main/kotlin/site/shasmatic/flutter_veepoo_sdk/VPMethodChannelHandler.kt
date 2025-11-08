@@ -187,11 +187,15 @@ class VPMethodChannelHandler(
 
     private fun handleGetDeviceInfo() {
         try {
+            // Get basic device information from connected GATT
+            val address = vpManager.currentConnectGatt?.device?.address
+            val name = vpManager.currentConnectGatt?.device?.name
+
             val deviceInfo = mapOf<String, Any?>(
-                "modelName" to vpSpGetUtil.deviceVersion,
-                "hardwareVersion" to vpSpGetUtil.deviceTestVersion,
-                "softwareVersion" to vpSpGetUtil.deviceVersion,
-                "macAddress" to vpManager.currentConnectGatt?.device?.address,
+                "modelName" to (name ?: "Unknown"),
+                "hardwareVersion" to "Unknown",
+                "softwareVersion" to "Unknown",
+                "macAddress" to (address ?: "Unknown"),
                 "manufacturer" to "Veepoo"
             )
             result.success(deviceInfo)
