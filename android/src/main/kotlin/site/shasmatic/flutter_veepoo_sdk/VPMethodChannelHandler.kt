@@ -13,7 +13,9 @@ import site.shasmatic.flutter_veepoo_sdk.utils.Battery
 import site.shasmatic.flutter_veepoo_sdk.utils.DeviceStorage
 import site.shasmatic.flutter_veepoo_sdk.utils.EcgDetection
 import site.shasmatic.flutter_veepoo_sdk.utils.HeartRate
+import site.shasmatic.flutter_veepoo_sdk.utils.SleepDataReader
 import site.shasmatic.flutter_veepoo_sdk.utils.Spoh
+import site.shasmatic.flutter_veepoo_sdk.utils.StepDataReader
 import site.shasmatic.flutter_veepoo_sdk.utils.Temperature
 import site.shasmatic.flutter_veepoo_sdk.utils.VPBluetoothManager
 
@@ -76,6 +78,9 @@ class VPMethodChannelHandler(
             "stopDetectTemperature" -> handleStopDetectTemperature()
             "startDetectECG" -> handleStartDetectECG(call.argument<Boolean>("needWaveform") ?: true)
             "stopDetectECG" -> handleStopDetectECG()
+            "readSleepData" -> handleReadSleepData()
+            "readStepData" -> handleReadStepData()
+            "readStepDataForDate" -> handleReadStepDataForDate(call.argument<Long>("timestamp"))
             else -> result.notImplemented()
         }
     }
@@ -220,6 +225,22 @@ class VPMethodChannelHandler(
         getEcgManager().stopDetectECG()
     }
 
+    private fun handleReadSleepData() {
+        getSleepDataReader().readSleepData()
+    }
+
+    private fun handleReadStepData() {
+        getStepDataReader().readStepData()
+    }
+
+    private fun handleReadStepDataForDate(timestamp: Long?) {
+        if (timestamp != null) {
+            getStepDataReader().readStepDataForDate(timestamp)
+        } else {
+            result.error("INVALID_ARGUMENT", "Timestamp is required", null)
+        }
+    }
+
     fun setActivity(activity: Activity?) {
         this.activity = activity
     }
@@ -266,5 +287,13 @@ class VPMethodChannelHandler(
 
     private fun getEcgManager(): EcgDetection {
         return EcgDetection(detectEcgEventSink, vpManager)
+    }
+
+    private fun getSleepDataReader(): SleepDataReader {
+        return SleepDataReader(result, vpManager)
+    }
+
+    private fun getStepDataReader(): StepDataReader {
+        return StepDataReader(result, vpManager)
     }
 }
