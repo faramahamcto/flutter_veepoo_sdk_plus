@@ -35,34 +35,54 @@ class SleepDataReader(
         }
     }
 
-    private val originDataListener = IOriginDataListener { originData ->
-        if (originData == null) {
-            result.success(null)
-            return@IOriginDataListener
+    private val originDataListener = object : IOriginDataListener {
+        override fun onOrinReadOriginProgress(day: Int) {
+            // Progress callback - indicates data is being read
+            VPLogger.d("Reading sleep data progress: day $day")
         }
 
-        // Extract sleep data from origin data
-        val sleepData = originData.sleepData
-        if (sleepData != null) {
-            val data = mapOf<String, Any?>(
-                "totalSleepMinutes" to sleepData.allSleepTime,
-                "deepSleepMinutes" to sleepData.deepSleepTime,
-                "lightSleepMinutes" to sleepData.lowSleepTime,
-                "awakeMinutes" to sleepData.soberTime,
-                "sleepQuality" to sleepData.sleepQulity,
-                "sleepStartTime" to sleepData.sleepStartTime,
-                "sleepEndTime" to sleepData.sleepEndTime,
-                "sleepCurve" to sleepData.sleepLine?.toList()
-            )
-            VPLogger.d("Sleep data received: $sleepData")
-            result.success(data)
-        } else {
-            result.success(null)
+        override fun onOrinReadOriginComplete() {
+            VPLogger.d("Origin data read complete")
+        }
+
+        override fun onOriginFiveMinuteDataChange(originData: com.veepoo.protocol.model.datas.OriginData?) {
+            if (originData == null) {
+                result.success(null)
+                return
+            }
+
+            // Extract sleep data from origin data
+            val sleepData = originData.originSleepData
+            if (sleepData != null) {
+                val data = mapOf<String, Any?>(
+                    "totalSleepMinutes" to (sleepData.allSleepTime ?: 0),
+                    "deepSleepMinutes" to (sleepData.deepSleepTime ?: 0),
+                    "lightSleepMinutes" to (sleepData.lowSleepTime ?: 0),
+                    "awakeMinutes" to (sleepData.soberTime ?: 0),
+                    "sleepQuality" to (sleepData.sleepQulity ?: 0),
+                    "sleepStartTime" to (sleepData.originSleepStartData ?: ""),
+                    "sleepEndTime" to (sleepData.originSleepEndData ?: ""),
+                    "sleepCurve" to sleepData.sleepLine
+                )
+                VPLogger.d("Sleep data received: $sleepData")
+                result.success(data)
+            } else {
+                result.success(null)
+            }
+        }
+
+        override fun onOriginHalfHourDataChange(originData: com.veepoo.protocol.model.datas.OriginHalfHourData?) {
+            // Not used for sleep data
         }
     }
 
-    private val originProgressListener = IOriginProgressListener { day ->
-        // Progress callback - indicates data is being read
-        VPLogger.d("Reading sleep data progress: day $day")
+    private val originProgressListener = object : com.veepoo.protocol.listener.data.IOriginProgressListener {
+        override fun onOrinReadOriginProgress(day: Int) {
+            VPLogger.d("Reading sleep data progress: day $day")
+        }
+
+        override fun onOrinReadOriginComplete() {
+            VPLogger.d("Origin data read complete")
+        }
     }
 }

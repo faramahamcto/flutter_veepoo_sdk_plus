@@ -51,33 +51,53 @@ class StepDataReader(
         }
     }
 
-    private val originDataListener = IOriginDataListener { originData ->
-        if (originData == null) {
-            result.success(null)
-            return@IOriginDataListener
+    private val originDataListener = object : IOriginDataListener {
+        override fun onOrinReadOriginProgress(day: Int) {
+            // Progress callback - indicates data is being read
+            VPLogger.d("Reading step data progress: day $day")
         }
 
-        // Extract step data from the most recent origin data point
-        val allData = originData.originData
-        val latestData = allData?.lastOrNull()
+        override fun onOrinReadOriginComplete() {
+            VPLogger.d("Origin data read complete")
+        }
 
-        if (latestData != null) {
-            val data = mapOf<String, Any?>(
-                "steps" to latestData.step,
-                "distanceMeters" to (latestData.dis?.toDouble() ?: 0.0),
-                "calories" to (latestData.calorie?.toDouble() ?: 0.0),
-                "activeMinutes" to null, // Not available in OriginData
-                "timestamp" to System.currentTimeMillis()
-            )
-            VPLogger.d("Step data received: $latestData")
-            result.success(data)
-        } else {
-            result.success(null)
+        override fun onOriginFiveMinuteDataChange(originData: com.veepoo.protocol.model.datas.OriginData?) {
+            if (originData == null) {
+                result.success(null)
+                return
+            }
+
+            // Extract step data from the most recent five-minute data point
+            val fiveMinData = originData.originDataList
+            val latestData = fiveMinData?.lastOrNull()
+
+            if (latestData != null) {
+                val data = mapOf<String, Any?>(
+                    "steps" to (latestData.step ?: 0),
+                    "distanceMeters" to ((latestData.dis ?: 0) * 10.0), // dis is in 0.01m units
+                    "calories" to ((latestData.calorie ?: 0).toDouble()),
+                    "activeMinutes" to null, // Not available in OriginData
+                    "timestamp" to System.currentTimeMillis()
+                )
+                VPLogger.d("Step data received: $latestData")
+                result.success(data)
+            } else {
+                result.success(null)
+            }
+        }
+
+        override fun onOriginHalfHourDataChange(originData: com.veepoo.protocol.model.datas.OriginHalfHourData?) {
+            // Not used for step data (we use five-minute data instead)
         }
     }
 
-    private val originProgressListener = IOriginProgressListener { day ->
-        // Progress callback - indicates data is being read
-        VPLogger.d("Reading step data progress: day $day")
+    private val originProgressListener = object : com.veepoo.protocol.listener.data.IOriginProgressListener {
+        override fun onOrinReadOriginProgress(day: Int) {
+            VPLogger.d("Reading step data progress: day $day")
+        }
+
+        override fun onOrinReadOriginComplete() {
+            VPLogger.d("Origin data read complete")
+        }
     }
 }
