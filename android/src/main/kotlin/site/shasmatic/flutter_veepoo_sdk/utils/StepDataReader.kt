@@ -2,7 +2,8 @@ package site.shasmatic.flutter_veepoo_sdk.utils
 
 import com.veepoo.protocol.VPOperateManager
 import com.veepoo.protocol.listener.data.IOriginDataListener
-import com.veepoo.protocol.listener.data.IOriginProgressListener
+import com.veepoo.protocol.model.datas.OriginData
+import com.veepoo.protocol.model.datas.OriginHalfHourData
 import io.flutter.plugin.common.MethodChannel
 import site.shasmatic.flutter_veepoo_sdk.VPLogger
 import site.shasmatic.flutter_veepoo_sdk.VPWriteResponse
@@ -21,13 +22,16 @@ class StepDataReader(
 ) {
 
     private val writeResponse: VPWriteResponse = VPWriteResponse()
+    private var latestStepData: Map<String, Any?>? = null
 
     /**
      * Reads current step data from the device using readOriginData API.
+     * Reads origin data for the last 7 days and returns the most recent.
      */
     fun readStepData() {
         try {
-            vpManager.readOriginData(writeResponse, originDataListener, originProgressListener)
+            // Read origin data for last 7 days
+            vpManager.readOriginData(writeResponse, originDataListener, 7)
         } catch (e: InvocationTargetException) {
             result.error("STEP_DATA_ERROR", "Error reading step data: ${e.targetException.message}", null)
         } catch (e: Exception) {
@@ -43,7 +47,9 @@ class StepDataReader(
      */
     fun readStepDataForDate(timestamp: Long) {
         try {
-            vpManager.readOriginData(writeResponse, originDataListener, originProgressListener)
+            // For now, just read the most recent data
+            // TODO: Could use readOriginDataSingleDay with proper date conversion
+            vpManager.readOriginData(writeResponse, originDataListener, 7)
         } catch (e: InvocationTargetException) {
             result.error("STEP_DATA_ERROR", "Error reading step data for date: ${e.targetException.message}", null)
         } catch (e: Exception) {
@@ -52,52 +58,42 @@ class StepDataReader(
     }
 
     private val originDataListener = object : IOriginDataListener {
-        override fun onOrinReadOriginProgress(day: Int) {
-            // Progress callback - indicates data is being read
-            VPLogger.d("Reading step data progress: day $day")
-        }
-
-        override fun onOrinReadOriginComplete() {
-            VPLogger.d("Origin data read complete")
-        }
-
-        override fun onOriginFiveMinuteDataChange(originData: com.veepoo.protocol.model.datas.OriginData?) {
-            if (originData == null) {
-                result.success(null)
-                return
-            }
-
-            // Extract step data from the most recent five-minute data point
-            val fiveMinData = originData.originDataList
-            val latestData = fiveMinData?.lastOrNull()
-
-            if (latestData != null) {
-                val data = mapOf<String, Any?>(
-                    "steps" to (latestData.step ?: 0),
-                    "distanceMeters" to ((latestData.dis ?: 0) * 10.0), // dis is in 0.01m units
-                    "calories" to ((latestData.calorie ?: 0).toDouble()),
-                    "activeMinutes" to null, // Not available in OriginData
-                    "timestamp" to System.currentTimeMillis()
+        override fun onOringinFiveMinuteDataChange(originData: OriginData?) {
+            if (originData != null) {
+                // Update the latest step data
+                latestStepData = mapOf<String, Any?>(
+                    "steps" to originData.stepValue,
+                    "distanceMeters" to originData.disValue,
+                    "calories" to originData.calValue,
+                    "activeMinutes" to null, // Not directly available
+                    "heartRate" to originData.rateValue,
+                    "timestamp" to System.currentTimeMillis(),
+                    "date" to originData.date
                 )
-                VPLogger.d("Step data received: $latestData")
-                result.success(data)
+                VPLogger.d("Step data received: steps=${originData.stepValue}, distance=${originData.disValue}, calories=${originData.calValue}")
+            }
+        }
+
+        override fun onOringinHalfHourDataChange(originData: OriginHalfHourData?) {
+            // Not used for step data (we use five-minute data instead)
+        }
+
+        override fun onReadOriginProgressDetail(day: Int, date: String?, allPackage: Int, currentPackage: Int) {
+            VPLogger.d("Reading origin data progress for $date: $currentPackage/$allPackage (day $day)")
+        }
+
+        override fun onReadOriginProgress(progress: Float) {
+            VPLogger.d("Reading origin data progress: $progress%")
+        }
+
+        override fun onReadOriginComplete() {
+            VPLogger.d("Origin data read complete")
+            // Return the most recent step data when reading is complete
+            if (latestStepData != null) {
+                result.success(latestStepData)
             } else {
                 result.success(null)
             }
-        }
-
-        override fun onOriginHalfHourDataChange(originData: com.veepoo.protocol.model.datas.OriginHalfHourData?) {
-            // Not used for step data (we use five-minute data instead)
-        }
-    }
-
-    private val originProgressListener = object : com.veepoo.protocol.listener.data.IOriginProgressListener {
-        override fun onOrinReadOriginProgress(day: Int) {
-            VPLogger.d("Reading step data progress: day $day")
-        }
-
-        override fun onOrinReadOriginComplete() {
-            VPLogger.d("Origin data read complete")
         }
     }
 }
