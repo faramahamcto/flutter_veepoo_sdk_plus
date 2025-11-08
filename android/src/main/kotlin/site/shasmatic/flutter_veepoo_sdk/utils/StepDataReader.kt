@@ -1,5 +1,6 @@
 package site.shasmatic.flutter_veepoo_sdk.utils
 
+import com.inuker.bluetooth.library.Code
 import com.veepoo.protocol.VPOperateManager
 import com.veepoo.protocol.listener.data.IOriginDataListener
 import com.veepoo.protocol.model.datas.OriginData
@@ -21,7 +22,12 @@ class StepDataReader(
     private val vpManager: VPOperateManager,
 ) {
 
-    private val writeResponse: VPWriteResponse = VPWriteResponse()
+    private val writeResponse: VPWriteResponse = object : VPWriteResponse() {
+        override fun onResponse(code: Int) {
+            super.onResponse(code)
+            VPLogger.d("readOriginData write response code: $code")
+        }
+    }
     private var latestStepData: Map<String, Any?>? = null
     private var hasReturnedResult = false
 
