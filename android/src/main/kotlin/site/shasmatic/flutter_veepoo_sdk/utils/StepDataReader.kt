@@ -1,5 +1,7 @@
 package site.shasmatic.flutter_veepoo_sdk.utils
 
+import android.os.Handler
+import android.os.Looper
 import com.veepoo.protocol.VPOperateManager
 import com.veepoo.protocol.listener.data.IOriginDataListener
 import com.veepoo.protocol.model.datas.OriginData
@@ -24,6 +26,19 @@ class StepDataReader(
     private val writeResponse: VPWriteResponse = VPWriteResponse()
     private var latestStepData: Map<String, Any?>? = null
     private var hasReturnedResult = false
+    private val handler = Handler(Looper.getMainLooper())
+    private val timeoutRunnable = Runnable {
+        if (!hasReturnedResult) {
+            VPLogger.e("Origin data read timeout after 30 seconds")
+            hasReturnedResult = true
+            if (latestStepData != null) {
+                VPLogger.d("Returning partial step data after timeout: $latestStepData")
+                result.success(latestStepData)
+            } else {
+                result.error("TIMEOUT", "No step data received within 30 seconds. Device may not have stored origin data.", null)
+            }
+        }
+    }
 
     /**
      * Reads current step data from the device using readOriginData API.
@@ -32,15 +47,22 @@ class StepDataReader(
     fun readStepData() {
         try {
             VPLogger.d("Starting to read step/origin data for last 1 day...")
-            VPLogger.d("VPOperateManager instance: $vpManager")
-            VPLogger.d("OriginDataListener instance: $originDataListener")
-            // Read origin data for last 1 day (changed from 7 to reduce data and improve reliability)
+            VPLogger.d("Device connected: ${vpManager.currentConnectGatt != null}")
+            VPLogger.d("Device address: ${vpManager.currentConnectGatt?.device?.address}")
+
+            // Start timeout timer (30 seconds)
+            handler.postDelayed(timeoutRunnable, 30000)
+            VPLogger.d("Timeout timer started (30 seconds)")
+
+            // Read origin data for last 1 day
             vpManager.readOriginData(writeResponse, originDataListener, 1)
             VPLogger.d("readOriginData() call completed without exception")
         } catch (e: InvocationTargetException) {
+            handler.removeCallbacks(timeoutRunnable)
             VPLogger.e("InvocationTargetException: ${e.targetException.message}")
             result.error("STEP_DATA_ERROR", "Error reading step data: ${e.targetException.message}", null)
         } catch (e: Exception) {
+            handler.removeCallbacks(timeoutRunnable)
             VPLogger.e("Exception: ${e.message}")
             result.error("STEP_DATA_ERROR", "Error reading step data: ${e.message}", null)
         }
@@ -99,6 +121,10 @@ class StepDataReader(
 
         override fun onReadOriginComplete() {
             VPLogger.d("Origin data read complete")
+            // Cancel timeout
+            handler.removeCallbacks(timeoutRunnable)
+            VPLogger.d("Timeout timer cancelled")
+
             // Return result only once when reading is complete
             if (!hasReturnedResult) {
                 hasReturnedResult = true
