@@ -21,6 +21,8 @@ class SleepDataReader(
 ) {
 
     private val writeResponse: VPWriteResponse = VPWriteResponse()
+    private var latestSleepData: Map<String, Any?>? = null
+    private var hasReturnedResult = false
 
     /**
      * Reads sleep data from the device using readSleepData API.
@@ -40,7 +42,8 @@ class SleepDataReader(
     private val sleepDataListener = object : ISleepDataListener {
         override fun onSleepDataChange(date: String?, sleepData: SleepData?) {
             if (sleepData != null) {
-                val data = mapOf<String, Any?>(
+                // Store the most recent sleep data (will be overwritten if newer data comes)
+                latestSleepData = mapOf<String, Any?>(
                     "totalSleepMinutes" to sleepData.allSleepTime,
                     "deepSleepMinutes" to sleepData.deepSleepTime,
                     "lightSleepMinutes" to sleepData.lowSleepTime,
@@ -52,11 +55,9 @@ class SleepDataReader(
                     "sleepCurve" to sleepData.sleepLine,
                     "date" to date
                 )
-                VPLogger.d("Sleep data received for $date: $sleepData")
-                result.success(data)
+                VPLogger.d("Sleep data received for $date: allSleep=${sleepData.allSleepTime}, deep=${sleepData.deepSleepTime}, light=${sleepData.lowSleepTime}")
             } else {
                 VPLogger.d("No sleep data available for $date")
-                result.success(null)
             }
         }
 
@@ -70,6 +71,17 @@ class SleepDataReader(
 
         override fun onReadSleepComplete() {
             VPLogger.d("Sleep data read complete")
+            // Return result only once when reading is complete
+            if (!hasReturnedResult) {
+                hasReturnedResult = true
+                if (latestSleepData != null) {
+                    VPLogger.d("Returning sleep data: $latestSleepData")
+                    result.success(latestSleepData)
+                } else {
+                    VPLogger.d("No sleep data found in any of the days")
+                    result.success(null)
+                }
+            }
         }
     }
 }

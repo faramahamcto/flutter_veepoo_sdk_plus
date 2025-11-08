@@ -23,6 +23,7 @@ class StepDataReader(
 
     private val writeResponse: VPWriteResponse = VPWriteResponse()
     private var latestStepData: Map<String, Any?>? = null
+    private var hasReturnedResult = false
 
     /**
      * Reads current step data from the device using readOriginData API.
@@ -30,6 +31,7 @@ class StepDataReader(
      */
     fun readStepData() {
         try {
+            VPLogger.d("Starting to read step/origin data for last 7 days...")
             // Read origin data for last 7 days
             vpManager.readOriginData(writeResponse, originDataListener, 7)
         } catch (e: InvocationTargetException) {
@@ -47,6 +49,7 @@ class StepDataReader(
      */
     fun readStepDataForDate(timestamp: Long) {
         try {
+            VPLogger.d("Starting to read step/origin data for specific date (timestamp: $timestamp)...")
             // For now, just read the most recent data
             // TODO: Could use readOriginDataSingleDay with proper date conversion
             vpManager.readOriginData(writeResponse, originDataListener, 7)
@@ -59,6 +62,7 @@ class StepDataReader(
 
     private val originDataListener = object : IOriginDataListener {
         override fun onOringinFiveMinuteDataChange(originData: OriginData?) {
+            VPLogger.d("onOringinFiveMinuteDataChange called with originData=$originData")
             if (originData != null) {
                 // Update the latest step data
                 latestStepData = mapOf<String, Any?>(
@@ -70,16 +74,18 @@ class StepDataReader(
                     "timestamp" to System.currentTimeMillis(),
                     "date" to originData.date
                 )
-                VPLogger.d("Step data received: steps=${originData.stepValue}, distance=${originData.disValue}, calories=${originData.calValue}")
+                VPLogger.d("Step data received: steps=${originData.stepValue}, distance=${originData.disValue}, calories=${originData.calValue}, date=${originData.date}")
+            } else {
+                VPLogger.d("onOringinFiveMinuteDataChange: originData is null")
             }
         }
 
         override fun onOringinHalfHourDataChange(originData: OriginHalfHourData?) {
-            // Not used for step data (we use five-minute data instead)
+            VPLogger.d("onOringinHalfHourDataChange called (not used for step data)")
         }
 
         override fun onReadOriginProgressDetail(day: Int, date: String?, allPackage: Int, currentPackage: Int) {
-            VPLogger.d("Reading origin data progress for $date: $currentPackage/$allPackage (day $day)")
+            VPLogger.d("Reading origin data progress for day $day ($date): package $currentPackage/$allPackage")
         }
 
         override fun onReadOriginProgress(progress: Float) {
@@ -88,11 +94,16 @@ class StepDataReader(
 
         override fun onReadOriginComplete() {
             VPLogger.d("Origin data read complete")
-            // Return the most recent step data when reading is complete
-            if (latestStepData != null) {
-                result.success(latestStepData)
-            } else {
-                result.success(null)
+            // Return result only once when reading is complete
+            if (!hasReturnedResult) {
+                hasReturnedResult = true
+                if (latestStepData != null) {
+                    VPLogger.d("Returning step data: $latestStepData")
+                    result.success(latestStepData)
+                } else {
+                    VPLogger.d("No step data found in origin data")
+                    result.success(null)
+                }
             }
         }
     }
