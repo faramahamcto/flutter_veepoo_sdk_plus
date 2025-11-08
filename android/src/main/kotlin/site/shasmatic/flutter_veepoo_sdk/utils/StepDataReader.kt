@@ -37,9 +37,9 @@ class StepDataReader(
      */
     fun readStepData() {
         try {
-            VPLogger.d("Starting to read step/origin data for last 7 days...")
-            // Read origin data for last 7 days
-            vpManager.readOriginData(writeResponse, originDataListener, 7)
+            VPLogger.d("Starting to read step/origin data for last 1 day...")
+            // Read origin data for last 1 day (changed from 7 to reduce data and improve reliability)
+            vpManager.readOriginData(writeResponse, originDataListener, 1)
         } catch (e: InvocationTargetException) {
             result.error("STEP_DATA_ERROR", "Error reading step data: ${e.targetException.message}", null)
         } catch (e: Exception) {
@@ -56,9 +56,9 @@ class StepDataReader(
     fun readStepDataForDate(timestamp: Long) {
         try {
             VPLogger.d("Starting to read step/origin data for specific date (timestamp: $timestamp)...")
-            // For now, just read the most recent data
+            // For now, just read the most recent data (1 day)
             // TODO: Could use readOriginDataSingleDay with proper date conversion
-            vpManager.readOriginData(writeResponse, originDataListener, 7)
+            vpManager.readOriginData(writeResponse, originDataListener, 1)
         } catch (e: InvocationTargetException) {
             result.error("STEP_DATA_ERROR", "Error reading step data for date: ${e.targetException.message}", null)
         } catch (e: Exception) {
