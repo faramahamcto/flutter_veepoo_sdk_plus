@@ -1,6 +1,5 @@
 package site.shasmatic.flutter_veepoo_sdk.utils
 
-import com.inuker.bluetooth.library.Code
 import com.veepoo.protocol.VPOperateManager
 import com.veepoo.protocol.listener.data.IOriginDataListener
 import com.veepoo.protocol.model.datas.OriginData
@@ -22,12 +21,7 @@ class StepDataReader(
     private val vpManager: VPOperateManager,
 ) {
 
-    private val writeResponse: VPWriteResponse = object : VPWriteResponse() {
-        override fun onResponse(code: Int) {
-            super.onResponse(code)
-            VPLogger.d("readOriginData write response code: $code")
-        }
-    }
+    private val writeResponse: VPWriteResponse = VPWriteResponse()
     private var latestStepData: Map<String, Any?>? = null
     private var hasReturnedResult = false
 
@@ -38,11 +32,16 @@ class StepDataReader(
     fun readStepData() {
         try {
             VPLogger.d("Starting to read step/origin data for last 1 day...")
+            VPLogger.d("VPOperateManager instance: $vpManager")
+            VPLogger.d("OriginDataListener instance: $originDataListener")
             // Read origin data for last 1 day (changed from 7 to reduce data and improve reliability)
             vpManager.readOriginData(writeResponse, originDataListener, 1)
+            VPLogger.d("readOriginData() call completed without exception")
         } catch (e: InvocationTargetException) {
+            VPLogger.e("InvocationTargetException: ${e.targetException.message}")
             result.error("STEP_DATA_ERROR", "Error reading step data: ${e.targetException.message}", null)
         } catch (e: Exception) {
+            VPLogger.e("Exception: ${e.message}")
             result.error("STEP_DATA_ERROR", "Error reading step data: ${e.message}", null)
         }
     }
