@@ -74,20 +74,33 @@ class BloodGlucose(
         ) {
             VPLogger.d("BG raw data - progress: $progress, value: $value, riskLevel: $riskLevel")
 
-            val riskLevelString = when (riskLevel) {
-                EBloodGlucoseRiskLevel.NONE -> "NONE"
-                EBloodGlucoseRiskLevel.LOW -> "LOW"
-                EBloodGlucoseRiskLevel.MIDDLE -> "MIDDLE"
-                EBloodGlucoseRiskLevel.HIGH -> "HIGH"
-                null -> "UNKNOWN"
-                else -> riskLevel.name
+            // Determine state based on progress
+            val state = when {
+                progress >= 100 -> "complete"
+                progress > 0 -> "measuring"
+                else -> "idle"
             }
+
+            // The value from the device is typically in mmol/L
+            // Convert mmol/L to mg/dL (multiply by 18.0182)
+            val glucoseMmolL = value.toDouble()
+            val glucoseMgdL = value * 18.0182
 
             val result = mapOf<String, Any?>(
                 "progress" to progress,
-                "value" to value,
-                "riskLevel" to riskLevelString,
-                "isComplete" to (progress >= 100)
+                "glucoseMmolL" to glucoseMmolL,
+                "glucoseMgdL" to glucoseMgdL,
+                "state" to state,
+                "isMeasuring" to (progress < 100),
+                "timestamp" to System.currentTimeMillis(),
+                "riskLevel" to when (riskLevel) {
+                    EBloodGlucoseRiskLevel.NONE -> "NONE"
+                    EBloodGlucoseRiskLevel.LOW -> "LOW"
+                    EBloodGlucoseRiskLevel.MIDDLE -> "MIDDLE"
+                    EBloodGlucoseRiskLevel.HIGH -> "HIGH"
+                    null -> "UNKNOWN"
+                    else -> riskLevel.name
+                }
             )
             VPLogger.d("BG data sent to Flutter: $result")
             sendEvent.sendBloodGlucoseEvent(result)
@@ -97,20 +110,22 @@ class BloodGlucose(
             VPLogger.e("BG detect error - code: $errorCode, status: $status")
 
             val statusString = when (status) {
-                EBloodGlucoseStatus.NONSUPPORT -> "NONSUPPORT"
-                EBloodGlucoseStatus.ENABLE -> "ENABLE"
-                EBloodGlucoseStatus.DETECTING -> "DETECTING"
-                EBloodGlucoseStatus.LOW_POWER -> "LOW_POWER"
-                EBloodGlucoseStatus.BUSY -> "BUSY"
-                EBloodGlucoseStatus.WEARING_ERROR -> "WEARING_ERROR"
-                null -> "UNKNOWN"
-                else -> status.name
+                EBloodGlucoseStatus.NONSUPPORT -> "notSupported"
+                EBloodGlucoseStatus.ENABLE -> "idle"
+                EBloodGlucoseStatus.DETECTING -> "measuring"
+                EBloodGlucoseStatus.LOW_POWER -> "failed"
+                EBloodGlucoseStatus.BUSY -> "failed"
+                EBloodGlucoseStatus.WEARING_ERROR -> "failed"
+                null -> "unknown"
+                else -> status.name.lowercase()
             }
 
             val errorResult = mapOf<String, Any?>(
                 "error" to true,
                 "errorCode" to errorCode,
-                "status" to statusString
+                "state" to statusString,
+                "isMeasuring" to false,
+                "timestamp" to System.currentTimeMillis()
             )
             VPLogger.d("BG error sent to Flutter: $errorResult")
             sendEvent.sendBloodGlucoseEvent(errorResult)
@@ -119,7 +134,10 @@ class BloodGlucose(
         override fun onBloodGlucoseStopDetect() {
             VPLogger.d("BG detection stopped")
             val result = mapOf<String, Any?>(
-                "stopped" to true
+                "state" to "idle",
+                "isMeasuring" to false,
+                "stopped" to true,
+                "timestamp" to System.currentTimeMillis()
             )
             sendEvent.sendBloodGlucoseEvent(result)
         }
