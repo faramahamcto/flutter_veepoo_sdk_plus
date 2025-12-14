@@ -65,19 +65,20 @@ class BloodPressure(
             // Log raw data for debugging
             VPLogger.d("BP raw data - systolic: ${bpData.highPressure}, diastolic: ${bpData.lowPressure}, progress: ${bpData.progress}, status: ${bpData.status}, hasProgress: ${bpData.isHaveProgress}")
 
-            val statusString = when (bpData.status) {
-                com.veepoo.protocol.model.enums.EBPDetectStatus.STATE_BP_BUSY -> "BUSY"
-                com.veepoo.protocol.model.enums.EBPDetectStatus.STATE_BP_NORMAL -> "NORMAL"
-                null -> "MEASURING"
-                else -> bpData.status.name
+            // Determine state based on progress and status
+            val state = when {
+                bpData.progress >= 100 && bpData.status == com.veepoo.protocol.model.enums.EBPDetectStatus.STATE_BP_NORMAL -> "complete"
+                bpData.progress > 0 -> "measuring"
+                else -> "idle"
             }
 
             val result = mapOf<String, Any?>(
                 "systolic" to bpData.highPressure,
                 "diastolic" to bpData.lowPressure,
                 "progress" to bpData.progress,
-                "status" to statusString,
-                "isComplete" to (bpData.status == com.veepoo.protocol.model.enums.EBPDetectStatus.STATE_BP_NORMAL && bpData.progress >= 100)
+                "state" to state,
+                "isMeasuring" to (bpData.progress < 100),
+                "timestamp" to System.currentTimeMillis()
             )
             VPLogger.d("BP data sent to Flutter: $result")
             sendEvent.sendBloodPressureEvent(result)
