@@ -83,6 +83,8 @@ class VPMethodChannelHandler(
             "stopDetectTemperature" -> handleStopDetectTemperature()
             "startDetectECG" -> handleStartDetectECG(call.argument<Boolean>("needWaveform") ?: true)
             "stopDetectECG" -> handleStopDetectECG()
+            "startDetectEcg" -> handleStartDetectECG(call.argument<Boolean>("needWaveform") ?: true)
+            "stopDetectEcg" -> handleStopDetectECG()
             "startDetectBloodPressure" -> handleStartDetectBloodPressure()
             "stopDetectBloodPressure" -> handleStopDetectBloodPressure()
             "startDetectBloodGlucose" -> handleStartDetectBloodGlucose()

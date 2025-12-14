@@ -59,6 +59,8 @@ class EcgDetection(
     private var currentState: String = "idle"
     private var currentWaveform: List<Int> = emptyList()
     private var currentResult: String? = null
+    private var currentProgress: Int = 0
+    private var currentHeartRate: Int = 0
     private var samplingFrequency: Int = 0
     private var drawFrequency: Int = 0
 
@@ -71,19 +73,24 @@ class EcgDetection(
         }
 
         override fun onEcgDetectStateChange(state: EcgDetectState?) {
-            // Update state based on progress
+            // Update state and progress
+            currentProgress = state?.progress ?: 0
+            currentHeartRate = state?.heartRate ?: 0
             currentState = when {
                 state == null -> "idle"
-                state.progress < 100 -> "measuring"
-                state.progress >= 100 -> "complete"
+                currentProgress < 100 -> "measuring"
+                currentProgress >= 100 -> "complete"
                 else -> "unknown"
             }
             sendEcgUpdate()
         }
 
         override fun onEcgDetectResultChange(result: EcgDetectResult?) {
-            // Store final result - result object contains many fields
-            currentResult = if (result?.isSuccess == true) "success" else "failed"
+            // Store final result and heart rate from result
+            if (result != null) {
+                currentHeartRate = result.heartRate
+                currentResult = if (result.isSuccess) "success" else "failed"
+            }
             sendEcgUpdate()
         }
 
@@ -104,11 +111,11 @@ class EcgDetection(
     private fun sendEcgUpdate() {
         val ecgResult = mapOf<String, Any?>(
             "waveformData" to currentWaveform,
+            "heartRate" to currentHeartRate,
             "state" to currentState,
             "isMeasuring" to (currentState == "measuring"),
+            "progress" to currentProgress,
             "diagnosticResult" to currentResult,
-            "samplingFrequency" to samplingFrequency,
-            "drawFrequency" to drawFrequency,
             "signalQuality" to if (currentWaveform.isNotEmpty()) 100 else 0,
             "timestamp" to System.currentTimeMillis()
         )
