@@ -62,15 +62,27 @@ class BloodPressure(
 
     private val bpDetectDataListener = IBPDetectDataListener { bpData ->
         if (bpData != null) {
+            // Log raw data for debugging
+            VPLogger.d("BP raw data - systolic: ${bpData.highPressure}, diastolic: ${bpData.lowPressure}, progress: ${bpData.progress}, status: ${bpData.status}, hasProgress: ${bpData.isHaveProgress}")
+
+            val statusString = when (bpData.status) {
+                com.veepoo.protocol.model.enums.EBPDetectStatus.STATE_BP_BUSY -> "BUSY"
+                com.veepoo.protocol.model.enums.EBPDetectStatus.STATE_BP_NORMAL -> "NORMAL"
+                null -> "MEASURING"
+                else -> bpData.status.name
+            }
+
             val result = mapOf<String, Any?>(
                 "systolic" to bpData.highPressure,
                 "diastolic" to bpData.lowPressure,
                 "progress" to bpData.progress,
-                "status" to bpData.status?.name,
+                "status" to statusString,
                 "isComplete" to (bpData.status == com.veepoo.protocol.model.enums.EBPDetectStatus.STATE_BP_NORMAL && bpData.progress >= 100)
             )
-            VPLogger.d("BP data: ${bpData.highPressure}/${bpData.lowPressure} (${bpData.progress}%) - ${bpData.status}")
+            VPLogger.d("BP data sent to Flutter: $result")
             sendEvent.sendBloodPressureEvent(result)
+        } else {
+            VPLogger.w("Received null BP data from device")
         }
     }
 }
