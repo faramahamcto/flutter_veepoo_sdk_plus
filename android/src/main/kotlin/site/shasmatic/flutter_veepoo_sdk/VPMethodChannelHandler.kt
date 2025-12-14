@@ -10,6 +10,7 @@ import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.PluginRegistry
 import site.shasmatic.flutter_veepoo_sdk.utils.Battery
+import site.shasmatic.flutter_veepoo_sdk.utils.BloodGlucose
 import site.shasmatic.flutter_veepoo_sdk.utils.BloodPressure
 import site.shasmatic.flutter_veepoo_sdk.utils.DeviceStorage
 import site.shasmatic.flutter_veepoo_sdk.utils.EcgDetection
@@ -42,6 +43,7 @@ class VPMethodChannelHandler(
     private var detectTemperatureEventSink: EventChannel.EventSink? = null
     private var detectEcgEventSink: EventChannel.EventSink? = null
     private var detectBloodPressureEventSink: EventChannel.EventSink? = null
+    private var detectBloodGlucoseEventSink: EventChannel.EventSink? = null
     private lateinit var result: MethodChannel.Result
 
     @RequiresApi(Build.VERSION_CODES.S)
@@ -83,6 +85,8 @@ class VPMethodChannelHandler(
             "stopDetectECG" -> handleStopDetectECG()
             "startDetectBloodPressure" -> handleStartDetectBloodPressure()
             "stopDetectBloodPressure" -> handleStopDetectBloodPressure()
+            "startDetectBloodGlucose" -> handleStartDetectBloodGlucose()
+            "stopDetectBloodGlucose" -> handleStopDetectBloodGlucose()
             "readSleepData" -> handleReadSleepData()
             "readStepData" -> handleReadStepData()
             "readStepDataForDate" -> handleReadStepDataForDate(call.argument<Long>("timestamp"))
@@ -242,6 +246,14 @@ class VPMethodChannelHandler(
         getBloodPressureManager().stopDetectBloodPressure()
     }
 
+    private fun handleStartDetectBloodGlucose() {
+        getBloodGlucoseManager().startDetectBloodGlucose()
+    }
+
+    private fun handleStopDetectBloodGlucose() {
+        getBloodGlucoseManager().stopDetectBloodGlucose()
+    }
+
     private fun handleReadSleepData() {
         getSleepDataReader().readSleepData()
     }
@@ -286,6 +298,10 @@ class VPMethodChannelHandler(
         this.detectBloodPressureEventSink = eventSink
     }
 
+    fun setDetectBloodGlucoseEventSink(eventSink: EventChannel.EventSink?) {
+        this.detectBloodGlucoseEventSink = eventSink
+    }
+
     private fun getBluetoothManager(result: MethodChannel.Result): VPBluetoothManager {
         return VPBluetoothManager(deviceStorage, result, activity!!, scanBluetoothEventSink, vpManager)
     }
@@ -312,6 +328,10 @@ class VPMethodChannelHandler(
 
     private fun getBloodPressureManager(): BloodPressure {
         return BloodPressure(detectBloodPressureEventSink, vpManager)
+    }
+
+    private fun getBloodGlucoseManager(): BloodGlucose {
+        return BloodGlucose(detectBloodGlucoseEventSink, vpManager)
     }
 
     private fun getSleepDataReader(): SleepDataReader {

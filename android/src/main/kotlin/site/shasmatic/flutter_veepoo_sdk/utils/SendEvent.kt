@@ -81,6 +81,15 @@ class SendEvent(private val eventSink: EventChannel.EventSink?) {
         sendEvent(bloodPressureData)
     }
 
+    /**
+     * Sends a blood glucose event with the given BG data.
+     *
+     * @param bloodGlucoseData A map containing the blood glucose data.
+     */
+    fun sendBloodGlucoseEvent(bloodGlucoseData: Map<String, Any?>) {
+        sendEvent(bloodGlucoseData)
+    }
+
     private fun sendEvent(eventData: Any) {
         if (eventSink == null) {
             VPLogger.w("Event sink is null, cannot send event: $eventData")
