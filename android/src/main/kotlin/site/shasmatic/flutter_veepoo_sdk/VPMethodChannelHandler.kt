@@ -68,6 +68,7 @@ class VPMethodChannelHandler(
             "getAddress" -> handleGetAddress()
             "getCurrentStatus" -> handleGetCurrentStatus()
             "isDeviceConnected" -> handleIsDeviceConnected()
+            "isDeviceBinded" -> handleIsDeviceBinded()
             "startDetectHeart" -> handleStartDetectHeart()
             "stopDetectHeart" -> handleStopDetectHeart()
             "settingHeartWarning" -> handleSettingHeartWarning(high, low, open)
@@ -160,6 +161,10 @@ class VPMethodChannelHandler(
 
     private fun handleIsDeviceConnected() {
         getBluetoothManager(result).isDeviceConnected()
+    }
+
+    private fun handleIsDeviceBinded() {
+        getBluetoothManager(result).isDeviceBinded()
     }
 
     private fun handleStartDetectHeart() {

@@ -129,6 +129,16 @@ class VeepooSDK {
     }
   }
 
+  /// Check if a device has been bound (paired) before.
+  /// Returns true if credentials have been saved during the binding process.
+  Future<bool?> isDeviceBinded() {
+    try {
+      return _platform.isDeviceBinded();
+    } on VeepooException {
+      rethrow;
+    }
+  }
+
   /// Start detect heart rate.
   /// This function is used to start detecting heart rate. The device will return the heart rate data to the app.
   ///

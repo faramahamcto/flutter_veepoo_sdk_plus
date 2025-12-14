@@ -222,6 +222,22 @@ class MethodChannelFlutterVeepooSdk extends FlutterVeepooSdkPlatform {
     }
   }
 
+  /// Checks if a device has been bound (paired) before.
+  /// Returns [true] if credentials have been saved during binding, otherwise [false].
+  /// Throws a [VeepooException] if the request fails.
+  @override
+  Future<bool?> isDeviceBinded() async {
+    try {
+      return await methodChannel.invokeMethod<bool>('isDeviceBinded');
+    } on PlatformException catch (error, stackTrace) {
+      throw VeepooException(
+        message: 'Failed to check device binding: ${error.message}',
+        details: error.details,
+        stacktrace: stackTrace,
+      );
+    }
+  }
+
   /// Binds a Bluetooth device with the given [password] and [is24H] flag.
   ///
   /// Returns a [DeviceBindingStatus] if the binding is successful, otherwise null.

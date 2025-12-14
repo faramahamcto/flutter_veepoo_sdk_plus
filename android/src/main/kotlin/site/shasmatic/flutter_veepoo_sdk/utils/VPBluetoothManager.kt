@@ -402,6 +402,18 @@ class VPBluetoothManager(
     }
 
     /**
+     * Checks if a device has been bound (paired) before.
+     * A device is considered bound if credentials (password) have been saved.
+     *
+     * @return `true` if the device is bound, `false` otherwise.
+     */
+    fun isDeviceBinded(): Boolean {
+        val isBinded = deviceStorage.getPassword() != null
+        result.success(isBinded)
+        return isBinded
+    }
+
+    /**
      * Starts detecting heart rate.
      */
     @RequiresApi(Build.VERSION_CODES.S)

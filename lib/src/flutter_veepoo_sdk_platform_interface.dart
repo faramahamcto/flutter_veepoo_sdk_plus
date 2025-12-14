@@ -94,6 +94,12 @@ abstract class FlutterVeepooSdkPlatform extends PlatformInterface {
     throw UnimplementedError('isDeviceConnected() has not been implemented.');
   }
 
+  /// Check if a device has been bound (paired) before.
+  /// A device is considered bound if credentials have been saved during the binding process.
+  Future<bool?> isDeviceBinded() {
+    throw UnimplementedError('isDeviceBinded() has not been implemented.');
+  }
+
   /// Start detect heart rate.
   /// This function is used to start detecting heart rate. The device will return the heart rate data to the app.
   ///
