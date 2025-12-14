@@ -75,7 +75,8 @@ class EcgDetection(
         override fun onEcgDetectStateChange(state: EcgDetectState?) {
             // Update state and progress
             currentProgress = state?.progress ?: 0
-            currentHeartRate = state?.heartRate ?: 0
+            // Use hr1 as the primary heart rate value
+            currentHeartRate = state?.hr1 ?: 0
             currentState = when {
                 state == null -> "idle"
                 currentProgress < 100 -> "measuring"
@@ -86,9 +87,9 @@ class EcgDetection(
         }
 
         override fun onEcgDetectResultChange(result: EcgDetectResult?) {
-            // Store final result and heart rate from result
+            // Store final result and average heart rate from result
             if (result != null) {
-                currentHeartRate = result.heartRate
+                currentHeartRate = result.aveHeart
                 currentResult = if (result.isSuccess) "success" else "failed"
             }
             sendEcgUpdate()
