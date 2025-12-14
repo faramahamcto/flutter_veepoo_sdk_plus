@@ -33,7 +33,16 @@ class EcgDetection(
      */
     fun startDetectECG(needWaveform: Boolean = true) {
         executeECGOperation {
-            vpManager.startDetectECG(writeResponse, needWaveform, ecgDataListener)
+            try {
+                vpManager.startDetectECG(writeResponse, needWaveform, ecgDataListener)
+            } catch (e: UnsatisfiedLinkError) {
+                throw VPException(
+                    "ECG feature requires native library 'libnative-lib.so' which is missing. " +
+                    "This library should be provided by the Veepoo SDK vendor. " +
+                    "Please contact the SDK provider to obtain the complete SDK package with native libraries for ECG support.",
+                    e
+                )
+            }
         }
     }
 
