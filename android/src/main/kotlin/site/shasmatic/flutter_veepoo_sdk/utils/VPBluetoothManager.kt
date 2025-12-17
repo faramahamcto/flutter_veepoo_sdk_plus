@@ -529,7 +529,7 @@ class VPBluetoothManager(
         }
 
     private val deviceFuncDataListener = object : IDeviceFuctionDataListener {
-        override fun onFunctionDataChange(data: FunctionDeviceSupportData?) {
+        override fun onFunctionSupportDataChange(data: FunctionDeviceSupportData?) {
             VPLogger.i("Device function data: $data")
         }
     }
@@ -540,7 +540,7 @@ class VPBluetoothManager(
     }
 
     private val customSettingDataListener = object : ICustomSettingDataListener {
-        override fun onCustomSettingDataChange(data: CustomSettingData?) {
+        override fun OnSettingDataChange(data: CustomSettingData?) {
             VPLogger.i("Custom setting data: $data")
         }
     }
