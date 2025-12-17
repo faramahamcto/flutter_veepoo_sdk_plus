@@ -25,6 +25,7 @@ class EcgDetection(
 
     private val sendEvent: SendEvent = SendEvent(ecgEventSink)
     private val writeResponse: VPWriteResponse = VPWriteResponse()
+    private var isDetecting = false
 
     /**
      * Starts the ECG detection process.
@@ -32,16 +33,31 @@ class EcgDetection(
      * @param needWaveform Whether to include waveform data in the results.
      */
     fun startDetectECG(needWaveform: Boolean = true) {
+        if (isDetecting) {
+            VPLogger.w("ECG detection already in progress, stopping first...")
+            // Stop current detection before starting new one
+            stopDetectECG()
+            // Add small delay to allow cleanup
+            Thread.sleep(500)
+        }
+
         executeECGOperation {
             try {
+                isDetecting = true
+                VPLogger.d("Starting ECG detection with waveform=$needWaveform")
                 vpManager.startDetectECG(writeResponse, needWaveform, ecgDataListener)
             } catch (e: UnsatisfiedLinkError) {
+                isDetecting = false
                 throw VPException(
                     "ECG feature requires native library 'libnative-lib.so' which is missing. " +
                     "This library should be provided by the Veepoo SDK vendor. " +
                     "Please contact the SDK provider to obtain the complete SDK package with native libraries for ECG support.",
                     e
                 )
+            } catch (e: Exception) {
+                isDetecting = false
+                VPLogger.e("Failed to start ECG detection: ${e.message}")
+                throw e
             }
         }
     }
@@ -50,8 +66,29 @@ class EcgDetection(
      * Stops the ECG detection process.
      */
     fun stopDetectECG() {
+        if (!isDetecting) {
+            VPLogger.w("ECG detection not running, nothing to stop")
+            return
+        }
+
         executeECGOperation {
-            vpManager.stopDetectECG(writeResponse, false, ecgDataListener)
+            try {
+                VPLogger.d("Stopping ECG detection")
+                vpManager.stopDetectECG(writeResponse, false, ecgDataListener)
+                isDetecting = false
+                // Reset state
+                currentState = "idle"
+                currentWaveform = emptyList()
+                currentResult = null
+                currentProgress = 0
+                currentHeartRate = 0
+                // Send final idle state
+                sendEcgUpdate()
+            } catch (e: Exception) {
+                isDetecting = false
+                VPLogger.e("Failed to stop ECG detection: ${e.message}")
+                throw e
+            }
         }
     }
 
@@ -100,6 +137,10 @@ class EcgDetection(
             if (result != null) {
                 currentHeartRate = result.aveHeart
                 currentResult = if (result.isSuccess) "success" else "failed"
+                currentState = "complete"
+                // Mark detection as complete
+                isDetecting = false
+                VPLogger.d("ECG detection completed with result: ${currentResult}")
             }
             sendEcgUpdate()
         }
