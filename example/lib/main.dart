@@ -41,7 +41,7 @@ class _VeepooSDKDemoState extends State<VeepooSDKDemo>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 7, vsync: this);
+    _tabController = TabController(length: 8, vsync: this);
     _requestPermissions();
   }
 
@@ -232,6 +232,7 @@ Power Model: ${battery?.powerModel?.name ?? 'Unknown'}
             Tab(text: 'BP & Temp'),
             Tab(text: 'Steps & Sleep'),
             Tab(text: 'ECG & Glucose'),
+            Tab(text: 'Blood Analysis'),
             Tab(text: 'Settings'),
             Tab(text: 'History'),
           ],
@@ -245,6 +246,7 @@ Power Model: ${battery?.powerModel?.name ?? 'Unknown'}
           _buildBPTempTab(),
           _buildStepsSleepTab(),
           _buildECGGlucoseTab(),
+          _buildBloodAnalysisTab(),
           _buildSettingsTab(),
           _buildHistoryTab(),
         ],
@@ -976,6 +978,223 @@ Quality: ${data.sleepQuality ?? 0}%
                         child: const Text('Calibration'),
                       ),
                     ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ==================== Blood Analysis Tab ====================
+
+  Widget _buildBloodAnalysisTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          // Blood Components Card
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  const Text(
+                    'Blood Component Analysis',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 10),
+                  StreamBuilder<BloodComponent?>(
+                    stream: _veepooSdk.bloodComponent,
+                    builder: (context, snapshot) {
+                      if (snapshot.hasData) {
+                        final bc = snapshot.data!;
+                        return Column(
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceAround,
+                              children: [
+                                Column(
+                                  children: [
+                                    const Text('Uric Acid', style: TextStyle(fontSize: 12)),
+                                    Text(
+                                      '${bc.uricAcid?.toStringAsFixed(1) ?? 0}',
+                                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                                    ),
+                                  ],
+                                ),
+                                Column(
+                                  children: [
+                                    const Text('Cholesterol', style: TextStyle(fontSize: 12)),
+                                    Text(
+                                      '${bc.totalCholesterol?.toStringAsFixed(1) ?? 0}',
+                                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceAround,
+                              children: [
+                                Column(
+                                  children: [
+                                    const Text('HDL', style: TextStyle(fontSize: 12)),
+                                    Text(
+                                      '${bc.hdl?.toStringAsFixed(1) ?? 0}',
+                                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.green),
+                                    ),
+                                  ],
+                                ),
+                                Column(
+                                  children: [
+                                    const Text('LDL', style: TextStyle(fontSize: 12)),
+                                    Text(
+                                      '${bc.ldl?.toStringAsFixed(1) ?? 0}',
+                                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.orange),
+                                    ),
+                                  ],
+                                ),
+                                Column(
+                                  children: [
+                                    const Text('Triglyceride', style: TextStyle(fontSize: 12)),
+                                    Text(
+                                      '${bc.triglyceride?.toStringAsFixed(1) ?? 0}',
+                                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            if (bc.isMeasuring == true)
+                              LinearProgressIndicator(
+                                value: (bc.progress ?? 0) / 100,
+                              ),
+                            Text('Status: ${bc.state?.name ?? "Unknown"}'),
+                          ],
+                        );
+                      }
+                      return const Text('No data');
+                    },
+                  ),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8,
+                    children: [
+                      ElevatedButton(
+                        onPressed: () async {
+                          try {
+                            await _veepooSdk.startDetectBloodComponent();
+                          } catch (e) {
+                            _showError('$e');
+                          }
+                        },
+                        child: const Text('Start'),
+                      ),
+                      ElevatedButton(
+                        onPressed: () async {
+                          try {
+                            await _veepooSdk.stopDetectBloodComponent();
+                          } catch (e) {
+                            _showError('$e');
+                          }
+                        },
+                        child: const Text('Stop'),
+                      ),
+                      ElevatedButton(
+                        onPressed: () async {
+                          try {
+                            await _veepooSdk.startDetectBloodComponent(needCalibration: true);
+                            _showInfo('Calibration', 'Blood component calibration started');
+                          } catch (e) {
+                            _showError('$e');
+                          }
+                        },
+                        child: const Text('Calibrate'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          // HRV Card
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  const Text(
+                    'Heart Rate Variability (HRV)',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 10),
+                  const Text(
+                    'HRV measures the variation in time between heartbeats and is an indicator of autonomic nervous system health.',
+                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 10),
+                  ElevatedButton(
+                    onPressed: () async {
+                      try {
+                        final data = await _veepooSdk.readHRVData(days: 7);
+                        if (data.isEmpty) {
+                          _showError('No HRV data available');
+                          return;
+                        }
+
+                        // Calculate average HRV
+                        double totalHrv = 0;
+                        int count = 0;
+                        for (var hrv in data) {
+                          if (hrv.hrvValue != null) {
+                            totalHrv += hrv.hrvValue!;
+                            count++;
+                          }
+                        }
+
+                        final avgHrv = count > 0 ? totalHrv / count : 0;
+
+                        _showInfo('HRV Data (Last 7 Days)', '''
+Records: ${data.length}
+Average HRV: ${avgHrv.toStringAsFixed(1)}
+Latest HRV: ${data.last.hrvValue ?? 'N/A'}
+Latest HR: ${data.last.heartRate ?? 'N/A'} BPM
+Date: ${data.last.date ?? 'Unknown'}
+                        ''');
+                      } catch (e) {
+                        _showError('$e');
+                      }
+                    },
+                    child: const Text('Read HRV History (7 Days)'),
+                  ),
+                  const SizedBox(height: 8),
+                  ElevatedButton(
+                    onPressed: () async {
+                      try {
+                        final data = await _veepooSdk.readHRVData(days: 1);
+                        if (data.isEmpty) {
+                          _showError('No HRV data available for today');
+                          return;
+                        }
+
+                        _showInfo('Today\'s HRV', '''
+Records: ${data.length}
+HRV Value: ${data.last.hrvValue ?? 'N/A'}
+Heart Rate: ${data.last.heartRate ?? 'N/A'} BPM
+Type: ${data.last.hrvType ?? 'N/A'}
+                        ''');
+                      } catch (e) {
+                        _showError('$e');
+                      }
+                    },
+                    child: const Text('Read Today\'s HRV'),
                   ),
                 ],
               ),
