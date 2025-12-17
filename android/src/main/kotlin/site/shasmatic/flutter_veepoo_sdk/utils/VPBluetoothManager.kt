@@ -23,6 +23,9 @@ import com.veepoo.protocol.listener.data.ICustomSettingDataListener
 import com.veepoo.protocol.listener.data.IDeviceFuctionDataListener
 import com.veepoo.protocol.listener.data.IPwdDataListener
 import com.veepoo.protocol.listener.data.ISocialMsgDataListener
+import com.veepoo.protocol.model.datas.CustomSettingData
+import com.veepoo.protocol.model.datas.DeviceFunctionPackage1
+import com.veepoo.protocol.model.datas.FunctionDeviceSupportData
 import com.veepoo.protocol.model.datas.FunctionSocailMsgData
 import com.veepoo.protocol.model.enums.EPwdStatus
 import io.flutter.plugin.common.EventChannel
@@ -529,11 +532,11 @@ class VPBluetoothManager(
         }
 
     private val deviceFuncDataListener = object : IDeviceFuctionDataListener {
-        override fun onFunctionSupportDataChange(data: Any?) {
+        override fun onFunctionSupportDataChange(data: FunctionDeviceSupportData) {
             VPLogger.i("Device function data: $data")
         }
 
-        override fun onDeviceFunctionPackage1Report(data: Any?) {
+        override fun onDeviceFunctionPackage1Report(data: DeviceFunctionPackage1) {
             VPLogger.i("Device function package1 report: $data")
         }
     }
@@ -544,7 +547,7 @@ class VPBluetoothManager(
     }
 
     private val customSettingDataListener = object : ICustomSettingDataListener {
-        override fun OnSettingDataChange(data: Any?) {
+        override fun OnSettingDataChange(data: CustomSettingData) {
             VPLogger.i("Custom setting data: $data")
         }
     }
