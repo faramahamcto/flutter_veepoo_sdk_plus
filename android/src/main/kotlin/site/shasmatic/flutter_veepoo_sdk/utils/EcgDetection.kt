@@ -75,8 +75,8 @@ class EcgDetection(
         executeECGOperation {
             try {
                 VPLogger.d("Stopping ECG detection")
-                // Correct API signature: stopDetectECG(bleWriteResponse, ecgDetectListener)
-                vpManager.stopDetectECG(writeResponse, ecgDataListener)
+                // API signature: stopDetectECG(writeResponse, boolean, listener)
+                vpManager.stopDetectECG(writeResponse, false, ecgDataListener)
                 isDetecting = false
                 // Reset state
                 currentState = "idle"

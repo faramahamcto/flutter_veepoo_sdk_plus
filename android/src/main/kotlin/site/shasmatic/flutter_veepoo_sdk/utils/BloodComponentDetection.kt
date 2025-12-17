@@ -90,11 +90,11 @@ class BloodComponentDetection(
                 "progress" to progress,
                 "state" to "measuring",
                 "isMeasuring" to true,
-                "uricAcid" to bloodComponent.getUricAcid(),
-                "totalCholesterol" to bloodComponent.getTCHO(),
-                "triglyceride" to bloodComponent.getTAG(),
-                "hdl" to bloodComponent.getHDL(),
-                "ldl" to bloodComponent.getLDL(),
+                "uricAcid" to bloodComponent.uricAcid,
+                "totalCholesterol" to bloodComponent.tCHO,
+                "triglyceride" to bloodComponent.tAG,
+                "hdl" to bloodComponent.hDL,
+                "ldl" to bloodComponent.lDL,
                 "timestamp" to System.currentTimeMillis()
             )
             sendEvent.sendBloodComponentEvent(result)
@@ -108,11 +108,11 @@ class BloodComponentDetection(
                 "progress" to 100,
                 "state" to "complete",
                 "isMeasuring" to false,
-                "uricAcid" to bloodComponent.getUricAcid(),
-                "totalCholesterol" to bloodComponent.getTCHO(),
-                "triglyceride" to bloodComponent.getTAG(),
-                "hdl" to bloodComponent.getHDL(),
-                "ldl" to bloodComponent.getLDL(),
+                "uricAcid" to bloodComponent.uricAcid,
+                "totalCholesterol" to bloodComponent.tCHO,
+                "triglyceride" to bloodComponent.tAG,
+                "hdl" to bloodComponent.hDL,
+                "ldl" to bloodComponent.lDL,
                 "timestamp" to System.currentTimeMillis()
             )
             sendEvent.sendBloodComponentEvent(result)
