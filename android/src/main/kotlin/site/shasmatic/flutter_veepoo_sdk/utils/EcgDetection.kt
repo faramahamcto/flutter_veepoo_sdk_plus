@@ -7,6 +7,7 @@ import com.veepoo.protocol.model.datas.EcgDetectResult
 import com.veepoo.protocol.model.datas.EcgDetectState
 import com.veepoo.protocol.model.datas.EcgDiagnosis
 import io.flutter.plugin.common.EventChannel
+import site.shasmatic.flutter_veepoo_sdk.VPLogger
 import site.shasmatic.flutter_veepoo_sdk.VPWriteResponse
 import site.shasmatic.flutter_veepoo_sdk.exceptions.VPException
 import java.lang.reflect.InvocationTargetException
@@ -74,7 +75,8 @@ class EcgDetection(
         executeECGOperation {
             try {
                 VPLogger.d("Stopping ECG detection")
-                vpManager.stopDetectECG(writeResponse, false, ecgDataListener)
+                // Correct API signature: stopDetectECG(bleWriteResponse, ecgDetectListener)
+                vpManager.stopDetectECG(writeResponse, ecgDataListener)
                 isDetecting = false
                 // Reset state
                 currentState = "idle"
