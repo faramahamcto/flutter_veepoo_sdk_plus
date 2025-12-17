@@ -103,6 +103,45 @@ Please contact the SDK provider to obtain the complete SDK package with native l
 4. **Rebuild** the Flutter app
 5. **Test ECG** functionality
 
+## Known Issues with ECG Feature
+
+### Timer Scheduling Bug
+
+The Veepoo SDK has an internal bug where starting ECG multiple times can cause:
+```
+java.lang.IllegalStateException: Task already scheduled or cancelled
+at java.util.Timer.sched(Timer.java:408)
+```
+
+Followed by:
+```
+java.lang.NullPointerException: Attempt to invoke virtual method 'int[] k.m$b.a()'
+on a null object reference at k.m$a.run
+```
+
+**Root Cause**: The SDK doesn't properly clean up internal Timer tasks between ECG sessions.
+
+**Our Workaround**:
+- Added `isDetecting` flag to prevent multiple simultaneous detections
+- Auto-stop existing detection before starting new one
+- Add 500ms delay between stop/start for SDK cleanup
+- Reset all state when stopping ECG
+- Handle errors gracefully
+
+**Best Practices**:
+1. Always stop ECG before starting a new session
+2. Wait at least 500ms between stop and start
+3. Don't start ECG if already running
+
+```dart
+// Good practice
+await _veepooSdk.stopDetectEcg();
+await Future.delayed(Duration(milliseconds: 500));
+await _veepooSdk.startDetectEcg();
+```
+
+This bug is in the Veepoo SDK itself (classes `k.m`, `g.g0`, `com.veepoo.protocol.VPOperateManager`), not in this plugin.
+
 ## Support
 
 For SDK-related issues, contact the Veepoo SDK provider directly.
