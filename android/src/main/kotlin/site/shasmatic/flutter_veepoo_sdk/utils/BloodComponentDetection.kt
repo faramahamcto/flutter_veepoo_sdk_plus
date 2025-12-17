@@ -1,12 +1,12 @@
 package site.shasmatic.flutter_veepoo_sdk.utils
 
-import com.inuker.bluetooth.library.connect.response.BleWriteResponse
 import com.veepoo.protocol.VPOperateManager
 import com.veepoo.protocol.listener.data.IBloodComponentDetectListener
 import com.veepoo.protocol.model.datas.BloodComponent
 import com.veepoo.protocol.model.enums.EBloodComponentDetectState
 import io.flutter.plugin.common.EventChannel
 import site.shasmatic.flutter_veepoo_sdk.VPLogger
+import site.shasmatic.flutter_veepoo_sdk.VPWriteResponse
 import site.shasmatic.flutter_veepoo_sdk.exceptions.VPException
 import java.lang.reflect.InvocationTargetException
 
@@ -30,7 +30,7 @@ class BloodComponentDetection(
 ) {
 
     private val sendEvent: SendEvent = SendEvent(bloodComponentEventSink)
-    private val writeResponse: BleWriteResponse = BleWriteResponse()
+    private val writeResponse: VPWriteResponse = VPWriteResponse()
     private var isDetecting = false
 
     /**
@@ -83,24 +83,24 @@ class BloodComponentDetection(
     }
 
     private val bloodComponentDetectListener = object : IBloodComponentDetectListener {
-        override fun onDetecting(progress: Int, bloodComponent: BloodComponent?) {
+        override fun onDetecting(progress: Int, bloodComponent: BloodComponent) {
             VPLogger.d("Blood component detecting - progress: $progress")
 
             val result = mapOf<String, Any?>(
                 "progress" to progress,
                 "state" to "measuring",
                 "isMeasuring" to true,
-                "uricAcid" to bloodComponent?.uricAcid,
-                "totalCholesterol" to bloodComponent?.tCHO,
-                "triglyceride" to bloodComponent?.tAG,
-                "hdl" to bloodComponent?.hDL,
-                "ldl" to bloodComponent?.lDL,
+                "uricAcid" to bloodComponent.getUricAcid(),
+                "totalCholesterol" to bloodComponent.getTCHO(),
+                "triglyceride" to bloodComponent.getTAG(),
+                "hdl" to bloodComponent.getHDL(),
+                "ldl" to bloodComponent.getLDL(),
                 "timestamp" to System.currentTimeMillis()
             )
             sendEvent.sendBloodComponentEvent(result)
         }
 
-        override fun onDetectComplete(bloodComponent: BloodComponent?) {
+        override fun onDetectComplete(bloodComponent: BloodComponent) {
             VPLogger.d("Blood component detection complete: $bloodComponent")
             isDetecting = false
 
@@ -108,35 +108,34 @@ class BloodComponentDetection(
                 "progress" to 100,
                 "state" to "complete",
                 "isMeasuring" to false,
-                "uricAcid" to bloodComponent?.uricAcid,
-                "totalCholesterol" to bloodComponent?.tCHO,
-                "triglyceride" to bloodComponent?.tAG,
-                "hdl" to bloodComponent?.hDL,
-                "ldl" to bloodComponent?.lDL,
+                "uricAcid" to bloodComponent.getUricAcid(),
+                "totalCholesterol" to bloodComponent.getTCHO(),
+                "triglyceride" to bloodComponent.getTAG(),
+                "hdl" to bloodComponent.getHDL(),
+                "ldl" to bloodComponent.getLDL(),
                 "timestamp" to System.currentTimeMillis()
             )
             sendEvent.sendBloodComponentEvent(result)
         }
 
-        override fun onDetectFailed(state: EBloodComponentDetectState?) {
-            VPLogger.e("Blood component detection failed: $state")
+        override fun onDetectFailed(errorState: EBloodComponentDetectState) {
+            VPLogger.e("Blood component detection failed: $errorState")
             isDetecting = false
 
-            val stateString = when (state) {
+            val stateString = when (errorState) {
                 EBloodComponentDetectState.ENABLE -> "idle"
                 EBloodComponentDetectState.DETECTING -> "measuring"
                 EBloodComponentDetectState.LOW_POWER -> "failed"
                 EBloodComponentDetectState.BUSY -> "failed"
                 EBloodComponentDetectState.WEAR_ERROR -> "failed"
                 EBloodComponentDetectState.UNKNOWN -> "unknown"
-                null -> "unknown"
-                else -> state.name.lowercase()
+                else -> errorState.name.lowercase()
             }
 
             val result = mapOf<String, Any?>(
                 "error" to true,
                 "state" to stateString,
-                "errorMessage" to state?.name,
+                "errorMessage" to errorState.name,
                 "isMeasuring" to false,
                 "timestamp" to System.currentTimeMillis()
             )

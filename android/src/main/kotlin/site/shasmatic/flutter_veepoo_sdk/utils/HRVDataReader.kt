@@ -68,7 +68,7 @@ class HRVDataReader(
                     "heartRate" to hrvData.rate,
                     "rrValues" to hrvData.rrValue?.toList(),
                     "hrvType" to hrvData.hrvType,
-                    "timestamp" to hrvData.mTime?.let { timeData ->
+                    "timestamp" to hrvData.getmTime()?.let { timeData ->
                         // Convert TimeData to timestamp if needed
                         "${hrvData.date} ${timeData.hour}:${timeData.minute}:${timeData.second}"
                     }
