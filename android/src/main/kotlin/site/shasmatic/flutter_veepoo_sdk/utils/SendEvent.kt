@@ -90,6 +90,15 @@ class SendEvent(private val eventSink: EventChannel.EventSink?) {
         sendEvent(bloodGlucoseData)
     }
 
+    /**
+     * Sends a blood component event with the given blood component data.
+     *
+     * @param bloodComponentData A map containing the blood component data.
+     */
+    fun sendBloodComponentEvent(bloodComponentData: Map<String, Any?>) {
+        sendEvent(bloodComponentData)
+    }
+
     private fun sendEvent(eventData: Any) {
         if (eventSink == null) {
             VPLogger.w("Event sink is null, cannot send event: $eventData")

@@ -10,11 +10,13 @@ import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.PluginRegistry
 import site.shasmatic.flutter_veepoo_sdk.utils.Battery
+import site.shasmatic.flutter_veepoo_sdk.utils.BloodComponentDetection
 import site.shasmatic.flutter_veepoo_sdk.utils.BloodGlucose
 import site.shasmatic.flutter_veepoo_sdk.utils.BloodPressure
 import site.shasmatic.flutter_veepoo_sdk.utils.DeviceStorage
 import site.shasmatic.flutter_veepoo_sdk.utils.EcgDetection
 import site.shasmatic.flutter_veepoo_sdk.utils.HeartRate
+import site.shasmatic.flutter_veepoo_sdk.utils.HRVDataReader
 import site.shasmatic.flutter_veepoo_sdk.utils.SleepDataReader
 import site.shasmatic.flutter_veepoo_sdk.utils.Spoh
 import site.shasmatic.flutter_veepoo_sdk.utils.StepDataReader
@@ -44,6 +46,7 @@ class VPMethodChannelHandler(
     private var detectEcgEventSink: EventChannel.EventSink? = null
     private var detectBloodPressureEventSink: EventChannel.EventSink? = null
     private var detectBloodGlucoseEventSink: EventChannel.EventSink? = null
+    private var detectBloodComponentEventSink: EventChannel.EventSink? = null
     private lateinit var result: MethodChannel.Result
 
     @RequiresApi(Build.VERSION_CODES.S)
@@ -89,9 +92,12 @@ class VPMethodChannelHandler(
             "stopDetectBloodPressure" -> handleStopDetectBloodPressure()
             "startDetectBloodGlucose" -> handleStartDetectBloodGlucose()
             "stopDetectBloodGlucose" -> handleStopDetectBloodGlucose()
+            "startDetectBloodComponent" -> handleStartDetectBloodComponent(call.argument<Boolean>("needCalibration") ?: false)
+            "stopDetectBloodComponent" -> handleStopDetectBloodComponent()
             "readSleepData" -> handleReadSleepData()
             "readStepData" -> handleReadStepData()
             "readStepDataForDate" -> handleReadStepDataForDate(call.argument<Long>("timestamp"))
+            "readHRVData" -> handleReadHRVData(call.argument<Int>("days") ?: 7)
             else -> result.notImplemented()
         }
     }
@@ -272,6 +278,18 @@ class VPMethodChannelHandler(
         }
     }
 
+    private fun handleStartDetectBloodComponent(needCalibration: Boolean) {
+        getBloodComponentManager().startDetectBloodComponent(needCalibration)
+    }
+
+    private fun handleStopDetectBloodComponent() {
+        getBloodComponentManager().stopDetectBloodComponent()
+    }
+
+    private fun handleReadHRVData(days: Int) {
+        getHRVDataReader().readHRVData(days)
+    }
+
     fun setActivity(activity: Activity?) {
         this.activity = activity
     }
@@ -302,6 +320,10 @@ class VPMethodChannelHandler(
 
     fun setDetectBloodGlucoseEventSink(eventSink: EventChannel.EventSink?) {
         this.detectBloodGlucoseEventSink = eventSink
+    }
+
+    fun setDetectBloodComponentEventSink(eventSink: EventChannel.EventSink?) {
+        this.detectBloodComponentEventSink = eventSink
     }
 
     private fun getBluetoothManager(result: MethodChannel.Result): VPBluetoothManager {
@@ -342,5 +364,13 @@ class VPMethodChannelHandler(
 
     private fun getStepDataReader(): StepDataReader {
         return StepDataReader(result, vpManager)
+    }
+
+    private fun getBloodComponentManager(): BloodComponentDetection {
+        return BloodComponentDetection(detectBloodComponentEventSink, vpManager)
+    }
+
+    private fun getHRVDataReader(): HRVDataReader {
+        return HRVDataReader(result, vpManager)
     }
 }

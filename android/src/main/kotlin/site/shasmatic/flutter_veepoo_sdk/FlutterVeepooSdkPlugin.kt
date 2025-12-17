@@ -40,6 +40,7 @@ class FlutterVeepooSdkPlugin: FlutterPlugin, ActivityAware {
     private const val DETECT_ECG_EVENT_CHANNEL = "$CHANNEL/detect_ecg_event_channel"
     private const val DETECT_BLOOD_PRESSURE_EVENT_CHANNEL = "$CHANNEL/detect_blood_pressure_event_channel"
     private const val DETECT_BLOOD_GLUCOSE_EVENT_CHANNEL = "$CHANNEL/detect_blood_glucose_event_channel"
+    private const val DETECT_BLOOD_COMPONENT_EVENT_CHANNEL = "$CHANNEL/detect_blood_component_event_channel"
   }
 
   override fun onAttachedToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
@@ -61,6 +62,7 @@ class FlutterVeepooSdkPlugin: FlutterPlugin, ActivityAware {
     setupEventChannels(messenger, DETECT_ECG_EVENT_CHANNEL) { methodChannelHandler.setDetectEcgEventSink(it) }
     setupEventChannels(messenger, DETECT_BLOOD_PRESSURE_EVENT_CHANNEL) { methodChannelHandler.setDetectBloodPressureEventSink(it) }
     setupEventChannels(messenger, DETECT_BLOOD_GLUCOSE_EVENT_CHANNEL) { methodChannelHandler.setDetectBloodGlucoseEventSink(it) }
+    setupEventChannels(messenger, DETECT_BLOOD_COMPONENT_EVENT_CHANNEL) { methodChannelHandler.setDetectBloodComponentEventSink(it) }
   }
 
   private fun stopChannels() {
