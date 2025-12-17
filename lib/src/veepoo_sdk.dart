@@ -365,6 +365,27 @@ class VeepooSDK {
   /// Stream of real-time ECG data updates.
   Stream<EcgData?> get ecgData => _platform.ecgData;
 
+  // ==================== Blood Component ====================
+
+  /// Start blood component detection.
+  /// [needCalibration] - Whether to enable calibration mode
+  Future<void> startDetectBloodComponent({bool needCalibration = false}) =>
+      _platform.startDetectBloodComponent(needCalibration: needCalibration);
+
+  /// Stop blood component detection.
+  Future<void> stopDetectBloodComponent() =>
+      _platform.stopDetectBloodComponent();
+
+  /// Stream of real-time blood component updates.
+  Stream<BloodComponent?> get bloodComponent => _platform.bloodComponent;
+
+  // ==================== HRV ====================
+
+  /// Read HRV (Heart Rate Variability) data.
+  /// [days] - Number of days to read (default: 7)
+  Future<List<HRVData>> readHRVData({int days = 7}) =>
+      _platform.readHRVData(days: days);
+
   // ==================== Device Info ====================
 
   /// Get device information including model, version, battery, etc.

@@ -281,6 +281,29 @@ abstract class FlutterVeepooSdkPlatform extends PlatformInterface {
     throw UnimplementedError('readEcgData() has not been implemented.');
   }
 
+  // ==================== Blood Component ====================
+
+  /// Start blood component detection.
+  Future<void> startDetectBloodComponent({bool needCalibration = false}) {
+    throw UnimplementedError(
+      'startDetectBloodComponent() has not been implemented.',
+    );
+  }
+
+  /// Stop blood component detection.
+  Future<void> stopDetectBloodComponent() {
+    throw UnimplementedError(
+      'stopDetectBloodComponent() has not been implemented.',
+    );
+  }
+
+  // ==================== HRV ====================
+
+  /// Read HRV data.
+  Future<List<HRVData>> readHRVData({int days = 7}) {
+    throw UnimplementedError('readHRVData() has not been implemented.');
+  }
+
   // ==================== Device Info ====================
 
   /// Get device information.
@@ -423,6 +446,13 @@ abstract class FlutterVeepooSdkPlatform extends PlatformInterface {
   /// Stream of ECG results.
   Stream<EcgData?> get ecgData {
     throw UnimplementedError('ecgDataEventChannel has not been implemented.');
+  }
+
+  /// Stream of blood component results.
+  Stream<BloodComponent?> get bloodComponent {
+    throw UnimplementedError(
+      'bloodComponentEventChannel has not been implemented.',
+    );
   }
 
   /// Stream of step data updates.

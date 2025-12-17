@@ -22,6 +22,8 @@ class MethodChannelFlutterVeepooSdk extends FlutterVeepooSdkPlatform {
       const EventChannel('$_channelName/detect_blood_glucose_event_channel');
   final EventChannel ecgEventChannel =
       const EventChannel('$_channelName/detect_ecg_event_channel');
+  final EventChannel bloodComponentEventChannel =
+      const EventChannel('$_channelName/detect_blood_component_event_channel');
   final EventChannel stepDataEventChannel =
       const EventChannel('$_channelName/step_data_event_channel');
 
@@ -33,6 +35,7 @@ class MethodChannelFlutterVeepooSdk extends FlutterVeepooSdkPlatform {
   Stream<Temperature?>? _temperatureStream;
   Stream<BloodGlucose?>? _bloodGlucoseStream;
   Stream<EcgData?>? _ecgDataStream;
+  Stream<BloodComponent?>? _bloodComponentStream;
   Stream<StepData?>? _stepDataStream;
 
   /// Requests Bluetooth permissions.
@@ -773,6 +776,59 @@ class MethodChannelFlutterVeepooSdk extends FlutterVeepooSdkPlatform {
     }
   }
 
+  // ==================== Blood Component ====================
+
+  @override
+  Future<void> startDetectBloodComponent({bool needCalibration = false}) async {
+    try {
+      await methodChannel.invokeMethod<void>(
+        'startDetectBloodComponent',
+        {'needCalibration': needCalibration},
+      );
+    } on PlatformException catch (error, stackTrace) {
+      throw VeepooException(
+        message: 'Failed to start blood component detection: ${error.message}',
+        details: error.details,
+        stacktrace: stackTrace,
+      );
+    }
+  }
+
+  @override
+  Future<void> stopDetectBloodComponent() async {
+    try {
+      await methodChannel.invokeMethod<void>('stopDetectBloodComponent');
+    } on PlatformException catch (error, stackTrace) {
+      throw VeepooException(
+        message: 'Failed to stop blood component detection: ${error.message}',
+        details: error.details,
+        stacktrace: stackTrace,
+      );
+    }
+  }
+
+  // ==================== HRV ====================
+
+  @override
+  Future<List<HRVData>> readHRVData({int days = 7}) async {
+    try {
+      final result = await methodChannel.invokeMethod<List<dynamic>>(
+        'readHRVData',
+        {'days': days},
+      );
+      if (result == null) return [];
+      return result
+          .map((e) => HRVData.fromMap(e as Map<String, dynamic>))
+          .toList();
+    } on PlatformException catch (error, stackTrace) {
+      throw VeepooException(
+        message: 'Failed to read HRV data: ${error.message}',
+        details: error.details,
+        stacktrace: stackTrace,
+      );
+    }
+  }
+
   // ==================== Device Info ====================
 
   @override
@@ -1139,6 +1195,23 @@ class MethodChannelFlutterVeepooSdk extends FlutterVeepooSdkPlatform {
     }).asBroadcastStream();
 
     return _ecgDataStream!;
+  }
+
+  @override
+  Stream<BloodComponent?> get bloodComponent {
+    _bloodComponentStream ??= bloodComponentEventChannel.receiveBroadcastStream().map((dynamic event) {
+      if (event is Map<Object?, Object?>) {
+        final result =
+            event.map((key, value) => MapEntry(key.toString(), value));
+        return BloodComponent.fromMap(result);
+      } else {
+        throw VeepooException(
+          message: 'Unexpected event type: ${event.runtimeType}',
+        );
+      }
+    }).asBroadcastStream();
+
+    return _bloodComponentStream!;
   }
 
   @override
