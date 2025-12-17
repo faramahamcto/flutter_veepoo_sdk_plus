@@ -23,10 +23,7 @@ import com.veepoo.protocol.listener.data.ICustomSettingDataListener
 import com.veepoo.protocol.listener.data.IDeviceFuctionDataListener
 import com.veepoo.protocol.listener.data.IPwdDataListener
 import com.veepoo.protocol.listener.data.ISocialMsgDataListener
-import com.veepoo.protocol.model.datas.CustomSettingData
-import com.veepoo.protocol.model.datas.DeviceFunctionPackage1
-import com.veepoo.protocol.model.datas.FunctionDeviceSupportData
-import com.veepoo.protocol.model.datas.FunctionSocailMsgData
+import com.veepoo.protocol.model.datas.*
 import com.veepoo.protocol.model.enums.EPwdStatus
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodChannel
@@ -538,6 +535,10 @@ class VPBluetoothManager(
 
         override fun onDeviceFunctionPackage1Report(data: DeviceFunctionPackage1) {
             VPLogger.i("Device function package1 report: $data")
+        }
+
+        override fun onDeviceFunctionPackage2Report(data: DeviceFunctionPackage2) {
+            VPLogger.i("Device function package2 report: $data")
         }
     }
 
