@@ -180,31 +180,61 @@ class VPMethodChannelHandler(
     }
 
     private fun handleStartDetectHeart() {
-        getHeartRateManager().startDetectHeart()
+        try {
+            getHeartRateManager().startDetectHeart()
+            result.success(null)
+        } catch (e: Exception) {
+            result.error("START_HEART_ERROR", "Failed to start heart detection: ${e.message}", null)
+        }
     }
 
     private fun handleStopDetectHeart() {
-        getHeartRateManager().stopDetectHeart()
+        try {
+            getHeartRateManager().stopDetectHeart()
+            result.success(null)
+        } catch (e: Exception) {
+            result.error("STOP_HEART_ERROR", "Failed to stop heart detection: ${e.message}", null)
+        }
     }
 
     private fun handleSettingHeartWarning(high: Int?, low: Int?, open: Boolean?) {
         if (high != null && low != null && open != null) {
-            getHeartRateManager().settingHeartWarning(high, low, open)
+            try {
+                getHeartRateManager().settingHeartWarning(high, low, open)
+                result.success(null)
+            } catch (e: Exception) {
+                result.error("HEART_WARNING_ERROR", "Failed to set heart warning: ${e.message}", null)
+            }
         } else {
             result.error("INVALID_ARGUMENT", "High, low, and open values are required", null)
         }
     }
 
     private fun handleReadHeartWarning() {
-        getHeartRateManager().readHeartWarning()
+        try {
+            getHeartRateManager().readHeartWarning()
+            result.success(null)
+        } catch (e: Exception) {
+            result.error("READ_HEART_WARNING_ERROR", "Failed to read heart warning: ${e.message}", null)
+        }
     }
 
     private fun handleStartDetectSpoh() {
-        getSPOHManager().startDetectSpoh()
+        try {
+            getSPOHManager().startDetectSpoh()
+            result.success(null)
+        } catch (e: Exception) {
+            result.error("START_SPOH_ERROR", "Failed to start SpO2 detection: ${e.message}", null)
+        }
     }
 
     private fun handleStopDetectSpoh() {
-        getSPOHManager().stopDetectSpoh()
+        try {
+            getSPOHManager().stopDetectSpoh()
+            result.success(null)
+        } catch (e: Exception) {
+            result.error("STOP_SPOH_ERROR", "Failed to stop SpO2 detection: ${e.message}", null)
+        }
     }
 
     private fun handleReadBattery() {
@@ -231,35 +261,75 @@ class VPMethodChannelHandler(
     }
 
     private fun handleStartDetectTemperature() {
-        getTemperatureManager().startDetectTemperature()
+        try {
+            getTemperatureManager().startDetectTemperature()
+            result.success(null)
+        } catch (e: Exception) {
+            result.error("START_TEMPERATURE_ERROR", "Failed to start temperature detection: ${e.message}", null)
+        }
     }
 
     private fun handleStopDetectTemperature() {
-        getTemperatureManager().stopDetectTemperature()
+        try {
+            getTemperatureManager().stopDetectTemperature()
+            result.success(null)
+        } catch (e: Exception) {
+            result.error("STOP_TEMPERATURE_ERROR", "Failed to stop temperature detection: ${e.message}", null)
+        }
     }
 
     private fun handleStartDetectECG(needWaveform: Boolean) {
-        getEcgManager().startDetectECG(needWaveform)
+        try {
+            getEcgManager().startDetectECG(needWaveform)
+            result.success(null)
+        } catch (e: Exception) {
+            result.error("START_ECG_ERROR", "Failed to start ECG detection: ${e.message}", null)
+        }
     }
 
     private fun handleStopDetectECG() {
-        getEcgManager().stopDetectECG()
+        try {
+            getEcgManager().stopDetectECG()
+            result.success(null)
+        } catch (e: Exception) {
+            result.error("STOP_ECG_ERROR", "Failed to stop ECG detection: ${e.message}", null)
+        }
     }
 
     private fun handleStartDetectBloodPressure() {
-        getBloodPressureManager().startDetectBloodPressure()
+        try {
+            getBloodPressureManager().startDetectBloodPressure()
+            result.success(null)
+        } catch (e: Exception) {
+            result.error("START_BP_ERROR", "Failed to start blood pressure detection: ${e.message}", null)
+        }
     }
 
     private fun handleStopDetectBloodPressure() {
-        getBloodPressureManager().stopDetectBloodPressure()
+        try {
+            getBloodPressureManager().stopDetectBloodPressure()
+            result.success(null)
+        } catch (e: Exception) {
+            result.error("STOP_BP_ERROR", "Failed to stop blood pressure detection: ${e.message}", null)
+        }
     }
 
     private fun handleStartDetectBloodGlucose() {
-        getBloodGlucoseManager().startDetectBloodGlucose()
+        try {
+            getBloodGlucoseManager().startDetectBloodGlucose()
+            result.success(null)
+        } catch (e: Exception) {
+            result.error("START_GLUCOSE_ERROR", "Failed to start blood glucose detection: ${e.message}", null)
+        }
     }
 
     private fun handleStopDetectBloodGlucose() {
-        getBloodGlucoseManager().stopDetectBloodGlucose()
+        try {
+            getBloodGlucoseManager().stopDetectBloodGlucose()
+            result.success(null)
+        } catch (e: Exception) {
+            result.error("STOP_GLUCOSE_ERROR", "Failed to stop blood glucose detection: ${e.message}", null)
+        }
     }
 
     private fun handleReadSleepData() {
@@ -279,15 +349,29 @@ class VPMethodChannelHandler(
     }
 
     private fun handleStartDetectBloodComponent(needCalibration: Boolean) {
-        getBloodComponentManager().startDetectBloodComponent(needCalibration)
+        try {
+            getBloodComponentManager().startDetectBloodComponent(needCalibration)
+            result.success(null)
+        } catch (e: Exception) {
+            result.error("START_BLOOD_COMPONENT_ERROR", "Failed to start blood component detection: ${e.message}", null)
+        }
     }
 
     private fun handleStopDetectBloodComponent() {
-        getBloodComponentManager().stopDetectBloodComponent()
+        try {
+            getBloodComponentManager().stopDetectBloodComponent()
+            result.success(null)
+        } catch (e: Exception) {
+            result.error("STOP_BLOOD_COMPONENT_ERROR", "Failed to stop blood component detection: ${e.message}", null)
+        }
     }
 
     private fun handleReadHRVData(days: Int) {
-        getHRVDataReader().readHRVData(days)
+        try {
+            getHRVDataReader().readHRVData(days)
+        } catch (e: Exception) {
+            result.error("READ_HRV_ERROR", "Failed to read HRV data: ${e.message}", null)
+        }
     }
 
     fun setActivity(activity: Activity?) {
