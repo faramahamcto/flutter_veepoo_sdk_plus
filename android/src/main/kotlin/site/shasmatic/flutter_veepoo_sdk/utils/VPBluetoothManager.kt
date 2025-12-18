@@ -23,8 +23,9 @@ import com.veepoo.protocol.listener.data.ICustomSettingDataListener
 import com.veepoo.protocol.listener.data.IDeviceFuctionDataListener
 import com.veepoo.protocol.listener.data.IPwdDataListener
 import com.veepoo.protocol.listener.data.ISocialMsgDataListener
-import com.veepoo.protocol.model.datas.FunctionSocailMsgData
+import com.veepoo.protocol.model.datas.*
 import com.veepoo.protocol.model.enums.EPwdStatus
+import com.veepoo.protocol.model.settings.CustomSettingData
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodChannel
 import kotlinx.coroutines.CoroutineScope
@@ -402,6 +403,18 @@ class VPBluetoothManager(
     }
 
     /**
+     * Checks if a device has been bound (paired) before.
+     * A device is considered bound if credentials (password) have been saved.
+     *
+     * @return `true` if the device is bound, `false` otherwise.
+     */
+    fun isDeviceBinded(): Boolean {
+        val isBinded = deviceStorage.getPassword() != null
+        result.success(isBinded)
+        return isBinded
+    }
+
+    /**
      * Starts detecting heart rate.
      */
     @RequiresApi(Build.VERSION_CODES.S)
@@ -434,11 +447,13 @@ class VPBluetoothManager(
     private val searchResponseCallBack = object : SearchResponse {
         override fun onSearchStarted() {
             VPLogger.i("Bluetooth scan started")
+            VPLogger.i("Event sink is: ${if (bluetoothEventSink == null) "NULL" else "SET"}")
             discoveredDevices.clear()
         }
 
         override fun onDeviceFounded(result: SearchResult?) {
             result?.let {
+                VPLogger.i("Device found: name=${it.name}, address=${it.address}, rssi=${it.rssi}")
                 val deviceMap = mapOf(
                     "name" to it.name,
                     "address" to it.address,
@@ -446,11 +461,13 @@ class VPBluetoothManager(
                 )
 
                 if (discoveredDevices.put(it.address, deviceMap) == null) {
+                    VPLogger.i("New device, sending event with ${discoveredDevices.size} devices")
                     sendEvent.sendBluetoothEvent(discoveredDevices.values.toList())
                 } else {
                     val existingDevice = discoveredDevices[it.address]
                     if (existingDevice != null && abs(existingDevice["rssi"] as Int - it.rssi) > 10) {
                         discoveredDevices[it.address] = deviceMap
+                        VPLogger.i("RSSI changed significantly, sending event")
                         sendEvent.sendBluetoothEvent(discoveredDevices.values.toList())
                     }
                 }
@@ -512,12 +529,40 @@ class VPBluetoothManager(
             }
         }
 
-    private val deviceFuncDataListener = IDeviceFuctionDataListener { data -> VPLogger.i("Device function data: $data") }
+    private val deviceFuncDataListener = object : IDeviceFuctionDataListener {
+        override fun onFunctionSupportDataChange(data: FunctionDeviceSupportData) {
+            VPLogger.i("Device function data: $data")
+        }
+
+        override fun onDeviceFunctionPackage1Report(data: DeviceFunctionPackage1) {
+            VPLogger.i("Device function package1 report: $data")
+        }
+
+        override fun onDeviceFunctionPackage2Report(data: DeviceFunctionPackage2) {
+            VPLogger.i("Device function package2 report: $data")
+        }
+
+        override fun onDeviceFunctionPackage3Report(data: DeviceFunctionPackage3) {
+            VPLogger.i("Device function package3 report: $data")
+        }
+
+        override fun onDeviceFunctionPackage4Report(data: DeviceFunctionPackage4) {
+            VPLogger.i("Device function package4 report: $data")
+        }
+
+        override fun onDeviceFunctionPackage5Report(data: DeviceFunctionPackage5) {
+            VPLogger.i("Device function package5 report: $data")
+        }
+    }
 
     private val socialMessageDataListener = object : ISocialMsgDataListener {
         override fun onSocialMsgSupportDataChange(data: FunctionSocailMsgData?) = VPLogger.i("Social message data change 1: $data")
         override fun onSocialMsgSupportDataChange2(data: FunctionSocailMsgData?) = VPLogger.i("Social message data change 2: $data")
     }
 
-    private val customSettingDataListener = ICustomSettingDataListener { data -> VPLogger.i("Custom setting data: $data") }
+    private val customSettingDataListener = object : ICustomSettingDataListener {
+        override fun OnSettingDataChange(data: CustomSettingData) {
+            VPLogger.i("Custom setting data: $data")
+        }
+    }
 }

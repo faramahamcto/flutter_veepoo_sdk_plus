@@ -4,6 +4,7 @@ import io.flutter.plugin.common.EventChannel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import site.shasmatic.flutter_veepoo_sdk.VPLogger
 
 /**
  * Utility class for sending various types of events, such as Bluetooth, heart rate, heart warning,
@@ -53,9 +54,63 @@ class SendEvent(private val eventSink: EventChannel.EventSink?) {
         sendEvent(spO2Data)
     }
 
+    /**
+     * Sends a temperature event with the given temperature data.
+     *
+     * @param temperatureData A map containing the temperature data.
+     */
+    fun sendTemperatureEvent(temperatureData: Map<String, Any?>) {
+        sendEvent(temperatureData)
+    }
+
+    /**
+     * Sends an ECG event with the given ECG data.
+     *
+     * @param ecgData A map containing the ECG data.
+     */
+    fun sendEcgEvent(ecgData: Map<String, Any?>) {
+        sendEvent(ecgData)
+    }
+
+    /**
+     * Sends a blood pressure event with the given BP data.
+     *
+     * @param bloodPressureData A map containing the blood pressure data.
+     */
+    fun sendBloodPressureEvent(bloodPressureData: Map<String, Any?>) {
+        sendEvent(bloodPressureData)
+    }
+
+    /**
+     * Sends a blood glucose event with the given BG data.
+     *
+     * @param bloodGlucoseData A map containing the blood glucose data.
+     */
+    fun sendBloodGlucoseEvent(bloodGlucoseData: Map<String, Any?>) {
+        sendEvent(bloodGlucoseData)
+    }
+
+    /**
+     * Sends a blood component event with the given blood component data.
+     *
+     * @param bloodComponentData A map containing the blood component data.
+     */
+    fun sendBloodComponentEvent(bloodComponentData: Map<String, Any?>) {
+        sendEvent(bloodComponentData)
+    }
+
     private fun sendEvent(eventData: Any) {
+        if (eventSink == null) {
+            VPLogger.w("Event sink is null, cannot send event: $eventData")
+            return
+        }
         CoroutineScope(Dispatchers.Main).launch {
-            eventSink?.success(eventData)
+            try {
+                eventSink.success(eventData)
+                VPLogger.i("Event sent successfully: ${if (eventData is List<*>) "List with ${eventData.size} items" else eventData.javaClass.simpleName}")
+            } catch (e: Exception) {
+                VPLogger.e("Failed to send event: ${e.message}")
+            }
         }
     }
 }

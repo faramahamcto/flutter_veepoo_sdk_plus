@@ -17,8 +17,12 @@ enum BatteryStates {
   final int intValue;
 
   /// Converts an integer to a [BatteryStates].
-  factory BatteryStates.fromInt(int value) {
-    return BatteryStates.values.firstWhere((e) => e.intValue == value);
+  factory BatteryStates.fromInt(int? value) {
+    if (value == null) return BatteryStates.wakeUp;
+    return BatteryStates.values.firstWhere(
+      (e) => e.intValue == value,
+      orElse: () => BatteryStates.wakeUp,
+    );
   }
 
   @override

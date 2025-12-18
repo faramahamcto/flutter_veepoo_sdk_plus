@@ -14,6 +14,29 @@ class MethodChannelFlutterVeepooSdk extends FlutterVeepooSdkPlatform {
       const EventChannel('$_channelName/detect_heart_event_channel');
   final EventChannel spohEventChannel =
       const EventChannel('$_channelName/detect_spoh_event_channel');
+  final EventChannel bloodPressureEventChannel =
+      const EventChannel('$_channelName/detect_blood_pressure_event_channel');
+  final EventChannel temperatureEventChannel =
+      const EventChannel('$_channelName/detect_temperature_event_channel');
+  final EventChannel bloodGlucoseEventChannel =
+      const EventChannel('$_channelName/detect_blood_glucose_event_channel');
+  final EventChannel ecgEventChannel =
+      const EventChannel('$_channelName/detect_ecg_event_channel');
+  final EventChannel bloodComponentEventChannel =
+      const EventChannel('$_channelName/detect_blood_component_event_channel');
+  final EventChannel stepDataEventChannel =
+      const EventChannel('$_channelName/step_data_event_channel');
+
+  // Cached streams
+  Stream<List<BluetoothDevice>>? _bluetoothDevicesStream;
+  Stream<HeartRate?>? _heartRateStream;
+  Stream<Spoh?>? _spohStream;
+  Stream<BloodPressure?>? _bloodPressureStream;
+  Stream<Temperature?>? _temperatureStream;
+  Stream<BloodGlucose?>? _bloodGlucoseStream;
+  Stream<EcgData?>? _ecgDataStream;
+  Stream<BloodComponent?>? _bloodComponentStream;
+  Stream<StepData?>? _stepDataStream;
 
   /// Requests Bluetooth permissions.
   ///
@@ -202,6 +225,22 @@ class MethodChannelFlutterVeepooSdk extends FlutterVeepooSdkPlatform {
     }
   }
 
+  /// Checks if a device has been bound (paired) before.
+  /// Returns [true] if credentials have been saved during binding, otherwise [false].
+  /// Throws a [VeepooException] if the request fails.
+  @override
+  Future<bool?> isDeviceBinded() async {
+    try {
+      return await methodChannel.invokeMethod<bool>('isDeviceBinded');
+    } on PlatformException catch (error, stackTrace) {
+      throw VeepooException(
+        message: 'Failed to check device binding: ${error.message}',
+        details: error.details,
+        stacktrace: stackTrace,
+      );
+    }
+  }
+
   /// Binds a Bluetooth device with the given [password] and [is24H] flag.
   ///
   /// Returns a [DeviceBindingStatus] if the binding is successful, otherwise null.
@@ -377,11 +416,11 @@ class MethodChannelFlutterVeepooSdk extends FlutterVeepooSdkPlatform {
   /// Returns a [Stream] of [List] of [BluetoothDevice] objects.
   @override
   Stream<List<BluetoothDevice>> get bluetoothDevices {
-    return bluetoothEventChannel.receiveBroadcastStream().map((event) {
-      if (event == null) return [];
+    _bluetoothDevicesStream ??= bluetoothEventChannel.receiveBroadcastStream().map<List<BluetoothDevice>>((event) {
+      if (event == null) return <BluetoothDevice>[];
 
       if (event is List) {
-        return event.map((item) {
+        return event.map<BluetoothDevice>((item) {
           if (item is Map<Object?, Object?>) {
             final convertedMap = Map<String, dynamic>.from(
               item.map((key, value) => MapEntry(key.toString(), value)),
@@ -397,7 +436,9 @@ class MethodChannelFlutterVeepooSdk extends FlutterVeepooSdkPlatform {
       throw VeepooException(
         message: 'Unexpected event type: ${event.runtimeType}',
       );
-    });
+    }).asBroadcastStream();
+
+    return _bluetoothDevicesStream!;
   }
 
   /// Stream of heart rate detection results.
@@ -405,7 +446,7 @@ class MethodChannelFlutterVeepooSdk extends FlutterVeepooSdkPlatform {
   /// Returns a [Stream] of [HeartRate] objects.
   @override
   Stream<HeartRate?> get heartRate {
-    return heartRateEventChannel.receiveBroadcastStream().map((dynamic event) {
+    _heartRateStream ??= heartRateEventChannel.receiveBroadcastStream().map((dynamic event) {
       if (event is Map) {
         final result =
             event.map((key, value) => MapEntry(key.toString(), value));
@@ -416,7 +457,9 @@ class MethodChannelFlutterVeepooSdk extends FlutterVeepooSdkPlatform {
           message: 'Unexpected event type: ${event.runtimeType}',
         );
       }
-    });
+    }).asBroadcastStream();
+
+    return _heartRateStream!;
   }
 
   /// Stream of blood oxygen results.
@@ -424,7 +467,7 @@ class MethodChannelFlutterVeepooSdk extends FlutterVeepooSdkPlatform {
   /// Returns a [Stream] of [Spoh] objects.
   @override
   Stream<Spoh?> get spoh {
-    return spohEventChannel.receiveBroadcastStream().map((dynamic event) {
+    _spohStream ??= spohEventChannel.receiveBroadcastStream().map((dynamic event) {
       if (event is Map<Object?, Object?>) {
         final result =
             event.map((key, value) => MapEntry(key.toString(), value));
@@ -435,6 +478,756 @@ class MethodChannelFlutterVeepooSdk extends FlutterVeepooSdkPlatform {
           message: 'Unexpected event type: ${event.runtimeType}',
         );
       }
-    });
+    }).asBroadcastStream();
+
+    return _spohStream!;
+  }
+
+  // ==================== Sleep Data ====================
+
+  @override
+  Future<SleepData?> readSleepData() async {
+    try {
+      final result =
+          await methodChannel.invokeMapMethod<String, dynamic>('readSleepData');
+      return result != null ? SleepData.fromMap(result) : null;
+    } on PlatformException catch (error, stackTrace) {
+      throw VeepooException(
+        message: 'Failed to read sleep data: ${error.message}',
+        details: error.details,
+        stacktrace: stackTrace,
+      );
+    }
+  }
+
+  // ==================== Step Data ====================
+
+  @override
+  Future<StepData?> readStepData() async {
+    try {
+      final result =
+          await methodChannel.invokeMapMethod<String, dynamic>('readStepData');
+      return result != null ? StepData.fromMap(result) : null;
+    } on PlatformException catch (error, stackTrace) {
+      throw VeepooException(
+        message: 'Failed to read step data: ${error.message}',
+        details: error.details,
+        stacktrace: stackTrace,
+      );
+    }
+  }
+
+  @override
+  Future<StepData?> readStepDataForDate(DateTime date) async {
+    try {
+      final result = await methodChannel.invokeMapMethod<String, dynamic>(
+        'readStepDataForDate',
+        {'timestamp': date.millisecondsSinceEpoch},
+      );
+      return result != null ? StepData.fromMap(result) : null;
+    } on PlatformException catch (error, stackTrace) {
+      throw VeepooException(
+        message: 'Failed to read step data for date: ${error.message}',
+        details: error.details,
+        stacktrace: stackTrace,
+      );
+    }
+  }
+
+  // ==================== Blood Pressure ====================
+
+  @override
+  Future<void> startDetectBloodPressure() async {
+    try {
+      await methodChannel.invokeMethod<void>('startDetectBloodPressure');
+    } on PlatformException catch (error, stackTrace) {
+      throw VeepooException(
+        message: 'Failed to start blood pressure detection: ${error.message}',
+        details: error.details,
+        stacktrace: stackTrace,
+      );
+    }
+  }
+
+  @override
+  Future<void> stopDetectBloodPressure() async {
+    try {
+      await methodChannel.invokeMethod<void>('stopDetectBloodPressure');
+    } on PlatformException catch (error, stackTrace) {
+      throw VeepooException(
+        message: 'Failed to stop blood pressure detection: ${error.message}',
+        details: error.details,
+        stacktrace: stackTrace,
+      );
+    }
+  }
+
+  @override
+  Future<void> setBloodPressureAlarm(
+    int systolicHigh,
+    int systolicLow,
+    int diastolicHigh,
+    int diastolicLow,
+    bool enabled,
+  ) async {
+    try {
+      await methodChannel.invokeMethod<void>(
+        'setBloodPressureAlarm',
+        {
+          'systolicHigh': systolicHigh,
+          'systolicLow': systolicLow,
+          'diastolicHigh': diastolicHigh,
+          'diastolicLow': diastolicLow,
+          'enabled': enabled,
+        },
+      );
+    } on PlatformException catch (error, stackTrace) {
+      throw VeepooException(
+        message: 'Failed to set blood pressure alarm: ${error.message}',
+        details: error.details,
+        stacktrace: stackTrace,
+      );
+    }
+  }
+
+  @override
+  Future<BloodPressure?> readBloodPressure() async {
+    try {
+      final result = await methodChannel
+          .invokeMapMethod<String, dynamic>('readBloodPressure');
+      return result != null ? BloodPressure.fromMap(result) : null;
+    } on PlatformException catch (error, stackTrace) {
+      throw VeepooException(
+        message: 'Failed to read blood pressure: ${error.message}',
+        details: error.details,
+        stacktrace: stackTrace,
+      );
+    }
+  }
+
+  // ==================== Temperature ====================
+
+  @override
+  Future<void> startDetectTemperature() async {
+    try {
+      await methodChannel.invokeMethod<void>('startDetectTemperature');
+    } on PlatformException catch (error, stackTrace) {
+      throw VeepooException(
+        message: 'Failed to start temperature detection: ${error.message}',
+        details: error.details,
+        stacktrace: stackTrace,
+      );
+    }
+  }
+
+  @override
+  Future<void> stopDetectTemperature() async {
+    try {
+      await methodChannel.invokeMethod<void>('stopDetectTemperature');
+    } on PlatformException catch (error, stackTrace) {
+      throw VeepooException(
+        message: 'Failed to stop temperature detection: ${error.message}',
+        details: error.details,
+        stacktrace: stackTrace,
+      );
+    }
+  }
+
+  @override
+  Future<Temperature?> readTemperature() async {
+    try {
+      final result = await methodChannel
+          .invokeMapMethod<String, dynamic>('readTemperature');
+      return result != null ? Temperature.fromMap(result) : null;
+    } on PlatformException catch (error, stackTrace) {
+      throw VeepooException(
+        message: 'Failed to read temperature: ${error.message}',
+        details: error.details,
+        stacktrace: stackTrace,
+      );
+    }
+  }
+
+  @override
+  Future<List<Temperature>> readTemperatureHistory(
+    DateTime startDate,
+    DateTime endDate,
+  ) async {
+    try {
+      final result = await methodChannel.invokeListMethod<Map>(
+        'readTemperatureHistory',
+        {
+          'startTimestamp': startDate.millisecondsSinceEpoch,
+          'endTimestamp': endDate.millisecondsSinceEpoch,
+        },
+      );
+      return result
+              ?.map((item) => Temperature.fromMap(Map<String, dynamic>.from(item)))
+              .toList() ??
+          [];
+    } on PlatformException catch (error, stackTrace) {
+      throw VeepooException(
+        message: 'Failed to read temperature history: ${error.message}',
+        details: error.details,
+        stacktrace: stackTrace,
+      );
+    }
+  }
+
+  // ==================== Blood Glucose ====================
+
+  @override
+  Future<void> startDetectBloodGlucose() async {
+    try {
+      await methodChannel.invokeMethod<void>('startDetectBloodGlucose');
+    } on PlatformException catch (error, stackTrace) {
+      throw VeepooException(
+        message: 'Failed to start blood glucose detection: ${error.message}',
+        details: error.details,
+        stacktrace: stackTrace,
+      );
+    }
+  }
+
+  @override
+  Future<void> stopDetectBloodGlucose() async {
+    try {
+      await methodChannel.invokeMethod<void>('stopDetectBloodGlucose');
+    } on PlatformException catch (error, stackTrace) {
+      throw VeepooException(
+        message: 'Failed to stop blood glucose detection: ${error.message}',
+        details: error.details,
+        stacktrace: stackTrace,
+      );
+    }
+  }
+
+  @override
+  Future<void> setBloodGlucoseCalibration(bool enabled) async {
+    try {
+      await methodChannel.invokeMethod<void>(
+        'setBloodGlucoseCalibration',
+        {'enabled': enabled},
+      );
+    } on PlatformException catch (error, stackTrace) {
+      throw VeepooException(
+        message: 'Failed to set blood glucose calibration: ${error.message}',
+        details: error.details,
+        stacktrace: stackTrace,
+      );
+    }
+  }
+
+  @override
+  Future<BloodGlucose?> readBloodGlucose() async {
+    try {
+      final result = await methodChannel
+          .invokeMapMethod<String, dynamic>('readBloodGlucose');
+      return result != null ? BloodGlucose.fromMap(result) : null;
+    } on PlatformException catch (error, stackTrace) {
+      throw VeepooException(
+        message: 'Failed to read blood glucose: ${error.message}',
+        details: error.details,
+        stacktrace: stackTrace,
+      );
+    }
+  }
+
+  // ==================== ECG ====================
+
+  @override
+  Future<void> startDetectEcg() async {
+    try {
+      await methodChannel.invokeMethod<void>('startDetectEcg');
+    } on PlatformException catch (error, stackTrace) {
+      throw VeepooException(
+        message: 'Failed to start ECG detection: ${error.message}',
+        details: error.details,
+        stacktrace: stackTrace,
+      );
+    }
+  }
+
+  @override
+  Future<void> stopDetectEcg() async {
+    try {
+      await methodChannel.invokeMethod<void>('stopDetectEcg');
+    } on PlatformException catch (error, stackTrace) {
+      throw VeepooException(
+        message: 'Failed to stop ECG detection: ${error.message}',
+        details: error.details,
+        stacktrace: stackTrace,
+      );
+    }
+  }
+
+  @override
+  Future<EcgData?> readEcgData() async {
+    try {
+      final result =
+          await methodChannel.invokeMapMethod<String, dynamic>('readEcgData');
+      return result != null ? EcgData.fromMap(result) : null;
+    } on PlatformException catch (error, stackTrace) {
+      throw VeepooException(
+        message: 'Failed to read ECG data: ${error.message}',
+        details: error.details,
+        stacktrace: stackTrace,
+      );
+    }
+  }
+
+  // ==================== Blood Component ====================
+
+  @override
+  Future<void> startDetectBloodComponent({bool needCalibration = false}) async {
+    try {
+      await methodChannel.invokeMethod<void>(
+        'startDetectBloodComponent',
+        {'needCalibration': needCalibration},
+      );
+    } on PlatformException catch (error, stackTrace) {
+      throw VeepooException(
+        message: 'Failed to start blood component detection: ${error.message}',
+        details: error.details,
+        stacktrace: stackTrace,
+      );
+    }
+  }
+
+  @override
+  Future<void> stopDetectBloodComponent() async {
+    try {
+      await methodChannel.invokeMethod<void>('stopDetectBloodComponent');
+    } on PlatformException catch (error, stackTrace) {
+      throw VeepooException(
+        message: 'Failed to stop blood component detection: ${error.message}',
+        details: error.details,
+        stacktrace: stackTrace,
+      );
+    }
+  }
+
+  // ==================== HRV ====================
+
+  @override
+  Future<List<HRVData>> readHRVData({int days = 7}) async {
+    try {
+      final result = await methodChannel.invokeMethod<List<dynamic>>(
+        'readHRVData',
+        {'days': days},
+      );
+      if (result == null) return [];
+      return result
+          .map((e) => HRVData.fromMap(e as Map<String, dynamic>))
+          .toList();
+    } on PlatformException catch (error, stackTrace) {
+      throw VeepooException(
+        message: 'Failed to read HRV data: ${error.message}',
+        details: error.details,
+        stacktrace: stackTrace,
+      );
+    }
+  }
+
+  // ==================== Device Info ====================
+
+  @override
+  Future<DeviceInfo?> getDeviceInfo() async {
+    try {
+      final result =
+          await methodChannel.invokeMapMethod<String, dynamic>('getDeviceInfo');
+      return result != null ? DeviceInfo.fromMap(result) : null;
+    } on PlatformException catch (error, stackTrace) {
+      throw VeepooException(
+        message: 'Failed to get device info: ${error.message}',
+        details: error.details,
+        stacktrace: stackTrace,
+      );
+    }
+  }
+
+  // ==================== User Profile ====================
+
+  @override
+  Future<void> setUserProfile(UserProfile profile) async {
+    try {
+      await methodChannel.invokeMethod<void>(
+        'setUserProfile',
+        profile.toMap(),
+      );
+    } on PlatformException catch (error, stackTrace) {
+      throw VeepooException(
+        message: 'Failed to set user profile: ${error.message}',
+        details: error.details,
+        stacktrace: stackTrace,
+      );
+    }
+  }
+
+  @override
+  Future<UserProfile?> getUserProfile() async {
+    try {
+      final result = await methodChannel
+          .invokeMapMethod<String, dynamic>('getUserProfile');
+      return result != null ? UserProfile.fromMap(result) : null;
+    } on PlatformException catch (error, stackTrace) {
+      throw VeepooException(
+        message: 'Failed to get user profile: ${error.message}',
+        details: error.details,
+        stacktrace: stackTrace,
+      );
+    }
+  }
+
+  // ==================== Device Settings ====================
+
+  @override
+  Future<void> setDeviceSettings(DeviceSettings settings) async {
+    try {
+      await methodChannel.invokeMethod<void>(
+        'setDeviceSettings',
+        settings.toMap(),
+      );
+    } on PlatformException catch (error, stackTrace) {
+      throw VeepooException(
+        message: 'Failed to set device settings: ${error.message}',
+        details: error.details,
+        stacktrace: stackTrace,
+      );
+    }
+  }
+
+  @override
+  Future<DeviceSettings?> getDeviceSettings() async {
+    try {
+      final result = await methodChannel
+          .invokeMapMethod<String, dynamic>('getDeviceSettings');
+      return result != null ? DeviceSettings.fromMap(result) : null;
+    } on PlatformException catch (error, stackTrace) {
+      throw VeepooException(
+        message: 'Failed to get device settings: ${error.message}',
+        details: error.details,
+        stacktrace: stackTrace,
+      );
+    }
+  }
+
+  @override
+  Future<void> setScreenBrightness(int brightness) async {
+    try {
+      await methodChannel.invokeMethod<void>(
+        'setScreenBrightness',
+        {'brightness': brightness},
+      );
+    } on PlatformException catch (error, stackTrace) {
+      throw VeepooException(
+        message: 'Failed to set screen brightness: ${error.message}',
+        details: error.details,
+        stacktrace: stackTrace,
+      );
+    }
+  }
+
+  @override
+  Future<void> setScreenDuration(int seconds) async {
+    try {
+      await methodChannel.invokeMethod<void>(
+        'setScreenDuration',
+        {'seconds': seconds},
+      );
+    } on PlatformException catch (error, stackTrace) {
+      throw VeepooException(
+        message: 'Failed to set screen duration: ${error.message}',
+        details: error.details,
+        stacktrace: stackTrace,
+      );
+    }
+  }
+
+  @override
+  Future<void> setTimeFormat(bool is24Hour) async {
+    try {
+      await methodChannel.invokeMethod<void>(
+        'setTimeFormat',
+        {'is24Hour': is24Hour},
+      );
+    } on PlatformException catch (error, stackTrace) {
+      throw VeepooException(
+        message: 'Failed to set time format: ${error.message}',
+        details: error.details,
+        stacktrace: stackTrace,
+      );
+    }
+  }
+
+  @override
+  Future<void> setLanguage(String languageCode) async {
+    try {
+      await methodChannel.invokeMethod<void>(
+        'setLanguage',
+        {'languageCode': languageCode},
+      );
+    } on PlatformException catch (error, stackTrace) {
+      throw VeepooException(
+        message: 'Failed to set language: ${error.message}',
+        details: error.details,
+        stacktrace: stackTrace,
+      );
+    }
+  }
+
+  @override
+  Future<void> setWristRaiseToWake(bool enabled, int sensitivity) async {
+    try {
+      await methodChannel.invokeMethod<void>(
+        'setWristRaiseToWake',
+        {'enabled': enabled, 'sensitivity': sensitivity},
+      );
+    } on PlatformException catch (error, stackTrace) {
+      throw VeepooException(
+        message: 'Failed to set wrist raise to wake: ${error.message}',
+        details: error.details,
+        stacktrace: stackTrace,
+      );
+    }
+  }
+
+  @override
+  Future<void> setDoNotDisturb(
+    bool enabled,
+    int startMinutes,
+    int endMinutes,
+  ) async {
+    try {
+      await methodChannel.invokeMethod<void>(
+        'setDoNotDisturb',
+        {
+          'enabled': enabled,
+          'startMinutes': startMinutes,
+          'endMinutes': endMinutes,
+        },
+      );
+    } on PlatformException catch (error, stackTrace) {
+      throw VeepooException(
+        message: 'Failed to set do not disturb: ${error.message}',
+        details: error.details,
+        stacktrace: stackTrace,
+      );
+    }
+  }
+
+  // ==================== Historical Data ====================
+
+  @override
+  Future<List<HeartRate>> readHeartRateHistory(
+    DateTime startDate,
+    DateTime endDate,
+  ) async {
+    try {
+      final result = await methodChannel.invokeListMethod<Map>(
+        'readHeartRateHistory',
+        {
+          'startTimestamp': startDate.millisecondsSinceEpoch,
+          'endTimestamp': endDate.millisecondsSinceEpoch,
+        },
+      );
+      return result
+              ?.map((item) => HeartRate.fromJson(Map<String, dynamic>.from(item)))
+              .toList() ??
+          [];
+    } on PlatformException catch (error, stackTrace) {
+      throw VeepooException(
+        message: 'Failed to read heart rate history: ${error.message}',
+        details: error.details,
+        stacktrace: stackTrace,
+      );
+    }
+  }
+
+  @override
+  Future<List<SleepData>> readSleepHistory(
+    DateTime startDate,
+    DateTime endDate,
+  ) async {
+    try {
+      final result = await methodChannel.invokeListMethod<Map>(
+        'readSleepHistory',
+        {
+          'startTimestamp': startDate.millisecondsSinceEpoch,
+          'endTimestamp': endDate.millisecondsSinceEpoch,
+        },
+      );
+      return result
+              ?.map((item) => SleepData.fromMap(Map<String, dynamic>.from(item)))
+              .toList() ??
+          [];
+    } on PlatformException catch (error, stackTrace) {
+      throw VeepooException(
+        message: 'Failed to read sleep history: ${error.message}',
+        details: error.details,
+        stacktrace: stackTrace,
+      );
+    }
+  }
+
+  @override
+  Future<List<StepData>> readStepHistory(
+    DateTime startDate,
+    DateTime endDate,
+  ) async {
+    try {
+      final result = await methodChannel.invokeListMethod<Map>(
+        'readStepHistory',
+        {
+          'startTimestamp': startDate.millisecondsSinceEpoch,
+          'endTimestamp': endDate.millisecondsSinceEpoch,
+        },
+      );
+      return result
+              ?.map((item) => StepData.fromMap(Map<String, dynamic>.from(item)))
+              .toList() ??
+          [];
+    } on PlatformException catch (error, stackTrace) {
+      throw VeepooException(
+        message: 'Failed to read step history: ${error.message}',
+        details: error.details,
+        stacktrace: stackTrace,
+      );
+    }
+  }
+
+  @override
+  Future<List<BloodPressure>> readBloodPressureHistory(
+    DateTime startDate,
+    DateTime endDate,
+  ) async {
+    try {
+      final result = await methodChannel.invokeListMethod<Map>(
+        'readBloodPressureHistory',
+        {
+          'startTimestamp': startDate.millisecondsSinceEpoch,
+          'endTimestamp': endDate.millisecondsSinceEpoch,
+        },
+      );
+      return result
+              ?.map((item) =>
+                  BloodPressure.fromMap(Map<String, dynamic>.from(item)))
+              .toList() ??
+          [];
+    } on PlatformException catch (error, stackTrace) {
+      throw VeepooException(
+        message: 'Failed to read blood pressure history: ${error.message}',
+        details: error.details,
+        stacktrace: stackTrace,
+      );
+    }
+  }
+
+  // ==================== Streams ====================
+
+  @override
+  Stream<BloodPressure?> get bloodPressure {
+    _bloodPressureStream ??= bloodPressureEventChannel
+        .receiveBroadcastStream()
+        .map((dynamic event) {
+      if (event is Map<Object?, Object?>) {
+        final result =
+            event.map((key, value) => MapEntry(key.toString(), value));
+        return BloodPressure.fromMap(result);
+      } else {
+        throw VeepooException(
+          message: 'Unexpected event type: ${event.runtimeType}',
+        );
+      }
+    }).asBroadcastStream();
+
+    return _bloodPressureStream!;
+  }
+
+  @override
+  Stream<Temperature?> get temperature {
+    _temperatureStream ??= temperatureEventChannel.receiveBroadcastStream().map((dynamic event) {
+      if (event is Map<Object?, Object?>) {
+        final result =
+            event.map((key, value) => MapEntry(key.toString(), value));
+        return Temperature.fromMap(result);
+      } else {
+        throw VeepooException(
+          message: 'Unexpected event type: ${event.runtimeType}',
+        );
+      }
+    }).asBroadcastStream();
+
+    return _temperatureStream!;
+  }
+
+  @override
+  Stream<BloodGlucose?> get bloodGlucose {
+    _bloodGlucoseStream ??= bloodGlucoseEventChannel
+        .receiveBroadcastStream()
+        .map((dynamic event) {
+      if (event is Map<Object?, Object?>) {
+        final result =
+            event.map((key, value) => MapEntry(key.toString(), value));
+        return BloodGlucose.fromMap(result);
+      } else {
+        throw VeepooException(
+          message: 'Unexpected event type: ${event.runtimeType}',
+        );
+      }
+    }).asBroadcastStream();
+
+    return _bloodGlucoseStream!;
+  }
+
+  @override
+  Stream<EcgData?> get ecgData {
+    _ecgDataStream ??= ecgEventChannel.receiveBroadcastStream().map((dynamic event) {
+      if (event is Map<Object?, Object?>) {
+        final result =
+            event.map((key, value) => MapEntry(key.toString(), value));
+        return EcgData.fromMap(result);
+      } else {
+        throw VeepooException(
+          message: 'Unexpected event type: ${event.runtimeType}',
+        );
+      }
+    }).asBroadcastStream();
+
+    return _ecgDataStream!;
+  }
+
+  @override
+  Stream<BloodComponent?> get bloodComponent {
+    _bloodComponentStream ??= bloodComponentEventChannel.receiveBroadcastStream().map((dynamic event) {
+      if (event is Map<Object?, Object?>) {
+        final result =
+            event.map((key, value) => MapEntry(key.toString(), value));
+        return BloodComponent.fromMap(result);
+      } else {
+        throw VeepooException(
+          message: 'Unexpected event type: ${event.runtimeType}',
+        );
+      }
+    }).asBroadcastStream();
+
+    return _bloodComponentStream!;
+  }
+
+  @override
+  Stream<StepData?> get stepData {
+    _stepDataStream ??= stepDataEventChannel.receiveBroadcastStream().map((dynamic event) {
+      if (event is Map<Object?, Object?>) {
+        final result =
+            event.map((key, value) => MapEntry(key.toString(), value));
+        return StepData.fromMap(result);
+      } else {
+        throw VeepooException(
+          message: 'Unexpected event type: ${event.runtimeType}',
+        );
+      }
+    }).asBroadcastStream();
+
+    return _stepDataStream!;
   }
 }
