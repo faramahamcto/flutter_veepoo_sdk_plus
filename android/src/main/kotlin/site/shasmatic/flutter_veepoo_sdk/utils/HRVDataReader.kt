@@ -5,6 +5,7 @@ import com.veepoo.protocol.VPOperateManager
 import com.veepoo.protocol.listener.base.IBleWriteResponse
 import com.veepoo.protocol.listener.data.IHRVOriginDataListener
 import com.veepoo.protocol.model.datas.HRVOriginData
+import com.veepoo.protocol.shareprence.VpSpGetUtil
 import io.flutter.plugin.common.MethodChannel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -22,10 +23,12 @@ import site.shasmatic.flutter_veepoo_sdk.exceptions.VPException
  * @constructor Creates a new [HRVDataReader] instance.
  * @param result The method channel result to return data to Flutter.
  * @param vpManager The [VPOperateManager] used to control device operations.
+ * @param vpSpGetUtil The [VpSpGetUtil] used to check device capabilities.
  */
 class HRVDataReader(
     private val result: MethodChannel.Result,
     private val vpManager: VPOperateManager,
+    private val vpSpGetUtil: VpSpGetUtil,
 ) {
 
     private val hrvDataList = mutableListOf<Map<String, Any?>>()
@@ -45,6 +48,19 @@ class HRVDataReader(
     fun readHRVData(days: Int = 7) {
         try {
             VPLogger.d("Starting to read HRV data for $days days...")
+
+            // Check if device supports HRV
+            val supportsHRV = vpSpGetUtil.isSupportHRV()
+            val supportsAllDayHRV = vpSpGetUtil.isSupportAllDayHRV()
+            val hrvType = vpSpGetUtil.getHrvType()
+
+            VPLogger.d("Device HRV support - isSupportHRV: $supportsHRV, isSupportAllDayHRV: $supportsAllDayHRV, hrvType: $hrvType")
+
+            if (!supportsHRV) {
+                returnError("HRV_NOT_SUPPORTED", "This device does not support HRV data reading")
+                return
+            }
+
             hrvDataList.clear()
             hasReturnedResult = false
 
@@ -53,9 +69,10 @@ class HRVDataReader(
 
             // Create write response with error handling
             val writeResponse = IBleWriteResponse { code ->
+                VPLogger.d("HRV write response received with code: $code (SUCCESS=${Code.REQUEST_SUCCESS})")
                 when (code) {
                     Code.REQUEST_SUCCESS -> {
-                        VPLogger.d("HRV read request sent successfully")
+                        VPLogger.d("HRV read request sent successfully, waiting for data...")
                     }
                     else -> {
                         VPLogger.e("HRV read request failed with code: $code")
@@ -65,7 +82,9 @@ class HRVDataReader(
                 }
             }
 
+            VPLogger.d("Calling vpManager.readHRVOrigin with days=$days")
             vpManager.readHRVOrigin(writeResponse, hrvOriginDataListener, days)
+            VPLogger.d("vpManager.readHRVOrigin called, waiting for response...")
         } catch (e: Exception) {
             VPLogger.e("Error reading HRV data: ${e.message}")
             cancelTimeout()

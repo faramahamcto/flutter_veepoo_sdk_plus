@@ -461,7 +461,7 @@ class VPMethodChannelHandler(
     }
 
     private fun getHRVDataReader(): HRVDataReader {
-        return HRVDataReader(result, vpManager)
+        return HRVDataReader(result, vpManager, vpSpGetUtil)
     }
 
     private fun handleSetUserProfile(call: MethodCall) {
