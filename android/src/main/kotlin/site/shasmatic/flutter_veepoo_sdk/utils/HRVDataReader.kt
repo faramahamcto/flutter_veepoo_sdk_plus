@@ -1,11 +1,17 @@
 package site.shasmatic.flutter_veepoo_sdk.utils
 
+import com.inuker.bluetooth.library.Code
 import com.veepoo.protocol.VPOperateManager
+import com.veepoo.protocol.listener.base.IBleWriteResponse
 import com.veepoo.protocol.listener.data.IHRVOriginDataListener
 import com.veepoo.protocol.model.datas.HRVOriginData
 import io.flutter.plugin.common.MethodChannel
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import site.shasmatic.flutter_veepoo_sdk.VPLogger
-import site.shasmatic.flutter_veepoo_sdk.VPWriteResponse
 import site.shasmatic.flutter_veepoo_sdk.exceptions.VPException
 
 /**
@@ -22,10 +28,15 @@ class HRVDataReader(
     private val vpManager: VPOperateManager,
 ) {
 
-    private val writeResponse: VPWriteResponse = VPWriteResponse()
     private val hrvDataList = mutableListOf<Map<String, Any?>>()
     private var hasReturnedResult = false
     private var dayHrvScore: Int = 0
+    private val coroutineScope = CoroutineScope(Dispatchers.Main + Job())
+    private var timeoutJob: Job? = null
+
+    companion object {
+        private const val READ_TIMEOUT_MS = 30000L // 30 seconds timeout
+    }
 
     /**
      * Reads HRV data for the specified number of days.
@@ -37,10 +48,57 @@ class HRVDataReader(
             hrvDataList.clear()
             hasReturnedResult = false
 
+            // Start timeout timer
+            startTimeout()
+
+            // Create write response with error handling
+            val writeResponse = IBleWriteResponse { code ->
+                when (code) {
+                    Code.REQUEST_SUCCESS -> {
+                        VPLogger.d("HRV read request sent successfully")
+                    }
+                    else -> {
+                        VPLogger.e("HRV read request failed with code: $code")
+                        cancelTimeout()
+                        returnError("HRV_REQUEST_FAILED", "Failed to request HRV data (code: $code)")
+                    }
+                }
+            }
+
             vpManager.readHRVOrigin(writeResponse, hrvOriginDataListener, days)
         } catch (e: Exception) {
             VPLogger.e("Error reading HRV data: ${e.message}")
-            result.error("HRV_DATA_ERROR", "Error reading HRV data: ${e.message}", null)
+            cancelTimeout()
+            returnError("HRV_DATA_ERROR", "Error reading HRV data: ${e.message}")
+        }
+    }
+
+    private fun startTimeout() {
+        timeoutJob?.cancel()
+        timeoutJob = coroutineScope.launch {
+            delay(READ_TIMEOUT_MS)
+            VPLogger.w("HRV data read timeout after ${READ_TIMEOUT_MS}ms")
+            returnError("HRV_TIMEOUT", "HRV data read timed out. Device may not have HRV data or is not responding.")
+        }
+    }
+
+    private fun cancelTimeout() {
+        timeoutJob?.cancel()
+        timeoutJob = null
+    }
+
+    private fun returnError(code: String, message: String) {
+        if (!hasReturnedResult) {
+            hasReturnedResult = true
+            result.error(code, message, null)
+        }
+    }
+
+    private fun returnSuccess(data: Map<String, Any?>) {
+        cancelTimeout()
+        if (!hasReturnedResult) {
+            hasReturnedResult = true
+            result.success(data)
         }
     }
 
@@ -86,17 +144,13 @@ class HRVDataReader(
         override fun onReadOriginComplete() {
             VPLogger.d("HRV data reading complete. Total records: ${hrvDataList.size}")
 
-            if (!hasReturnedResult) {
-                hasReturnedResult = true
+            val resultData = mapOf<String, Any?>(
+                "hrvDataList" to hrvDataList,
+                "dayHrvScore" to dayHrvScore,
+                "totalRecords" to hrvDataList.size
+            )
 
-                val resultData = mapOf<String, Any?>(
-                    "hrvDataList" to hrvDataList,
-                    "dayHrvScore" to dayHrvScore,
-                    "totalRecords" to hrvDataList.size
-                )
-
-                result.success(resultData)
-            }
+            returnSuccess(resultData)
         }
     }
 }
