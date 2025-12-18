@@ -500,25 +500,21 @@ class VPMethodChannelHandler(
             // Create listener for person info data change
             val listener = IPersonInfoDataListener { status ->
                 when (status) {
-                    EOprateStauts.SUCCESS -> {
+                    EOprateStauts.OPRATE_SUCCESS -> {
                         VPLogger.i("User profile set successfully")
                         result.success(null)
                     }
-                    EOprateStauts.FAIL -> {
+                    EOprateStauts.OPRATE_FAIL -> {
                         VPLogger.e("Failed to set user profile")
                         result.error("SET_PROFILE_FAILED", "Failed to set user profile", null)
                     }
-                    EOprateStauts.UNSUPPORT -> {
-                        VPLogger.e("User profile setting not supported")
-                        result.error("UNSUPPORTED", "User profile setting not supported", null)
-                    }
-                    EOprateStauts.DATAERROR -> {
-                        VPLogger.e("User profile data error")
-                        result.error("DATA_ERROR", "Invalid user profile data", null)
+                    EOprateStauts.UNKNOW -> {
+                        VPLogger.e("Unknown status for user profile")
+                        result.error("UNKNOWN_STATUS", "Unknown status for user profile", null)
                     }
                     else -> {
-                        VPLogger.e("Unknown status: $status")
-                        result.error("UNKNOWN_ERROR", "Unknown error: $status", null)
+                        VPLogger.e("Unexpected status: $status")
+                        result.error("UNEXPECTED_ERROR", "Unexpected error: $status", null)
                     }
                 }
             }
