@@ -25,6 +25,7 @@ import com.veepoo.protocol.listener.data.IPwdDataListener
 import com.veepoo.protocol.listener.data.ISocialMsgDataListener
 import com.veepoo.protocol.model.datas.*
 import com.veepoo.protocol.model.enums.EPwdStatus
+import com.veepoo.protocol.model.settings.CustomSettingData
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodChannel
 import kotlinx.coroutines.CoroutineScope
@@ -529,20 +530,28 @@ class VPBluetoothManager(
         }
 
     private val deviceFuncDataListener = object : IDeviceFuctionDataListener {
-        override fun onFunctionSupportDataChange(data: FunctionDeviceSupportData?) {
+        override fun onFunctionSupportDataChange(data: FunctionDeviceSupportData) {
             VPLogger.i("Device function data: $data")
         }
 
-        override fun onDeviceFunctionPackage1Report(data: DeviceFunctionPackage1?) {
+        override fun onDeviceFunctionPackage1Report(data: DeviceFunctionPackage1) {
             VPLogger.i("Device function package1 report: $data")
         }
 
-        override fun onDeviceFunctionPackage2Report(data: DeviceFunctionPackage2?) {
+        override fun onDeviceFunctionPackage2Report(data: DeviceFunctionPackage2) {
             VPLogger.i("Device function package2 report: $data")
         }
 
-        override fun onDeviceFunctionPackage3Report(data: DeviceFunctionPackage3?) {
+        override fun onDeviceFunctionPackage3Report(data: DeviceFunctionPackage3) {
             VPLogger.i("Device function package3 report: $data")
+        }
+
+        override fun onDeviceFunctionPackage4Report(data: DeviceFunctionPackage4) {
+            VPLogger.i("Device function package4 report: $data")
+        }
+
+        override fun onDeviceFunctionPackage5Report(data: DeviceFunctionPackage5) {
+            VPLogger.i("Device function package5 report: $data")
         }
     }
 
@@ -552,7 +561,7 @@ class VPBluetoothManager(
     }
 
     private val customSettingDataListener = object : ICustomSettingDataListener {
-        override fun OnSettingDataChange(data: CustomSettingData?) {
+        override fun OnSettingDataChange(data: CustomSettingData) {
             VPLogger.i("Custom setting data: $data")
         }
     }
