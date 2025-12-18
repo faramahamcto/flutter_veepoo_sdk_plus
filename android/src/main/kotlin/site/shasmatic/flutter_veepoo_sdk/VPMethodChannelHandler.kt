@@ -4,6 +4,11 @@ import android.app.Activity
 import android.os.Build
 import androidx.annotation.RequiresApi
 import com.veepoo.protocol.VPOperateManager
+import com.veepoo.protocol.listener.base.IBleWriteResponse
+import com.veepoo.protocol.listener.data.IPersonInfoDataListener
+import com.veepoo.protocol.model.datas.PersonInfoData
+import com.veepoo.protocol.model.enums.EOprateStauts
+import com.veepoo.protocol.model.enums.ESex
 import com.veepoo.protocol.shareprence.VpSpGetUtil
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodCall
@@ -98,6 +103,7 @@ class VPMethodChannelHandler(
             "readStepData" -> handleReadStepData()
             "readStepDataForDate" -> handleReadStepDataForDate(call.argument<Long>("timestamp"))
             "readHRVData" -> handleReadHRVData(call.argument<Int>("days") ?: 7)
+            "setUserProfile" -> handleSetUserProfile(call)
             else -> result.notImplemented()
         }
     }
@@ -456,5 +462,73 @@ class VPMethodChannelHandler(
 
     private fun getHRVDataReader(): HRVDataReader {
         return HRVDataReader(result, vpManager)
+    }
+
+    private fun handleSetUserProfile(call: MethodCall) {
+        try {
+            val heightCm = call.argument<Int>("heightCm") ?: 170
+            val weightKg = call.argument<Double>("weightKg") ?: 70.0
+            val age = call.argument<Int>("age") ?: 30
+            val genderString = call.argument<String>("gender") ?: "male"
+            val targetSteps = call.argument<Int>("targetSteps") ?: 10000
+            val targetSleepMinutes = call.argument<Int>("targetSleepMinutes") ?: 480
+
+            // Convert gender string to ESex enum
+            val gender = when (genderString.lowercase()) {
+                "male" -> ESex.MAN
+                "female" -> ESex.WOMEN
+                else -> ESex.MAN
+            }
+
+            // Create PersonInfoData with 5-parameter constructor
+            val personInfo = PersonInfoData(
+                gender,
+                heightCm,
+                weightKg.toInt(), // SDK expects weight as int
+                age,
+                targetSteps
+            )
+
+            // Set sleep aim separately
+            personInfo.sleepAim = targetSleepMinutes
+
+            // Create write response
+            val writeResponse = IBleWriteResponse { code ->
+                VPLogger.i("User profile write response: $code")
+            }
+
+            // Create listener for person info data change
+            val listener = IPersonInfoDataListener { status ->
+                when (status) {
+                    EOprateStauts.SUCCESS -> {
+                        VPLogger.i("User profile set successfully")
+                        result.success(null)
+                    }
+                    EOprateStauts.FAIL -> {
+                        VPLogger.e("Failed to set user profile")
+                        result.error("SET_PROFILE_FAILED", "Failed to set user profile", null)
+                    }
+                    EOprateStauts.UNSUPPORT -> {
+                        VPLogger.e("User profile setting not supported")
+                        result.error("UNSUPPORTED", "User profile setting not supported", null)
+                    }
+                    EOprateStauts.DATAERROR -> {
+                        VPLogger.e("User profile data error")
+                        result.error("DATA_ERROR", "Invalid user profile data", null)
+                    }
+                    else -> {
+                        VPLogger.e("Unknown status: $status")
+                        result.error("UNKNOWN_ERROR", "Unknown error: $status", null)
+                    }
+                }
+            }
+
+            // Sync person info to device
+            vpManager.syncPersonInfo(writeResponse, listener, personInfo)
+
+        } catch (e: Exception) {
+            VPLogger.e("Exception setting user profile: ${e.message}")
+            result.error("SET_PROFILE_ERROR", "Failed to set user profile: ${e.message}", null)
+        }
     }
 }
