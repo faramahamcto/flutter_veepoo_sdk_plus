@@ -46,18 +46,18 @@ class OriginHealthData extends Equatable {
     return OriginHealthData(
       date: map['date'] as String?,
       time: map['time'] as String?,
-      heartRate: map['heartRate'] as int?,
-      systolic: map['systolic'] as int?,
-      diastolic: map['diastolic'] as int?,
+      heartRate: (map['heartRate'] as num?)?.toInt(),
+      systolic: (map['systolic'] as num?)?.toInt(),
+      diastolic: (map['diastolic'] as num?)?.toInt(),
       temperature: (map['temperature'] as num?)?.toDouble(),
-      bloodOxygen: map['bloodOxygen'] as int?,
-      steps: map['steps'] as int?,
+      bloodOxygen: (map['bloodOxygen'] as num?)?.toInt(),
+      steps: (map['steps'] as num?)?.toInt(),
       calories: (map['calories'] as num?)?.toDouble(),
       distance: (map['distance'] as num?)?.toDouble(),
-      sportValue: map['sportValue'] as int?,
-      bloodGlucose: map['bloodGlucose'] as int?,
-      respirationRate: map['respirationRate'] as int?,
-      ecgHeartRate: map['ecgHeartRate'] as int?,
+      sportValue: (map['sportValue'] as num?)?.toInt(),
+      bloodGlucose: (map['bloodGlucose'] as num?)?.toInt(),
+      respirationRate: (map['respirationRate'] as num?)?.toInt(),
+      ecgHeartRate: (map['ecgHeartRate'] as num?)?.toInt(),
     );
   }
 
@@ -158,25 +158,25 @@ class DailyHealthData extends Equatable {
     return DailyHealthData(
       date: map['date'] as String?,
       dayLabel: map['dayLabel'] as String?,
-      avgHeartRate: map['avgHeartRate'] as int?,
-      maxHeartRate: map['maxHeartRate'] as int?,
-      minHeartRate: map['minHeartRate'] as int?,
-      avgSystolic: map['avgSystolic'] as int?,
-      avgDiastolic: map['avgDiastolic'] as int?,
-      maxSystolic: map['maxSystolic'] as int?,
-      minSystolic: map['minSystolic'] as int?,
+      avgHeartRate: (map['avgHeartRate'] as num?)?.toInt(),
+      maxHeartRate: (map['maxHeartRate'] as num?)?.toInt(),
+      minHeartRate: (map['minHeartRate'] as num?)?.toInt(),
+      avgSystolic: (map['avgSystolic'] as num?)?.toInt(),
+      avgDiastolic: (map['avgDiastolic'] as num?)?.toInt(),
+      maxSystolic: (map['maxSystolic'] as num?)?.toInt(),
+      minSystolic: (map['minSystolic'] as num?)?.toInt(),
       avgTemperature: (map['avgTemperature'] as num?)?.toDouble(),
       maxTemperature: (map['maxTemperature'] as num?)?.toDouble(),
       minTemperature: (map['minTemperature'] as num?)?.toDouble(),
-      avgBloodOxygen: map['avgBloodOxygen'] as int?,
-      minBloodOxygen: map['minBloodOxygen'] as int?,
-      totalSteps: map['totalSteps'] as int?,
+      avgBloodOxygen: (map['avgBloodOxygen'] as num?)?.toInt(),
+      minBloodOxygen: (map['minBloodOxygen'] as num?)?.toInt(),
+      totalSteps: (map['totalSteps'] as num?)?.toInt(),
       totalCalories: (map['totalCalories'] as num?)?.toDouble(),
       totalDistance: (map['totalDistance'] as num?)?.toDouble(),
-      avgSportValue: map['avgSportValue'] as int?,
-      avgBloodGlucose: map['avgBloodGlucose'] as int?,
-      avgRespirationRate: map['avgRespirationRate'] as int?,
-      avgEcgHeartRate: map['avgEcgHeartRate'] as int?,
+      avgSportValue: (map['avgSportValue'] as num?)?.toInt(),
+      avgBloodGlucose: (map['avgBloodGlucose'] as num?)?.toInt(),
+      avgRespirationRate: (map['avgRespirationRate'] as num?)?.toInt(),
+      avgEcgHeartRate: (map['avgEcgHeartRate'] as num?)?.toInt(),
       hourlyData: hourlyData,
     );
   }
@@ -274,21 +274,21 @@ class HourlyHealthData extends Equatable {
     }
 
     return HourlyHealthData(
-      hour: map['hour'] as int?,
+      hour: (map['hour'] as num?)?.toInt(),
       hourLabel: map['hourLabel'] as String?,
-      avgHeartRate: map['avgHeartRate'] as int?,
-      maxHeartRate: map['maxHeartRate'] as int?,
-      minHeartRate: map['minHeartRate'] as int?,
-      avgSystolic: map['avgSystolic'] as int?,
-      avgDiastolic: map['avgDiastolic'] as int?,
+      avgHeartRate: (map['avgHeartRate'] as num?)?.toInt(),
+      maxHeartRate: (map['maxHeartRate'] as num?)?.toInt(),
+      minHeartRate: (map['minHeartRate'] as num?)?.toInt(),
+      avgSystolic: (map['avgSystolic'] as num?)?.toInt(),
+      avgDiastolic: (map['avgDiastolic'] as num?)?.toInt(),
       avgTemperature: (map['avgTemperature'] as num?)?.toDouble(),
-      avgBloodOxygen: map['avgBloodOxygen'] as int?,
-      steps: map['steps'] as int?,
+      avgBloodOxygen: (map['avgBloodOxygen'] as num?)?.toInt(),
+      steps: (map['steps'] as num?)?.toInt(),
       calories: (map['calories'] as num?)?.toDouble(),
       distance: (map['distance'] as num?)?.toDouble(),
-      avgSportValue: map['avgSportValue'] as int?,
-      avgBloodGlucose: map['avgBloodGlucose'] as int?,
-      avgRespirationRate: map['avgRespirationRate'] as int?,
+      avgSportValue: (map['avgSportValue'] as num?)?.toInt(),
+      avgBloodGlucose: (map['avgBloodGlucose'] as num?)?.toInt(),
+      avgRespirationRate: (map['avgRespirationRate'] as num?)?.toInt(),
       records: records,
     );
   }
@@ -321,4 +321,38 @@ class HourlyHealthData extends Equatable {
         steps, calories, distance, avgSportValue,
         avgBloodGlucose, avgRespirationRate, records,
       ];
+}
+
+/// Progress data for origin health data reading
+class OriginDataProgress extends Equatable {
+  /// Progress value from 0.0 to 1.0
+  final double? progress;
+  /// Current day being read (0=today, 1=yesterday, 2=2 days ago)
+  final int? day;
+  /// Label for the current day
+  final String? dayLabel;
+  /// Total number of days being read
+  final int? totalDays;
+
+  const OriginDataProgress({
+    this.progress,
+    this.day,
+    this.dayLabel,
+    this.totalDays,
+  });
+
+  factory OriginDataProgress.fromMap(Map<String, dynamic> map) {
+    return OriginDataProgress(
+      progress: (map['progress'] as num?)?.toDouble(),
+      day: (map['day'] as num?)?.toInt(),
+      dayLabel: map['dayLabel'] as String?,
+      totalDays: (map['totalDays'] as num?)?.toInt(),
+    );
+  }
+
+  /// Returns progress as percentage (0-100)
+  int get progressPercent => ((progress ?? 0) * 100).round();
+
+  @override
+  List<Object?> get props => [progress, day, dayLabel, totalDays];
 }

@@ -454,6 +454,12 @@ class VeepooSDK {
   Future<DailyHealthData?> readOriginDataForDay(int day) =>
       _platform.readOriginDataForDay(day);
 
+  /// Stream of origin data reading progress updates.
+  /// Provides real-time progress updates when reading origin health data.
+  /// The progress value ranges from 0.0 to 1.0.
+  Stream<OriginDataProgress?> get originDataProgress =>
+      _platform.originDataProgress;
+
   // ==================== Historical Data ====================
 
   /// Read heart rate history for a date range.

@@ -1,5 +1,7 @@
 package site.shasmatic.flutter_veepoo_sdk.utils
 
+import android.os.Handler
+import android.os.Looper
 import com.inuker.bluetooth.library.Code
 import com.veepoo.protocol.VPOperateManager
 import com.veepoo.protocol.listener.base.IBleWriteResponse
@@ -11,6 +13,7 @@ import com.veepoo.protocol.model.datas.OriginData3
 import com.veepoo.protocol.model.datas.OriginHalfHourData
 import com.veepoo.protocol.model.datas.Spo2hOriginData
 import com.veepoo.protocol.shareprence.VpSpGetUtil
+import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodChannel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -29,7 +32,9 @@ class OriginDataReader(
     private val result: MethodChannel.Result,
     private val vpManager: VPOperateManager,
     private val vpSpGetUtil: VpSpGetUtil,
+    private val progressEventSink: EventChannel.EventSink?,
 ) {
+    private val mainHandler = Handler(Looper.getMainLooper())
     private var hasReturnedResult = false
     private val coroutineScope = CoroutineScope(Dispatchers.Main + Job())
     private var timeoutJob: Job? = null
@@ -96,9 +101,35 @@ class OriginDataReader(
         }
     }
 
+    private fun sendProgress(progress: Float, day: Int, dayLabel: String) {
+        mainHandler.post {
+            progressEventSink?.success(mapOf(
+                "progress" to progress,
+                "day" to day,
+                "dayLabel" to dayLabel,
+                "totalDays" to totalDays
+            ))
+        }
+    }
+
+    private fun getDayLabel(day: Int): String {
+        return when (day) {
+            0 -> "Today"
+            1 -> "Yesterday"
+            2 -> "2 Days Ago"
+            else -> "$day Days Ago"
+        }
+    }
+
     private val originDataListener = object : IOriginDataListener {
         override fun onReadOriginProgress(progress: Float) {
             VPLogger.d("Origin data reading progress: ${progress * 100}%")
+            val overallProgress = if (totalDays > 1) {
+                (currentDay.toFloat() + progress) / totalDays.toFloat()
+            } else {
+                progress
+            }
+            sendProgress(overallProgress, currentDay, getDayLabel(currentDay))
         }
 
         override fun onReadOriginProgressDetail(day: Int, date: String?, allPackage: Int, currentPackage: Int) {
@@ -124,6 +155,12 @@ class OriginDataReader(
     private val originData3Listener = object : IOriginData3Listener {
         override fun onReadOriginProgress(progress: Float) {
             VPLogger.d("Origin data reading progress: ${progress * 100}%")
+            val overallProgress = if (totalDays > 1) {
+                (currentDay.toFloat() + progress) / totalDays.toFloat()
+            } else {
+                progress
+            }
+            sendProgress(overallProgress, currentDay, getDayLabel(currentDay))
         }
 
         override fun onReadOriginProgressDetail(day: Int, date: String?, allPackage: Int, currentPackage: Int) {

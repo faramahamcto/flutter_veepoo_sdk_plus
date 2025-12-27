@@ -53,6 +53,7 @@ class VPMethodChannelHandler(
     private var detectBloodPressureEventSink: EventChannel.EventSink? = null
     private var detectBloodGlucoseEventSink: EventChannel.EventSink? = null
     private var detectBloodComponentEventSink: EventChannel.EventSink? = null
+    private var originDataProgressEventSink: EventChannel.EventSink? = null
     private lateinit var result: MethodChannel.Result
 
     @RequiresApi(Build.VERSION_CODES.S)
@@ -419,6 +420,10 @@ class VPMethodChannelHandler(
         this.detectBloodComponentEventSink = eventSink
     }
 
+    fun setOriginDataProgressEventSink(eventSink: EventChannel.EventSink?) {
+        this.originDataProgressEventSink = eventSink
+    }
+
     private fun getBluetoothManager(result: MethodChannel.Result): VPBluetoothManager {
         return VPBluetoothManager(deviceStorage, result, activity!!, scanBluetoothEventSink, vpManager)
     }
@@ -468,7 +473,7 @@ class VPMethodChannelHandler(
     }
 
     private fun getOriginDataReader(): OriginDataReader {
-        return OriginDataReader(result, vpManager, vpSpGetUtil)
+        return OriginDataReader(result, vpManager, vpSpGetUtil, originDataProgressEventSink)
     }
 
     private fun handleReadOriginData3Days() {

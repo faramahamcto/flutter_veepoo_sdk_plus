@@ -1315,17 +1315,9 @@ Type: ${data.last.hrvType ?? 'N/A'}
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const CircularProgressIndicator(),
-            const SizedBox(height: 16),
-            Text('Reading health data for $label...'),
-            const SizedBox(height: 8),
-            const Text('This may take up to 60 seconds', style: TextStyle(fontSize: 12, color: Colors.grey)),
-          ],
-        ),
+      builder: (context) => _HealthDataProgressDialog(
+        veepooSdk: _veepooSdk,
+        label: label,
       ),
     );
 
@@ -1353,17 +1345,9 @@ Type: ${data.last.hrvType ?? 'N/A'}
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: const [
-            CircularProgressIndicator(),
-            SizedBox(height: 16),
-            Text('Reading health data for 3 days...'),
-            SizedBox(height: 8),
-            Text('This may take up to 90 seconds', style: TextStyle(fontSize: 12, color: Colors.grey)),
-          ],
-        ),
+      builder: (context) => _HealthDataProgressDialog(
+        veepooSdk: _veepooSdk,
+        label: '3 days',
       ),
     );
 
@@ -2045,4 +2029,94 @@ class _HourlyDataItem {
   final String label;
   final String value;
   _HourlyDataItem(this.label, this.value);
+}
+
+// ==================== Health Data Progress Dialog ====================
+
+class _HealthDataProgressDialog extends StatefulWidget {
+  final VeepooSDK veepooSdk;
+  final String label;
+
+  const _HealthDataProgressDialog({
+    required this.veepooSdk,
+    required this.label,
+  });
+
+  @override
+  State<_HealthDataProgressDialog> createState() => _HealthDataProgressDialogState();
+}
+
+class _HealthDataProgressDialogState extends State<_HealthDataProgressDialog> {
+  double _progress = 0.0;
+  String _dayLabel = '';
+  late StreamSubscription<OriginDataProgress?> _subscription;
+
+  @override
+  void initState() {
+    super.initState();
+    _subscription = widget.veepooSdk.originDataProgress.listen((progress) {
+      if (progress != null && mounted) {
+        setState(() {
+          _progress = progress.progress ?? 0.0;
+          _dayLabel = progress.dayLabel ?? '';
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _subscription.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final percentText = '${(_progress * 100).round()}%';
+    return AlertDialog(
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: 80,
+            height: 80,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                SizedBox(
+                  width: 80,
+                  height: 80,
+                  child: CircularProgressIndicator(
+                    value: _progress > 0 ? _progress : null,
+                    strokeWidth: 8,
+                    backgroundColor: Colors.grey.shade200,
+                  ),
+                ),
+                Text(
+                  _progress > 0 ? percentText : '...',
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text('Reading health data for ${widget.label}...'),
+          if (_dayLabel.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              'Processing: $_dayLabel',
+              style: const TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+          ],
+          const SizedBox(height: 8),
+          Text(
+            widget.label == '3 days'
+                ? 'This may take up to 90 seconds'
+                : 'This may take up to 60 seconds',
+            style: const TextStyle(fontSize: 12, color: Colors.grey),
+          ),
+        ],
+      ),
+    );
+  }
 }

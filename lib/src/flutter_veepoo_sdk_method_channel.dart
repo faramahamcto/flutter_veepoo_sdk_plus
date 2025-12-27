@@ -26,6 +26,8 @@ class MethodChannelFlutterVeepooSdk extends FlutterVeepooSdkPlatform {
       const EventChannel('$_channelName/detect_blood_component_event_channel');
   final EventChannel stepDataEventChannel =
       const EventChannel('$_channelName/step_data_event_channel');
+  final EventChannel originDataProgressEventChannel =
+      const EventChannel('$_channelName/origin_data_progress_event_channel');
 
   // Cached streams
   Stream<List<BluetoothDevice>>? _bluetoothDevicesStream;
@@ -37,6 +39,7 @@ class MethodChannelFlutterVeepooSdk extends FlutterVeepooSdkPlatform {
   Stream<EcgData?>? _ecgDataStream;
   Stream<BloodComponent?>? _bloodComponentStream;
   Stream<StepData?>? _stepDataStream;
+  Stream<OriginDataProgress?>? _originDataProgressStream;
 
   /// Requests Bluetooth permissions.
   ///
@@ -1267,5 +1270,24 @@ class MethodChannelFlutterVeepooSdk extends FlutterVeepooSdkPlatform {
     }).asBroadcastStream();
 
     return _stepDataStream!;
+  }
+
+  @override
+  Stream<OriginDataProgress?> get originDataProgress {
+    _originDataProgressStream ??= originDataProgressEventChannel
+        .receiveBroadcastStream()
+        .map((dynamic event) {
+      if (event is Map<Object?, Object?>) {
+        final result =
+            event.map((key, value) => MapEntry(key.toString(), value));
+        return OriginDataProgress.fromMap(result);
+      } else {
+        throw VeepooException(
+          message: 'Unexpected event type: ${event.runtimeType}',
+        );
+      }
+    }).asBroadcastStream();
+
+    return _originDataProgressStream!;
   }
 }

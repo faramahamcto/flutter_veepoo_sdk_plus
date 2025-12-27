@@ -474,4 +474,9 @@ abstract class FlutterVeepooSdkPlatform extends PlatformInterface {
   Stream<StepData?> get stepData {
     throw UnimplementedError('stepDataEventChannel has not been implemented.');
   }
+
+  /// Stream of origin data reading progress updates.
+  Stream<OriginDataProgress?> get originDataProgress {
+    throw UnimplementedError('originDataProgressEventChannel has not been implemented.');
+  }
 }
