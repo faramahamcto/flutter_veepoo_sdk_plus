@@ -5,9 +5,11 @@ import com.veepoo.protocol.VPOperateManager
 import com.veepoo.protocol.listener.base.IBleWriteResponse
 import com.veepoo.protocol.listener.data.IOriginDataListener
 import com.veepoo.protocol.listener.data.IOriginData3Listener
+import com.veepoo.protocol.model.datas.HRVOriginData
 import com.veepoo.protocol.model.datas.OriginData
 import com.veepoo.protocol.model.datas.OriginData3
 import com.veepoo.protocol.model.datas.OriginHalfHourData
+import com.veepoo.protocol.model.datas.Spo2hOriginData
 import com.veepoo.protocol.shareprence.VpSpGetUtil
 import io.flutter.plugin.common.MethodChannel
 import kotlinx.coroutines.CoroutineScope
@@ -114,13 +116,17 @@ class OriginDataReader(
         }
 
         // Check device protocol version to determine which listener to use
-        val protocolVersion = vpSpGetUtil.getProtocolVersion()
-        VPLogger.d("Device protocol version: $protocolVersion")
+        val protocolVersion = vpSpGetUtil.getOriginProtocolVersion()
+        VPLogger.d("Device origin protocol version: $protocolVersion")
 
+        // readOriginDataSingleDay(writeResponse, listener, day, position, watchday)
+        // day: 0=today, 1=yesterday, etc.
+        // position: starting record position (1-288)
+        // watchday: which day on the watch (typically same as day)
         if (protocolVersion == 3 || protocolVersion == 5) {
-            vpManager.readOriginDataSingleDay(writeResponse, originData3Listener, day, 1)
+            vpManager.readOriginDataSingleDay(writeResponse, originData3Listener, day, 1, day)
         } else {
-            vpManager.readOriginDataSingleDay(writeResponse, originDataListener, day, 1)
+            vpManager.readOriginDataSingleDay(writeResponse, originDataListener, day, 1, day)
         }
     }
 
@@ -158,7 +164,7 @@ class OriginDataReader(
             VPLogger.d("Origin reading detail - day: $day, date: $date, package: $currentPackage/$allPackage")
         }
 
-        override fun onOriginFiveMinuteListDataChange(originData3List: List<OriginData3>?) {
+        override fun onOriginFiveMinuteListDataChange(originData3List: MutableList<OriginData3>?) {
             if (originData3List != null) {
                 for (originData in originData3List) {
                     addOriginData3(originData)
@@ -170,11 +176,11 @@ class OriginDataReader(
             VPLogger.d("Half hour data received for day $currentDay")
         }
 
-        override fun onOriginHRVOriginListDataChange(hrvList: List<*>?) {
+        override fun onOriginHRVOriginListDataChange(hrvList: MutableList<HRVOriginData>?) {
             VPLogger.d("HRV origin data received: ${hrvList?.size} records")
         }
 
-        override fun onOriginSpo2OriginListDataChange(spo2List: List<*>?) {
+        override fun onOriginSpo2OriginListDataChange(spo2List: MutableList<Spo2hOriginData>?) {
             VPLogger.d("SpO2 origin data received: ${spo2List?.size} records")
         }
 
@@ -185,7 +191,7 @@ class OriginDataReader(
     }
 
     private fun addOriginData(originData: OriginData) {
-        val timeData = originData.mTime
+        val timeData = originData.getmTime()
         val timeStr = if (timeData != null) {
             String.format("%02d:%02d", timeData.hour, timeData.minute)
         } else null
@@ -208,7 +214,7 @@ class OriginDataReader(
     }
 
     private fun addOriginData3(originData: OriginData3) {
-        val timeData = originData.mTime
+        val timeData = originData.getmTime()
         val timeStr = if (timeData != null) {
             String.format("%02d:%02d", timeData.hour, timeData.minute)
         } else null
