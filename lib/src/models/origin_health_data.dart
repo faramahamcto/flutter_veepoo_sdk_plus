@@ -1,53 +1,45 @@
 part of '../../flutter_veepoo_sdk.dart';
 
 /// Origin health data model representing 5-minute interval health data
-/// from the Veepoo device.
 class OriginHealthData extends Equatable {
-  /// Date of the record (format: YYYY-MM-DD)
   final String? date;
-
-  /// Time of the record (format: HH:mm)
   final String? time;
-
-  /// Heart rate value (30-200 bpm)
+  // Heart Rate
   final int? heartRate;
-
-  /// Step count for this 5-minute interval
-  final int? steps;
-
-  /// Systolic blood pressure (mmHg)
+  // Blood Pressure
   final int? systolic;
-
-  /// Diastolic blood pressure (mmHg)
   final int? diastolic;
-
-  /// Temperature value in Celsius
+  // Temperature
   final double? temperature;
-
-  /// Calories burned
-  final double? calories;
-
-  /// Distance in kilometers
-  final double? distance;
-
-  /// Sport/exercise intensity value (0-65536)
-  final int? sportValue;
-
-  /// Blood oxygen percentage
+  // Blood Oxygen
   final int? bloodOxygen;
+  // Activity
+  final int? steps;
+  final double? calories;
+  final double? distance;
+  final int? sportValue;
+  // Blood Glucose
+  final int? bloodGlucose;
+  // Respiration Rate
+  final int? respirationRate;
+  // ECG Heart Rate
+  final int? ecgHeartRate;
 
   const OriginHealthData({
     this.date,
     this.time,
     this.heartRate,
-    this.steps,
     this.systolic,
     this.diastolic,
     this.temperature,
+    this.bloodOxygen,
+    this.steps,
     this.calories,
     this.distance,
     this.sportValue,
-    this.bloodOxygen,
+    this.bloodGlucose,
+    this.respirationRate,
+    this.ecgHeartRate,
   });
 
   factory OriginHealthData.fromMap(Map<String, dynamic> map) {
@@ -55,14 +47,17 @@ class OriginHealthData extends Equatable {
       date: map['date'] as String?,
       time: map['time'] as String?,
       heartRate: map['heartRate'] as int?,
-      steps: map['steps'] as int?,
       systolic: map['systolic'] as int?,
       diastolic: map['diastolic'] as int?,
       temperature: (map['temperature'] as num?)?.toDouble(),
+      bloodOxygen: map['bloodOxygen'] as int?,
+      steps: map['steps'] as int?,
       calories: (map['calories'] as num?)?.toDouble(),
       distance: (map['distance'] as num?)?.toDouble(),
       sportValue: map['sportValue'] as int?,
-      bloodOxygen: map['bloodOxygen'] as int?,
+      bloodGlucose: map['bloodGlucose'] as int?,
+      respirationRate: map['respirationRate'] as int?,
+      ecgHeartRate: map['ecgHeartRate'] as int?,
     );
   }
 
@@ -71,83 +66,84 @@ class OriginHealthData extends Equatable {
       'date': date,
       'time': time,
       'heartRate': heartRate,
-      'steps': steps,
       'systolic': systolic,
       'diastolic': diastolic,
       'temperature': temperature,
+      'bloodOxygen': bloodOxygen,
+      'steps': steps,
       'calories': calories,
       'distance': distance,
       'sportValue': sportValue,
-      'bloodOxygen': bloodOxygen,
+      'bloodGlucose': bloodGlucose,
+      'respirationRate': respirationRate,
+      'ecgHeartRate': ecgHeartRate,
     };
   }
 
   @override
   List<Object?> get props => [
-        date,
-        time,
-        heartRate,
-        steps,
-        systolic,
-        diastolic,
-        temperature,
-        calories,
-        distance,
-        sportValue,
-        bloodOxygen,
+        date, time, heartRate, systolic, diastolic, temperature,
+        bloodOxygen, steps, calories, distance, sportValue,
+        bloodGlucose, respirationRate, ecgHeartRate,
       ];
 }
 
-/// Daily health data summary containing aggregated data for a day
+/// Daily health data summary
 class DailyHealthData extends Equatable {
-  /// Date of the data (format: YYYY-MM-DD)
   final String? date;
-
-  /// Day label (Today, Yesterday, 2 Days Ago)
   final String? dayLabel;
-
-  /// Total steps for the day
-  final int? totalSteps;
-
-  /// Average heart rate for the day
+  // Heart Rate
   final int? avgHeartRate;
-
-  /// Maximum heart rate for the day
   final int? maxHeartRate;
-
-  /// Minimum heart rate for the day (non-zero values)
   final int? minHeartRate;
-
-  /// Average systolic blood pressure
+  // Blood Pressure
   final int? avgSystolic;
-
-  /// Average diastolic blood pressure
   final int? avgDiastolic;
-
-  /// Total calories burned
-  final double? totalCalories;
-
-  /// Total distance in kilometers
-  final double? totalDistance;
-
-  /// Average blood oxygen percentage
+  final int? maxSystolic;
+  final int? minSystolic;
+  // Temperature
+  final double? avgTemperature;
+  final double? maxTemperature;
+  final double? minTemperature;
+  // Blood Oxygen
   final int? avgBloodOxygen;
-
-  /// List of hourly health data
+  final int? minBloodOxygen;
+  // Activity
+  final int? totalSteps;
+  final double? totalCalories;
+  final double? totalDistance;
+  final int? avgSportValue;
+  // Blood Glucose
+  final int? avgBloodGlucose;
+  // Respiration Rate
+  final int? avgRespirationRate;
+  // ECG Heart Rate
+  final int? avgEcgHeartRate;
+  // Hourly data
   final List<HourlyHealthData>? hourlyData;
 
   const DailyHealthData({
     this.date,
     this.dayLabel,
-    this.totalSteps,
     this.avgHeartRate,
     this.maxHeartRate,
     this.minHeartRate,
     this.avgSystolic,
     this.avgDiastolic,
+    this.maxSystolic,
+    this.minSystolic,
+    this.avgTemperature,
+    this.maxTemperature,
+    this.minTemperature,
+    this.avgBloodOxygen,
+    this.minBloodOxygen,
+    this.totalSteps,
     this.totalCalories,
     this.totalDistance,
-    this.avgBloodOxygen,
+    this.avgSportValue,
+    this.avgBloodGlucose,
+    this.avgRespirationRate,
+    this.avgEcgHeartRate,
     this.hourlyData,
   });
 
@@ -162,15 +158,25 @@ class DailyHealthData extends Equatable {
     return DailyHealthData(
       date: map['date'] as String?,
       dayLabel: map['dayLabel'] as String?,
-      totalSteps: map['totalSteps'] as int?,
       avgHeartRate: map['avgHeartRate'] as int?,
       maxHeartRate: map['maxHeartRate'] as int?,
       minHeartRate: map['minHeartRate'] as int?,
       avgSystolic: map['avgSystolic'] as int?,
       avgDiastolic: map['avgDiastolic'] as int?,
+      maxSystolic: map['maxSystolic'] as int?,
+      minSystolic: map['minSystolic'] as int?,
+      avgTemperature: (map['avgTemperature'] as num?)?.toDouble(),
+      maxTemperature: (map['maxTemperature'] as num?)?.toDouble(),
+      minTemperature: (map['minTemperature'] as num?)?.toDouble(),
+      avgBloodOxygen: map['avgBloodOxygen'] as int?,
+      minBloodOxygen: map['minBloodOxygen'] as int?,
+      totalSteps: map['totalSteps'] as int?,
       totalCalories: (map['totalCalories'] as num?)?.toDouble(),
       totalDistance: (map['totalDistance'] as num?)?.toDouble(),
-      avgBloodOxygen: map['avgBloodOxygen'] as int?,
+      avgSportValue: map['avgSportValue'] as int?,
+      avgBloodGlucose: map['avgBloodGlucose'] as int?,
+      avgRespirationRate: map['avgRespirationRate'] as int?,
+      avgEcgHeartRate: map['avgEcgHeartRate'] as int?,
       hourlyData: hourlyData,
     );
   }
@@ -179,86 +185,83 @@ class DailyHealthData extends Equatable {
     return {
       'date': date,
       'dayLabel': dayLabel,
-      'totalSteps': totalSteps,
       'avgHeartRate': avgHeartRate,
       'maxHeartRate': maxHeartRate,
       'minHeartRate': minHeartRate,
       'avgSystolic': avgSystolic,
       'avgDiastolic': avgDiastolic,
+      'maxSystolic': maxSystolic,
+      'minSystolic': minSystolic,
+      'avgTemperature': avgTemperature,
+      'maxTemperature': maxTemperature,
+      'minTemperature': minTemperature,
+      'avgBloodOxygen': avgBloodOxygen,
+      'minBloodOxygen': minBloodOxygen,
+      'totalSteps': totalSteps,
       'totalCalories': totalCalories,
       'totalDistance': totalDistance,
-      'avgBloodOxygen': avgBloodOxygen,
+      'avgSportValue': avgSportValue,
+      'avgBloodGlucose': avgBloodGlucose,
+      'avgRespirationRate': avgRespirationRate,
+      'avgEcgHeartRate': avgEcgHeartRate,
       'hourlyData': hourlyData?.map((e) => e.toMap()).toList(),
     };
   }
 
   @override
   List<Object?> get props => [
-        date,
-        dayLabel,
-        totalSteps,
-        avgHeartRate,
-        maxHeartRate,
-        minHeartRate,
-        avgSystolic,
-        avgDiastolic,
-        totalCalories,
-        totalDistance,
-        avgBloodOxygen,
-        hourlyData,
+        date, dayLabel, avgHeartRate, maxHeartRate, minHeartRate,
+        avgSystolic, avgDiastolic, maxSystolic, minSystolic,
+        avgTemperature, maxTemperature, minTemperature,
+        avgBloodOxygen, minBloodOxygen,
+        totalSteps, totalCalories, totalDistance, avgSportValue,
+        avgBloodGlucose, avgRespirationRate, avgEcgHeartRate, hourlyData,
       ];
 }
 
-/// Hourly health data containing aggregated data for one hour
+/// Hourly health data
 class HourlyHealthData extends Equatable {
-  /// Hour of the day (0-23)
   final int? hour;
-
-  /// Formatted hour label (e.g., "09:00", "14:00")
   final String? hourLabel;
-
-  /// Steps for this hour
-  final int? steps;
-
-  /// Average heart rate for this hour
+  // Heart Rate
   final int? avgHeartRate;
-
-  /// Maximum heart rate for this hour
   final int? maxHeartRate;
-
-  /// Minimum heart rate for this hour (non-zero)
   final int? minHeartRate;
-
-  /// Average systolic blood pressure for this hour
+  // Blood Pressure
   final int? avgSystolic;
-
-  /// Average diastolic blood pressure for this hour
   final int? avgDiastolic;
-
-  /// Calories burned in this hour
-  final double? calories;
-
-  /// Distance in this hour
-  final double? distance;
-
-  /// Average blood oxygen for this hour
+  // Temperature
+  final double? avgTemperature;
+  // Blood Oxygen
   final int? avgBloodOxygen;
-
-  /// List of 5-minute interval data for this hour
+  // Activity
+  final int? steps;
+  final double? calories;
+  final double? distance;
+  final int? avgSportValue;
+  // Blood Glucose
+  final int? avgBloodGlucose;
+  // Respiration Rate
+  final int? avgRespirationRate;
+  // Raw records
   final List<OriginHealthData>? records;
 
   const HourlyHealthData({
     this.hour,
     this.hourLabel,
-    this.steps,
     this.avgHeartRate,
     this.maxHeartRate,
     this.minHeartRate,
     this.avgSystolic,
     this.avgDiastolic,
+    this.avgTemperature,
+    this.avgBloodOxygen,
+    this.steps,
     this.calories,
     this.distance,
-    this.avgBloodOxygen,
+    this.avgSportValue,
+    this.avgBloodGlucose,
+    this.avgRespirationRate,
     this.records,
   });
 
@@ -273,15 +276,19 @@ class HourlyHealthData extends Equatable {
     return HourlyHealthData(
       hour: map['hour'] as int?,
       hourLabel: map['hourLabel'] as String?,
-      steps: map['steps'] as int?,
       avgHeartRate: map['avgHeartRate'] as int?,
       maxHeartRate: map['maxHeartRate'] as int?,
       minHeartRate: map['minHeartRate'] as int?,
       avgSystolic: map['avgSystolic'] as int?,
       avgDiastolic: map['avgDiastolic'] as int?,
+      avgTemperature: (map['avgTemperature'] as num?)?.toDouble(),
+      avgBloodOxygen: map['avgBloodOxygen'] as int?,
+      steps: map['steps'] as int?,
       calories: (map['calories'] as num?)?.toDouble(),
       distance: (map['distance'] as num?)?.toDouble(),
-      avgBloodOxygen: map['avgBloodOxygen'] as int?,
+      avgSportValue: map['avgSportValue'] as int?,
+      avgBloodGlucose: map['avgBloodGlucose'] as int?,
+      avgRespirationRate: map['avgRespirationRate'] as int?,
       records: records,
     );
   }
@@ -290,32 +297,28 @@ class HourlyHealthData extends Equatable {
     return {
       'hour': hour,
       'hourLabel': hourLabel,
-      'steps': steps,
       'avgHeartRate': avgHeartRate,
       'maxHeartRate': maxHeartRate,
       'minHeartRate': minHeartRate,
       'avgSystolic': avgSystolic,
       'avgDiastolic': avgDiastolic,
+      'avgTemperature': avgTemperature,
+      'avgBloodOxygen': avgBloodOxygen,
+      'steps': steps,
       'calories': calories,
       'distance': distance,
-      'avgBloodOxygen': avgBloodOxygen,
+      'avgSportValue': avgSportValue,
+      'avgBloodGlucose': avgBloodGlucose,
+      'avgRespirationRate': avgRespirationRate,
       'records': records?.map((e) => e.toMap()).toList(),
     };
   }
 
   @override
   List<Object?> get props => [
-        hour,
-        hourLabel,
-        steps,
-        avgHeartRate,
-        maxHeartRate,
-        minHeartRate,
-        avgSystolic,
-        avgDiastolic,
-        calories,
-        distance,
-        avgBloodOxygen,
-        records,
+        hour, hourLabel, avgHeartRate, maxHeartRate, minHeartRate,
+        avgSystolic, avgDiastolic, avgTemperature, avgBloodOxygen,
+        steps, calories, distance, avgSportValue,
+        avgBloodGlucose, avgRespirationRate, records,
       ];
 }
