@@ -1016,6 +1016,44 @@ class MethodChannelFlutterVeepooSdk extends FlutterVeepooSdkPlatform {
     }
   }
 
+  // ==================== Origin Health Data ====================
+
+  @override
+  Future<List<DailyHealthData>> readOriginData3Days() async {
+    try {
+      final result = await methodChannel.invokeListMethod<Map>(
+        'readOriginData3Days',
+      );
+      if (result == null) return [];
+      return result
+          .map((item) => DailyHealthData.fromMap(Map<String, dynamic>.from(item)))
+          .toList();
+    } on PlatformException catch (error, stackTrace) {
+      throw VeepooException(
+        message: 'Failed to read origin data for 3 days: ${error.message}',
+        details: error.details,
+        stacktrace: stackTrace,
+      );
+    }
+  }
+
+  @override
+  Future<DailyHealthData?> readOriginDataForDay(int day) async {
+    try {
+      final result = await methodChannel.invokeMapMethod<String, dynamic>(
+        'readOriginDataForDay',
+        {'day': day},
+      );
+      return result != null ? DailyHealthData.fromMap(result) : null;
+    } on PlatformException catch (error, stackTrace) {
+      throw VeepooException(
+        message: 'Failed to read origin data for day $day: ${error.message}',
+        details: error.details,
+        stacktrace: stackTrace,
+      );
+    }
+  }
+
   // ==================== Historical Data ====================
 
   @override

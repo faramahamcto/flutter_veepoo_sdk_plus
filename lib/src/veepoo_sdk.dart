@@ -439,6 +439,21 @@ class VeepooSDK {
   Future<void> setDoNotDisturb(bool enabled, int startMinutes, int endMinutes) =>
       _platform.setDoNotDisturb(enabled, startMinutes, endMinutes);
 
+  // ==================== Origin Health Data ====================
+
+  /// Read origin health data for 3 days (today, yesterday, 2 days ago).
+  /// This reads 5-minute interval data including heart rate, blood pressure,
+  /// steps, calories, and distance.
+  /// Returns a list of [DailyHealthData] objects with aggregated daily and hourly data.
+  Future<List<DailyHealthData>> readOriginData3Days() =>
+      _platform.readOriginData3Days();
+
+  /// Read origin health data for a specific day.
+  /// [day] - 0 for today, 1 for yesterday, 2 for 2 days ago
+  /// Returns a [DailyHealthData] object with aggregated daily and hourly data.
+  Future<DailyHealthData?> readOriginDataForDay(int day) =>
+      _platform.readOriginDataForDay(day);
+
   // ==================== Historical Data ====================
 
   /// Read heart rate history for a date range.

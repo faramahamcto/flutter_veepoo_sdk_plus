@@ -365,6 +365,21 @@ abstract class FlutterVeepooSdkPlatform extends PlatformInterface {
     throw UnimplementedError('setDoNotDisturb() has not been implemented.');
   }
 
+  // ==================== Origin Health Data ====================
+
+  /// Read origin health data for 3 days (today, yesterday, 2 days ago).
+  /// Returns a list of [DailyHealthData] objects with aggregated data.
+  Future<List<DailyHealthData>> readOriginData3Days() {
+    throw UnimplementedError('readOriginData3Days() has not been implemented.');
+  }
+
+  /// Read origin health data for a specific day.
+  /// [day] - 0 for today, 1 for yesterday, 2 for 2 days ago
+  /// Returns a [DailyHealthData] object with aggregated data.
+  Future<DailyHealthData?> readOriginDataForDay(int day) {
+    throw UnimplementedError('readOriginDataForDay() has not been implemented.');
+  }
+
   // ==================== Historical Data ====================
 
   /// Read historical heart rate data for a date range.
