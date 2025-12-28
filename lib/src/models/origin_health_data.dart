@@ -24,6 +24,12 @@ class OriginHealthData extends Equatable {
   final int? respirationRate;
   // ECG Heart Rate
   final int? ecgHeartRate;
+  // Blood Components
+  final double? uricAcid;           // μmol/L
+  final double? totalCholesterol;   // mmol/L
+  final double? triglyceride;       // mmol/L
+  final double? hdl;                // mmol/L (High-density lipoprotein)
+  final double? ldl;                // mmol/L (Low-density lipoprotein)
 
   const OriginHealthData({
     this.date,
@@ -40,6 +46,11 @@ class OriginHealthData extends Equatable {
     this.bloodGlucose,
     this.respirationRate,
     this.ecgHeartRate,
+    this.uricAcid,
+    this.totalCholesterol,
+    this.triglyceride,
+    this.hdl,
+    this.ldl,
   });
 
   factory OriginHealthData.fromMap(Map<String, dynamic> map) {
@@ -58,6 +69,11 @@ class OriginHealthData extends Equatable {
       bloodGlucose: (map['bloodGlucose'] as num?)?.toInt(),
       respirationRate: (map['respirationRate'] as num?)?.toInt(),
       ecgHeartRate: (map['ecgHeartRate'] as num?)?.toInt(),
+      uricAcid: (map['uricAcid'] as num?)?.toDouble(),
+      totalCholesterol: (map['totalCholesterol'] as num?)?.toDouble(),
+      triglyceride: (map['triglyceride'] as num?)?.toDouble(),
+      hdl: (map['hdl'] as num?)?.toDouble(),
+      ldl: (map['ldl'] as num?)?.toDouble(),
     );
   }
 
@@ -77,6 +93,11 @@ class OriginHealthData extends Equatable {
       'bloodGlucose': bloodGlucose,
       'respirationRate': respirationRate,
       'ecgHeartRate': ecgHeartRate,
+      'uricAcid': uricAcid,
+      'totalCholesterol': totalCholesterol,
+      'triglyceride': triglyceride,
+      'hdl': hdl,
+      'ldl': ldl,
     };
   }
 
@@ -85,6 +106,7 @@ class OriginHealthData extends Equatable {
         date, time, heartRate, systolic, diastolic, temperature,
         bloodOxygen, steps, calories, distance, sportValue,
         bloodGlucose, respirationRate, ecgHeartRate,
+        uricAcid, totalCholesterol, triglyceride, hdl, ldl,
       ];
 }
 
@@ -119,6 +141,12 @@ class DailyHealthData extends Equatable {
   final int? avgRespirationRate;
   // ECG Heart Rate
   final int? avgEcgHeartRate;
+  // Blood Components
+  final double? avgUricAcid;           // μmol/L
+  final double? avgTotalCholesterol;   // mmol/L
+  final double? avgTriglyceride;       // mmol/L
+  final double? avgHdl;                // mmol/L
+  final double? avgLdl;                // mmol/L
   // Hourly data
   final List<HourlyHealthData>? hourlyData;
 
@@ -144,6 +172,11 @@ class DailyHealthData extends Equatable {
     this.avgBloodGlucose,
     this.avgRespirationRate,
     this.avgEcgHeartRate,
+    this.avgUricAcid,
+    this.avgTotalCholesterol,
+    this.avgTriglyceride,
+    this.avgHdl,
+    this.avgLdl,
     this.hourlyData,
   });
 
@@ -177,6 +210,11 @@ class DailyHealthData extends Equatable {
       avgBloodGlucose: (map['avgBloodGlucose'] as num?)?.toInt(),
       avgRespirationRate: (map['avgRespirationRate'] as num?)?.toInt(),
       avgEcgHeartRate: (map['avgEcgHeartRate'] as num?)?.toInt(),
+      avgUricAcid: (map['avgUricAcid'] as num?)?.toDouble(),
+      avgTotalCholesterol: (map['avgTotalCholesterol'] as num?)?.toDouble(),
+      avgTriglyceride: (map['avgTriglyceride'] as num?)?.toDouble(),
+      avgHdl: (map['avgHdl'] as num?)?.toDouble(),
+      avgLdl: (map['avgLdl'] as num?)?.toDouble(),
       hourlyData: hourlyData,
     );
   }
@@ -204,6 +242,11 @@ class DailyHealthData extends Equatable {
       'avgBloodGlucose': avgBloodGlucose,
       'avgRespirationRate': avgRespirationRate,
       'avgEcgHeartRate': avgEcgHeartRate,
+      'avgUricAcid': avgUricAcid,
+      'avgTotalCholesterol': avgTotalCholesterol,
+      'avgTriglyceride': avgTriglyceride,
+      'avgHdl': avgHdl,
+      'avgLdl': avgLdl,
       'hourlyData': hourlyData?.map((e) => e.toMap()).toList(),
     };
   }
@@ -215,7 +258,9 @@ class DailyHealthData extends Equatable {
         avgTemperature, maxTemperature, minTemperature,
         avgBloodOxygen, minBloodOxygen,
         totalSteps, totalCalories, totalDistance, avgSportValue,
-        avgBloodGlucose, avgRespirationRate, avgEcgHeartRate, hourlyData,
+        avgBloodGlucose, avgRespirationRate, avgEcgHeartRate,
+        avgUricAcid, avgTotalCholesterol, avgTriglyceride, avgHdl, avgLdl,
+        hourlyData,
       ];
 }
 
@@ -243,6 +288,12 @@ class HourlyHealthData extends Equatable {
   final int? avgBloodGlucose;
   // Respiration Rate
   final int? avgRespirationRate;
+  // Blood Components
+  final double? avgUricAcid;           // μmol/L
+  final double? avgTotalCholesterol;   // mmol/L
+  final double? avgTriglyceride;       // mmol/L
+  final double? avgHdl;                // mmol/L
+  final double? avgLdl;                // mmol/L
   // Raw records
   final List<OriginHealthData>? records;
 
@@ -262,6 +313,11 @@ class HourlyHealthData extends Equatable {
     this.avgSportValue,
     this.avgBloodGlucose,
     this.avgRespirationRate,
+    this.avgUricAcid,
+    this.avgTotalCholesterol,
+    this.avgTriglyceride,
+    this.avgHdl,
+    this.avgLdl,
     this.records,
   });
 
@@ -289,6 +345,11 @@ class HourlyHealthData extends Equatable {
       avgSportValue: (map['avgSportValue'] as num?)?.toInt(),
       avgBloodGlucose: (map['avgBloodGlucose'] as num?)?.toInt(),
       avgRespirationRate: (map['avgRespirationRate'] as num?)?.toInt(),
+      avgUricAcid: (map['avgUricAcid'] as num?)?.toDouble(),
+      avgTotalCholesterol: (map['avgTotalCholesterol'] as num?)?.toDouble(),
+      avgTriglyceride: (map['avgTriglyceride'] as num?)?.toDouble(),
+      avgHdl: (map['avgHdl'] as num?)?.toDouble(),
+      avgLdl: (map['avgLdl'] as num?)?.toDouble(),
       records: records,
     );
   }
@@ -310,6 +371,11 @@ class HourlyHealthData extends Equatable {
       'avgSportValue': avgSportValue,
       'avgBloodGlucose': avgBloodGlucose,
       'avgRespirationRate': avgRespirationRate,
+      'avgUricAcid': avgUricAcid,
+      'avgTotalCholesterol': avgTotalCholesterol,
+      'avgTriglyceride': avgTriglyceride,
+      'avgHdl': avgHdl,
+      'avgLdl': avgLdl,
       'records': records?.map((e) => e.toMap()).toList(),
     };
   }
@@ -319,7 +385,9 @@ class HourlyHealthData extends Equatable {
         hour, hourLabel, avgHeartRate, maxHeartRate, minHeartRate,
         avgSystolic, avgDiastolic, avgTemperature, avgBloodOxygen,
         steps, calories, distance, avgSportValue,
-        avgBloodGlucose, avgRespirationRate, records,
+        avgBloodGlucose, avgRespirationRate,
+        avgUricAcid, avgTotalCholesterol, avgTriglyceride, avgHdl, avgLdl,
+        records,
       ];
 }
 

@@ -1735,6 +1735,15 @@ class DailyHealthDataPage extends StatelessWidget {
             _buildCategoryCard('Respiration Rate', Icons.air, Colors.teal, [
               _DataItem('Average', '${data.avgRespirationRate} breaths/min'),
             ]),
+          if (data.avgUricAcid != null || data.avgTotalCholesterol != null ||
+              data.avgTriglyceride != null || data.avgHdl != null || data.avgLdl != null)
+            _buildCategoryCard('Blood Components', Icons.science, Colors.indigo, [
+              if (data.avgUricAcid != null) _DataItem('Uric Acid', '${data.avgUricAcid?.toStringAsFixed(1)} μmol/L'),
+              if (data.avgTotalCholesterol != null) _DataItem('Total Cholesterol', '${data.avgTotalCholesterol?.toStringAsFixed(2)} mmol/L'),
+              if (data.avgTriglyceride != null) _DataItem('Triglyceride', '${data.avgTriglyceride?.toStringAsFixed(2)} mmol/L'),
+              if (data.avgHdl != null) _DataItem('HDL', '${data.avgHdl?.toStringAsFixed(2)} mmol/L'),
+              if (data.avgLdl != null) _DataItem('LDL', '${data.avgLdl?.toStringAsFixed(2)} mmol/L'),
+            ]),
           const SizedBox(height: 16),
           const Text('Hourly Breakdown', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
@@ -1882,6 +1891,15 @@ class HourlyHealthDataPage extends StatelessWidget {
             _buildCategoryCard('Respiration Rate', Icons.air, Colors.teal, [
               _HourlyDataItem('Average', '${data.avgRespirationRate} breaths/min'),
             ]),
+          if (data.avgUricAcid != null || data.avgTotalCholesterol != null ||
+              data.avgTriglyceride != null || data.avgHdl != null || data.avgLdl != null)
+            _buildCategoryCard('Blood Components', Icons.science, Colors.indigo, [
+              if (data.avgUricAcid != null) _HourlyDataItem('Uric Acid', '${data.avgUricAcid?.toStringAsFixed(1)} μmol/L'),
+              if (data.avgTotalCholesterol != null) _HourlyDataItem('Total Cholesterol', '${data.avgTotalCholesterol?.toStringAsFixed(2)} mmol/L'),
+              if (data.avgTriglyceride != null) _HourlyDataItem('Triglyceride', '${data.avgTriglyceride?.toStringAsFixed(2)} mmol/L'),
+              if (data.avgHdl != null) _HourlyDataItem('HDL', '${data.avgHdl?.toStringAsFixed(2)} mmol/L'),
+              if (data.avgLdl != null) _HourlyDataItem('LDL', '${data.avgLdl?.toStringAsFixed(2)} mmol/L'),
+            ]),
           const SizedBox(height: 20),
           Row(
             children: [
@@ -1987,6 +2005,16 @@ class HourlyHealthDataPage extends StatelessWidget {
                   _buildRecordItem('Respiration', '${record.respirationRate} /min', Icons.air, Colors.cyan),
                 if (record.ecgHeartRate != null)
                   _buildRecordItem('ECG Heart Rate', '${record.ecgHeartRate} BPM', Icons.monitor_heart_outlined, Colors.red.shade300),
+                if (record.uricAcid != null)
+                  _buildRecordItem('Uric Acid', '${record.uricAcid?.toStringAsFixed(1)} μmol/L', Icons.science, Colors.indigo),
+                if (record.totalCholesterol != null)
+                  _buildRecordItem('Cholesterol', '${record.totalCholesterol?.toStringAsFixed(2)} mmol/L', Icons.science, Colors.indigo.shade300),
+                if (record.triglyceride != null)
+                  _buildRecordItem('Triglyceride', '${record.triglyceride?.toStringAsFixed(2)} mmol/L', Icons.science, Colors.purple.shade300),
+                if (record.hdl != null)
+                  _buildRecordItem('HDL', '${record.hdl?.toStringAsFixed(2)} mmol/L', Icons.science, Colors.green.shade600),
+                if (record.ldl != null)
+                  _buildRecordItem('LDL', '${record.ldl?.toStringAsFixed(2)} mmol/L', Icons.science, Colors.red.shade600),
               ],
             ),
           ],

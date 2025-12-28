@@ -221,7 +221,13 @@ class OriginDataReader(
             // Respiration Rate (not available in OriginData)
             "respirationRate" to null,
             // ECG heart rate (not available in OriginData)
-            "ecgHeartRate" to null
+            "ecgHeartRate" to null,
+            // Blood Components (not available in OriginData)
+            "uricAcid" to null,
+            "totalCholesterol" to null,
+            "triglyceride" to null,
+            "hdl" to null,
+            "ldl" to null
         )
 
         currentDayData.add(dataMap)
@@ -238,6 +244,14 @@ class OriginDataReader(
         val respirationRate = originData.resRates?.firstOrNull { it > 0 }
         val ecgHeartRate = originData.ecgs?.firstOrNull { it > 0 }
         val ppgHeartRate = originData.ppgs?.firstOrNull { it > 0 }
+
+        // Extract blood component data
+        val bloodComponent = originData.bloodComponent
+        val uricAcid = bloodComponent?.uricAcid?.takeIf { it > 0 }
+        val totalCholesterol = bloodComponent?.tCHO?.takeIf { it > 0 }
+        val triglyceride = bloodComponent?.tAG?.takeIf { it > 0 }
+        val hdl = bloodComponent?.hDL?.takeIf { it > 0 }
+        val ldl = bloodComponent?.lDL?.takeIf { it > 0 }
 
         val dataMap = mapOf<String, Any?>(
             "date" to originData.date,
@@ -261,7 +275,13 @@ class OriginDataReader(
             // Respiration Rate
             "respirationRate" to respirationRate,
             // ECG Heart Rate
-            "ecgHeartRate" to ecgHeartRate
+            "ecgHeartRate" to ecgHeartRate,
+            // Blood Components
+            "uricAcid" to uricAcid,
+            "totalCholesterol" to totalCholesterol,
+            "triglyceride" to triglyceride,
+            "hdl" to hdl,
+            "ldl" to ldl
         )
 
         currentDayData.add(dataMap)
@@ -315,6 +335,12 @@ class OriginDataReader(
         val glucoses = records.mapNotNull { it["bloodGlucose"] as? Int }.filter { it > 0 }
         val respRates = records.mapNotNull { it["respirationRate"] as? Int }.filter { it > 0 }
         val ecgRates = records.mapNotNull { it["ecgHeartRate"] as? Int }.filter { it > 0 }
+        // Blood Components
+        val uricAcids = records.mapNotNull { (it["uricAcid"] as? Number)?.toDouble() }.filter { it > 0 }
+        val cholesterols = records.mapNotNull { (it["totalCholesterol"] as? Number)?.toDouble() }.filter { it > 0 }
+        val triglycerides = records.mapNotNull { (it["triglyceride"] as? Number)?.toDouble() }.filter { it > 0 }
+        val hdls = records.mapNotNull { (it["hdl"] as? Number)?.toDouble() }.filter { it > 0 }
+        val ldls = records.mapNotNull { (it["ldl"] as? Number)?.toDouble() }.filter { it > 0 }
 
         // Group by hour for hourly data
         val hourlyDataList = mutableListOf<Map<String, Any?>>()
@@ -361,6 +387,12 @@ class OriginDataReader(
             "avgRespirationRate" to if (respRates.isNotEmpty()) respRates.average().toInt() else null,
             // ECG Heart Rate
             "avgEcgHeartRate" to if (ecgRates.isNotEmpty()) ecgRates.average().toInt() else null,
+            // Blood Components
+            "avgUricAcid" to if (uricAcids.isNotEmpty()) uricAcids.average() else null,
+            "avgTotalCholesterol" to if (cholesterols.isNotEmpty()) cholesterols.average() else null,
+            "avgTriglyceride" to if (triglycerides.isNotEmpty()) triglycerides.average() else null,
+            "avgHdl" to if (hdls.isNotEmpty()) hdls.average() else null,
+            "avgLdl" to if (ldls.isNotEmpty()) ldls.average() else null,
             // Hourly data
             "hourlyData" to hourlyDataList
         )
@@ -378,6 +410,12 @@ class OriginDataReader(
         val sports = records.mapNotNull { it["sportValue"] as? Int }.filter { it > 0 }
         val glucoses = records.mapNotNull { it["bloodGlucose"] as? Int }.filter { it > 0 }
         val respRates = records.mapNotNull { it["respirationRate"] as? Int }.filter { it > 0 }
+        // Blood Components
+        val uricAcids = records.mapNotNull { (it["uricAcid"] as? Number)?.toDouble() }.filter { it > 0 }
+        val cholesterols = records.mapNotNull { (it["totalCholesterol"] as? Number)?.toDouble() }.filter { it > 0 }
+        val triglycerides = records.mapNotNull { (it["triglyceride"] as? Number)?.toDouble() }.filter { it > 0 }
+        val hdls = records.mapNotNull { (it["hdl"] as? Number)?.toDouble() }.filter { it > 0 }
+        val ldls = records.mapNotNull { (it["ldl"] as? Number)?.toDouble() }.filter { it > 0 }
 
         return mapOf<String, Any?>(
             "hour" to hour,
@@ -402,6 +440,12 @@ class OriginDataReader(
             "avgBloodGlucose" to if (glucoses.isNotEmpty()) glucoses.average().toInt() else null,
             // Respiration Rate
             "avgRespirationRate" to if (respRates.isNotEmpty()) respRates.average().toInt() else null,
+            // Blood Components
+            "avgUricAcid" to if (uricAcids.isNotEmpty()) uricAcids.average() else null,
+            "avgTotalCholesterol" to if (cholesterols.isNotEmpty()) cholesterols.average() else null,
+            "avgTriglyceride" to if (triglycerides.isNotEmpty()) triglycerides.average() else null,
+            "avgHdl" to if (hdls.isNotEmpty()) hdls.average() else null,
+            "avgLdl" to if (ldls.isNotEmpty()) ldls.average() else null,
             // Raw records
             "records" to records
         )
