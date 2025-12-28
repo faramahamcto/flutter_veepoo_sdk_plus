@@ -208,7 +208,7 @@ class OriginDataReader(
             "systolic" to if (originData.highValue > 0) originData.highValue else null,
             "diastolic" to if (originData.lowValue > 0) originData.lowValue else null,
             // Temperature
-            "temperature" to if (originData.temperature > 0) originData.temperature.toDouble() / 10.0 else null,
+            "temperature" to if (originData.temperature > 0) originData.temperature.toDouble() else null,
             // Steps & Activity
             "steps" to if (originData.stepValue > 0) originData.stepValue else null,
             "calories" to if (originData.calValue > 0) originData.calValue.toDouble() else null,
@@ -248,7 +248,7 @@ class OriginDataReader(
             "systolic" to if (originData.highValue > 0) originData.highValue else null,
             "diastolic" to if (originData.lowValue > 0) originData.lowValue else null,
             // Temperature
-            "temperature" to if (originData.temperature > 0) originData.temperature.toDouble() / 10.0 else null,
+            "temperature" to if (originData.temperature > 0) originData.temperature.toDouble() else null,
             // Blood Oxygen
             "bloodOxygen" to bloodOxygen,
             // Steps & Activity
