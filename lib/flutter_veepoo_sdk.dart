@@ -20,6 +20,7 @@ part 'src/models/blood_component.dart';
 part 'src/models/blood_glucose.dart';
 part 'src/models/blood_pressure.dart';
 part 'src/models/bluetooth_device.dart';
+part 'src/models/connection_status.dart';
 part 'src/models/device_info.dart';
 part 'src/models/device_settings.dart';
 part 'src/models/ecg_data.dart';

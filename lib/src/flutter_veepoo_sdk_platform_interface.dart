@@ -479,4 +479,12 @@ abstract class FlutterVeepooSdkPlatform extends PlatformInterface {
   Stream<OriginDataProgress?> get originDataProgress {
     throw UnimplementedError('originDataProgressEventChannel has not been implemented.');
   }
+
+  /// Stream of device connection status updates.
+  ///
+  /// This stream emits [ConnectionStatus] events whenever the device
+  /// connection state changes (connected/disconnected).
+  Stream<ConnectionStatus?> get connectionStatus {
+    throw UnimplementedError('connectionStatusEventChannel has not been implemented.');
+  }
 }

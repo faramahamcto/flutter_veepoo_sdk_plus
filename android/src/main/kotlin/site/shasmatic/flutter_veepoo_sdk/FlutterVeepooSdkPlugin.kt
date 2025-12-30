@@ -42,6 +42,7 @@ class FlutterVeepooSdkPlugin: FlutterPlugin, ActivityAware {
     private const val DETECT_BLOOD_GLUCOSE_EVENT_CHANNEL = "$CHANNEL/detect_blood_glucose_event_channel"
     private const val DETECT_BLOOD_COMPONENT_EVENT_CHANNEL = "$CHANNEL/detect_blood_component_event_channel"
     private const val ORIGIN_DATA_PROGRESS_EVENT_CHANNEL = "$CHANNEL/origin_data_progress_event_channel"
+    private const val CONNECTION_STATUS_EVENT_CHANNEL = "$CHANNEL/connection_status_event_channel"
   }
 
   override fun onAttachedToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
@@ -65,6 +66,7 @@ class FlutterVeepooSdkPlugin: FlutterPlugin, ActivityAware {
     setupEventChannels(messenger, DETECT_BLOOD_GLUCOSE_EVENT_CHANNEL) { methodChannelHandler.setDetectBloodGlucoseEventSink(it) }
     setupEventChannels(messenger, DETECT_BLOOD_COMPONENT_EVENT_CHANNEL) { methodChannelHandler.setDetectBloodComponentEventSink(it) }
     setupEventChannels(messenger, ORIGIN_DATA_PROGRESS_EVENT_CHANNEL) { methodChannelHandler.setOriginDataProgressEventSink(it) }
+    setupEventChannels(messenger, CONNECTION_STATUS_EVENT_CHANNEL) { methodChannelHandler.setConnectionStatusEventSink(it) }
   }
 
   private fun stopChannels() {

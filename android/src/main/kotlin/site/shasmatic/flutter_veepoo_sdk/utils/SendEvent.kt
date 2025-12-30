@@ -99,6 +99,15 @@ class SendEvent(private val eventSink: EventChannel.EventSink?) {
         sendEvent(bloodComponentData)
     }
 
+    /**
+     * Sends a connection status event with the given connection status data.
+     *
+     * @param connectionStatusData A map containing the connection status data.
+     */
+    fun sendConnectionStatusEvent(connectionStatusData: Map<String, Any?>) {
+        sendEvent(connectionStatusData)
+    }
+
     private fun sendEvent(eventData: Any) {
         if (eventSink == null) {
             VPLogger.w("Event sink is null, cannot send event: $eventData")
