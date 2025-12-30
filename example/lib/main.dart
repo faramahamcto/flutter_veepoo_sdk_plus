@@ -41,7 +41,7 @@ class _VeepooSDKDemoState extends State<VeepooSDKDemo>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 8, vsync: this);
+    _tabController = TabController(length: 9, vsync: this);
     _requestPermissions();
   }
 
@@ -233,6 +233,7 @@ Power Model: ${battery?.powerModel?.name ?? 'Unknown'}
             Tab(text: 'Steps & Sleep'),
             Tab(text: 'ECG & Glucose'),
             Tab(text: 'Blood Analysis'),
+            Tab(text: 'Health Data'),
             Tab(text: 'Settings'),
             Tab(text: 'History'),
           ],
@@ -247,6 +248,7 @@ Power Model: ${battery?.powerModel?.name ?? 'Unknown'}
           _buildStepsSleepTab(),
           _buildECGGlucoseTab(),
           _buildBloodAnalysisTab(),
+          _buildHealthDataTab(),
           _buildSettingsTab(),
           _buildHistoryTab(),
         ],
@@ -1205,6 +1207,170 @@ Type: ${data.last.hrvType ?? 'N/A'}
     );
   }
 
+  // ==================== Health Data Tab ====================
+
+  Widget _buildHealthDataTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text(
+            'Health Data (3 Days)',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Read detailed health data including heart rate, blood pressure, temperature, blood oxygen, steps, and more.',
+            style: TextStyle(color: Colors.grey, fontSize: 13),
+          ),
+          const SizedBox(height: 20),
+          const Text(
+            'Select a day:',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(child: _buildDayButton('Today', 0)),
+              const SizedBox(width: 8),
+              Expanded(child: _buildDayButton('Yesterday', 1)),
+              const SizedBox(width: 8),
+              Expanded(child: _buildDayButton('2 Days Ago', 2)),
+            ],
+          ),
+          const SizedBox(height: 20),
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 14),
+            ),
+            onPressed: () => _loadHealthData3Days(),
+            icon: const Icon(Icons.calendar_view_day),
+            label: const Text('View All 3 Days Summary'),
+          ),
+          const SizedBox(height: 24),
+          const Text(
+            'Available Health Metrics:',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+          ),
+          const SizedBox(height: 12),
+          _buildHealthMetricInfo('Heart Rate', 'Average, max, min BPM'),
+          _buildHealthMetricInfo('Blood Pressure', 'Systolic/Diastolic mmHg'),
+          _buildHealthMetricInfo('Blood Oxygen', 'SpO2 percentage'),
+          _buildHealthMetricInfo('Body Temperature', 'Celsius degrees'),
+          _buildHealthMetricInfo('Steps & Activity', 'Steps, calories, distance'),
+          _buildHealthMetricInfo('Blood Glucose', 'Glucose levels'),
+          _buildHealthMetricInfo('Respiration Rate', 'Breaths per minute'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHealthMetricInfo(String title, String subtitle) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: ListTile(
+        dense: true,
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w500)),
+        subtitle: Text(subtitle, style: const TextStyle(fontSize: 12)),
+        leading: Icon(_getMetricIcon(title), color: _getMetricColor(title)),
+      ),
+    );
+  }
+
+  IconData _getMetricIcon(String metric) {
+    switch (metric) {
+      case 'Heart Rate': return Icons.favorite;
+      case 'Blood Pressure': return Icons.monitor_heart;
+      case 'Blood Oxygen': return Icons.water_drop;
+      case 'Body Temperature': return Icons.thermostat;
+      case 'Steps & Activity': return Icons.directions_walk;
+      case 'Blood Glucose': return Icons.bloodtype;
+      case 'Respiration Rate': return Icons.air;
+      default: return Icons.health_and_safety;
+    }
+  }
+
+  Color _getMetricColor(String metric) {
+    switch (metric) {
+      case 'Heart Rate': return Colors.red;
+      case 'Blood Pressure': return Colors.purple;
+      case 'Blood Oxygen': return Colors.blue;
+      case 'Body Temperature': return Colors.orange;
+      case 'Steps & Activity': return Colors.green;
+      case 'Blood Glucose': return Colors.pink;
+      case 'Respiration Rate': return Colors.teal;
+      default: return Colors.grey;
+    }
+  }
+
+  Widget _buildDayButton(String label, int day) {
+    return ElevatedButton(
+      onPressed: () => _loadHealthDataForDay(day, label),
+      child: Text(label, textAlign: TextAlign.center),
+    );
+  }
+
+  Future<void> _loadHealthDataForDay(int day, String label) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => _HealthDataProgressDialog(
+        veepooSdk: _veepooSdk,
+        label: label,
+      ),
+    );
+
+    try {
+      final data = await _veepooSdk.readOriginDataForDay(day);
+      if (!mounted) return;
+      Navigator.of(context).pop(); // Close loading dialog
+      if (data == null) {
+        _showError('No health data available for $label');
+        return;
+      }
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => DailyHealthDataPage(data: data),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      _showError('$e');
+    }
+  }
+
+  Future<void> _loadHealthData3Days() async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => _HealthDataProgressDialog(
+        veepooSdk: _veepooSdk,
+        label: '3 days',
+      ),
+    );
+
+    try {
+      final data = await _veepooSdk.readOriginData3Days();
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      if (data.isEmpty) {
+        _showError('No health data available for the last 3 days');
+        return;
+      }
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => HealthDataSummaryPage(data: data),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      _showError('$e');
+    }
+  }
+
   // ==================== Settings Tab ====================
 
   Widget _buildSettingsTab() {
@@ -1427,6 +1593,555 @@ Type: ${data.last.hrvType ?? 'N/A'}
             },
             icon: const Icon(Icons.thermostat),
             label: const Text('Read Temperature History'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ==================== Health Data Summary Page ====================
+
+class HealthDataSummaryPage extends StatelessWidget {
+  final List<DailyHealthData> data;
+
+  const HealthDataSummaryPage({super.key, required this.data});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Health Data Summary')),
+      body: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: data.length,
+        itemBuilder: (context, index) {
+          final day = data[index];
+          return Card(
+            margin: const EdgeInsets.only(bottom: 16),
+            child: InkWell(
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => DailyHealthDataPage(data: day)),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(day.dayLabel ?? 'Unknown',
+                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                        Text(day.date ?? '', style: const TextStyle(color: Colors.grey)),
+                      ],
+                    ),
+                    const Divider(),
+                    _buildCategoryRow('Heart Rate', '${day.avgHeartRate ?? '-'} BPM avg', Colors.red, Icons.favorite),
+                    _buildCategoryRow('Blood Pressure', '${day.avgSystolic ?? '-'}/${day.avgDiastolic ?? '-'} mmHg', Colors.purple, Icons.monitor_heart),
+                    _buildCategoryRow('Blood Oxygen', '${day.avgBloodOxygen ?? '-'}%', Colors.blue, Icons.water_drop),
+                    _buildCategoryRow('Temperature', '${day.avgTemperature?.toStringAsFixed(1) ?? '-'}°C', Colors.orange, Icons.thermostat),
+                    _buildCategoryRow('Steps', '${day.totalSteps ?? 0}', Colors.green, Icons.directions_walk),
+                    _buildCategoryRow('Calories', '${day.totalCalories?.toStringAsFixed(0) ?? 0} kcal', Colors.deepOrange, Icons.local_fire_department),
+                    if (day.avgBloodGlucose != null)
+                      _buildCategoryRow('Blood Glucose', '${day.avgBloodGlucose} mg/dL', Colors.pink, Icons.bloodtype),
+                    if (day.avgRespirationRate != null)
+                      _buildCategoryRow('Respiration', '${day.avgRespirationRate} /min', Colors.teal, Icons.air),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        Text('Tap to view hourly details',
+                            style: TextStyle(color: Theme.of(context).primaryColor, fontSize: 12)),
+                        Icon(Icons.chevron_right, color: Theme.of(context).primaryColor),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildCategoryRow(String label, String value, Color color, IconData icon) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: color),
+          const SizedBox(width: 12),
+          Expanded(child: Text(label, style: const TextStyle(fontSize: 14))),
+          Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+        ],
+      ),
+    );
+  }
+}
+
+// ==================== Daily Health Data Page ====================
+
+class DailyHealthDataPage extends StatelessWidget {
+  final DailyHealthData data;
+
+  const DailyHealthDataPage({super.key, required this.data});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(data.dayLabel ?? 'Health Data'),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(24),
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Text(data.date ?? '', style: const TextStyle(color: Colors.white70)),
+          ),
+        ),
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          // Health Categories
+          _buildCategoryCard('Heart Rate', Icons.favorite, Colors.red, [
+            _DataItem('Average', '${data.avgHeartRate ?? '-'} BPM'),
+            _DataItem('Maximum', '${data.maxHeartRate ?? '-'} BPM'),
+            _DataItem('Minimum', '${data.minHeartRate ?? '-'} BPM'),
+          ]),
+          _buildCategoryCard('Blood Pressure', Icons.monitor_heart, Colors.purple, [
+            _DataItem('Average Systolic', '${data.avgSystolic ?? '-'} mmHg'),
+            _DataItem('Average Diastolic', '${data.avgDiastolic ?? '-'} mmHg'),
+          ]),
+          _buildCategoryCard('Blood Oxygen', Icons.water_drop, Colors.blue, [
+            _DataItem('Average SpO2', '${data.avgBloodOxygen ?? '-'}%'),
+            _DataItem('Minimum SpO2', '${data.minBloodOxygen ?? '-'}%'),
+          ]),
+          _buildCategoryCard('Body Temperature', Icons.thermostat, Colors.orange, [
+            _DataItem('Average', '${data.avgTemperature?.toStringAsFixed(1) ?? '-'}°C'),
+            _DataItem('Maximum', '${data.maxTemperature?.toStringAsFixed(1) ?? '-'}°C'),
+            _DataItem('Minimum', '${data.minTemperature?.toStringAsFixed(1) ?? '-'}°C'),
+          ]),
+          _buildCategoryCard('Activity', Icons.directions_walk, Colors.green, [
+            _DataItem('Total Steps', '${data.totalSteps ?? 0}'),
+            _DataItem('Calories Burned', '${data.totalCalories?.toStringAsFixed(0) ?? 0} kcal'),
+            _DataItem('Distance', '${data.totalDistance?.toStringAsFixed(2) ?? 0} km'),
+          ]),
+          if (data.avgBloodGlucose != null)
+            _buildCategoryCard('Blood Glucose', Icons.bloodtype, Colors.pink, [
+              _DataItem('Average', '${data.avgBloodGlucose} mg/dL'),
+            ]),
+          if (data.avgRespirationRate != null)
+            _buildCategoryCard('Respiration Rate', Icons.air, Colors.teal, [
+              _DataItem('Average', '${data.avgRespirationRate} breaths/min'),
+            ]),
+          if (data.avgUricAcid != null || data.avgTotalCholesterol != null ||
+              data.avgTriglyceride != null || data.avgHdl != null || data.avgLdl != null)
+            _buildCategoryCard('Blood Components', Icons.science, Colors.indigo, [
+              if (data.avgUricAcid != null) _DataItem('Uric Acid', '${data.avgUricAcid?.toStringAsFixed(1)} μmol/L'),
+              if (data.avgTotalCholesterol != null) _DataItem('Total Cholesterol', '${data.avgTotalCholesterol?.toStringAsFixed(2)} mmol/L'),
+              if (data.avgTriglyceride != null) _DataItem('Triglyceride', '${data.avgTriglyceride?.toStringAsFixed(2)} mmol/L'),
+              if (data.avgHdl != null) _DataItem('HDL', '${data.avgHdl?.toStringAsFixed(2)} mmol/L'),
+              if (data.avgLdl != null) _DataItem('LDL', '${data.avgLdl?.toStringAsFixed(2)} mmol/L'),
+            ]),
+          const SizedBox(height: 16),
+          const Text('Hourly Breakdown', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          if (data.hourlyData == null || data.hourlyData!.isEmpty)
+            const Card(child: Padding(padding: EdgeInsets.all(16), child: Text('No hourly data available')))
+          else
+            ...data.hourlyData!.map((hour) => _buildHourlyCard(context, hour)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCategoryCard(String title, IconData icon, Color color, List<_DataItem> items) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icon, color: color, size: 22),
+                const SizedBox(width: 8),
+                Text(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: color)),
+              ],
+            ),
+            const SizedBox(height: 8),
+            ...items.map((item) => Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(item.label, style: const TextStyle(color: Colors.grey)),
+                  Text(item.value, style: const TextStyle(fontWeight: FontWeight.w500)),
+                ],
+              ),
+            )),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHourlyCard(BuildContext context, HourlyHealthData hour) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: ListTile(
+        leading: CircleAvatar(child: Text(hour.hourLabel?.substring(0, 2) ?? '')),
+        title: Text(hour.hourLabel ?? 'Unknown', style: const TextStyle(fontWeight: FontWeight.bold)),
+        subtitle: Wrap(
+          spacing: 12,
+          children: [
+            if (hour.avgHeartRate != null) Text('HR: ${hour.avgHeartRate}', style: TextStyle(color: Colors.red.shade400, fontSize: 12)),
+            if (hour.avgSystolic != null) Text('BP: ${hour.avgSystolic}/${hour.avgDiastolic}', style: TextStyle(color: Colors.purple.shade400, fontSize: 12)),
+            if (hour.avgBloodOxygen != null) Text('O2: ${hour.avgBloodOxygen}%', style: TextStyle(color: Colors.blue.shade400, fontSize: 12)),
+            if (hour.steps != null && hour.steps! > 0) Text('Steps: ${hour.steps}', style: TextStyle(color: Colors.green.shade400, fontSize: 12)),
+          ],
+        ),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => HourlyHealthDataPage(data: hour, date: data.date ?? '')),
+        ),
+      ),
+    );
+  }
+}
+
+class _DataItem {
+  final String label;
+  final String value;
+  _DataItem(this.label, this.value);
+}
+
+// ==================== Hourly Health Data Page ====================
+
+class HourlyHealthDataPage extends StatelessWidget {
+  final HourlyHealthData data;
+  final String date;
+
+  const HourlyHealthDataPage({super.key, required this.data, required this.date});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('${data.hourLabel ?? 'Unknown'} - $date'),
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          // Hour Header
+          Card(
+            color: Theme.of(context).primaryColor.withOpacity(0.1),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Icon(Icons.access_time, size: 32, color: Theme.of(context).primaryColor),
+                  const SizedBox(width: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        data.hourLabel ?? 'Unknown Hour',
+                        style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                      ),
+                      Text(date, style: const TextStyle(color: Colors.grey)),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          const Text('Hourly Summary', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          // Category Cards for Hourly Data
+          _buildCategoryCard('Heart Rate', Icons.favorite, Colors.red, [
+            _HourlyDataItem('Average', '${data.avgHeartRate ?? '-'} BPM'),
+            _HourlyDataItem('Maximum', '${data.maxHeartRate ?? '-'} BPM'),
+            _HourlyDataItem('Minimum', '${data.minHeartRate ?? '-'} BPM'),
+          ]),
+          _buildCategoryCard('Blood Pressure', Icons.monitor_heart, Colors.purple, [
+            _HourlyDataItem('Systolic', '${data.avgSystolic ?? '-'} mmHg'),
+            _HourlyDataItem('Diastolic', '${data.avgDiastolic ?? '-'} mmHg'),
+          ]),
+          _buildCategoryCard('Blood Oxygen', Icons.water_drop, Colors.blue, [
+            _HourlyDataItem('Average SpO2', '${data.avgBloodOxygen ?? '-'}%'),
+          ]),
+          _buildCategoryCard('Body Temperature', Icons.thermostat, Colors.orange, [
+            _HourlyDataItem('Average', '${data.avgTemperature?.toStringAsFixed(1) ?? '-'}°C'),
+          ]),
+          _buildCategoryCard('Activity', Icons.directions_walk, Colors.green, [
+            _HourlyDataItem('Steps', '${data.steps ?? 0}'),
+            _HourlyDataItem('Calories', '${data.calories?.toStringAsFixed(1) ?? 0} kcal'),
+            _HourlyDataItem('Distance', '${data.distance?.toStringAsFixed(2) ?? 0} km'),
+            _HourlyDataItem('Sport Value', '${data.avgSportValue ?? '-'}'),
+          ]),
+          if (data.avgBloodGlucose != null)
+            _buildCategoryCard('Blood Glucose', Icons.bloodtype, Colors.pink, [
+              _HourlyDataItem('Average', '${data.avgBloodGlucose} mg/dL'),
+            ]),
+          if (data.avgRespirationRate != null)
+            _buildCategoryCard('Respiration Rate', Icons.air, Colors.teal, [
+              _HourlyDataItem('Average', '${data.avgRespirationRate} breaths/min'),
+            ]),
+          if (data.avgUricAcid != null || data.avgTotalCholesterol != null ||
+              data.avgTriglyceride != null || data.avgHdl != null || data.avgLdl != null)
+            _buildCategoryCard('Blood Components', Icons.science, Colors.indigo, [
+              if (data.avgUricAcid != null) _HourlyDataItem('Uric Acid', '${data.avgUricAcid?.toStringAsFixed(1)} μmol/L'),
+              if (data.avgTotalCholesterol != null) _HourlyDataItem('Total Cholesterol', '${data.avgTotalCholesterol?.toStringAsFixed(2)} mmol/L'),
+              if (data.avgTriglyceride != null) _HourlyDataItem('Triglyceride', '${data.avgTriglyceride?.toStringAsFixed(2)} mmol/L'),
+              if (data.avgHdl != null) _HourlyDataItem('HDL', '${data.avgHdl?.toStringAsFixed(2)} mmol/L'),
+              if (data.avgLdl != null) _HourlyDataItem('LDL', '${data.avgLdl?.toStringAsFixed(2)} mmol/L'),
+            ]),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              const Text('5-Minute Interval Records', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(width: 8),
+              if (data.records != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade200,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text('${data.records!.length} records', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          // 5-Minute Interval Data List
+          if (data.records == null || data.records!.isEmpty)
+            const Card(child: Padding(padding: EdgeInsets.all(16), child: Text('No detailed records available')))
+          else
+            ...data.records!.map((record) => _buildRecordCard(record)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCategoryCard(String title, IconData icon, Color color, List<_HourlyDataItem> items) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icon, color: color, size: 22),
+                const SizedBox(width: 8),
+                Text(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: color)),
+              ],
+            ),
+            const SizedBox(height: 8),
+            ...items.map((item) => Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(item.label, style: const TextStyle(color: Colors.grey)),
+                  Text(item.value, style: const TextStyle(fontWeight: FontWeight.w500)),
+                ],
+              ),
+            )),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRecordCard(OriginHealthData record) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.schedule, size: 18, color: Colors.grey.shade600),
+                const SizedBox(width: 6),
+                Text(
+                  record.time ?? 'Unknown',
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            // Health data with text labels in grid format
+            Wrap(
+              spacing: 16,
+              runSpacing: 10,
+              children: [
+                if (record.heartRate != null)
+                  _buildRecordItem('Heart Rate', '${record.heartRate} BPM', Icons.favorite, Colors.red),
+                if (record.systolic != null && record.diastolic != null)
+                  _buildRecordItem('Blood Pressure', '${record.systolic}/${record.diastolic} mmHg', Icons.monitor_heart, Colors.purple),
+                if (record.bloodOxygen != null)
+                  _buildRecordItem('Blood Oxygen', '${record.bloodOxygen}%', Icons.water_drop, Colors.blue),
+                if (record.temperature != null)
+                  _buildRecordItem('Temperature', '${record.temperature?.toStringAsFixed(1)}°C', Icons.thermostat, Colors.orange),
+                if (record.steps != null && record.steps! > 0)
+                  _buildRecordItem('Steps', '${record.steps}', Icons.directions_walk, Colors.green),
+                if (record.calories != null && record.calories! > 0)
+                  _buildRecordItem('Calories', '${record.calories?.toStringAsFixed(1)} kcal', Icons.local_fire_department, Colors.deepOrange),
+                if (record.distance != null && record.distance! > 0)
+                  _buildRecordItem('Distance', '${record.distance?.toStringAsFixed(2)} km', Icons.straighten, Colors.teal),
+                if (record.sportValue != null && record.sportValue! > 0)
+                  _buildRecordItem('Sport Value', '${record.sportValue}', Icons.fitness_center, Colors.indigo),
+                if (record.bloodGlucose != null)
+                  _buildRecordItem('Blood Glucose', '${record.bloodGlucose} mg/dL', Icons.bloodtype, Colors.pink),
+                if (record.respirationRate != null)
+                  _buildRecordItem('Respiration', '${record.respirationRate} /min', Icons.air, Colors.cyan),
+                if (record.ecgHeartRate != null)
+                  _buildRecordItem('ECG Heart Rate', '${record.ecgHeartRate} BPM', Icons.monitor_heart_outlined, Colors.red.shade300),
+                if (record.uricAcid != null)
+                  _buildRecordItem('Uric Acid', '${record.uricAcid?.toStringAsFixed(1)} μmol/L', Icons.science, Colors.indigo),
+                if (record.totalCholesterol != null)
+                  _buildRecordItem('Cholesterol', '${record.totalCholesterol?.toStringAsFixed(2)} mmol/L', Icons.science, Colors.indigo.shade300),
+                if (record.triglyceride != null)
+                  _buildRecordItem('Triglyceride', '${record.triglyceride?.toStringAsFixed(2)} mmol/L', Icons.science, Colors.purple.shade300),
+                if (record.hdl != null)
+                  _buildRecordItem('HDL', '${record.hdl?.toStringAsFixed(2)} mmol/L', Icons.science, Colors.green.shade600),
+                if (record.ldl != null)
+                  _buildRecordItem('LDL', '${record.ldl?.toStringAsFixed(2)} mmol/L', Icons.science, Colors.red.shade600),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRecordItem(String label, String value, IconData icon, Color color) {
+    return SizedBox(
+      width: 140,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 14, color: color),
+              const SizedBox(width: 4),
+              Flexible(
+                child: Text(
+                  label,
+                  style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: color.withOpacity(0.9)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HourlyDataItem {
+  final String label;
+  final String value;
+  _HourlyDataItem(this.label, this.value);
+}
+
+// ==================== Health Data Progress Dialog ====================
+
+class _HealthDataProgressDialog extends StatefulWidget {
+  final VeepooSDK veepooSdk;
+  final String label;
+
+  const _HealthDataProgressDialog({
+    required this.veepooSdk,
+    required this.label,
+  });
+
+  @override
+  State<_HealthDataProgressDialog> createState() => _HealthDataProgressDialogState();
+}
+
+class _HealthDataProgressDialogState extends State<_HealthDataProgressDialog> {
+  double _progress = 0.0;
+  String _dayLabel = '';
+  late StreamSubscription<OriginDataProgress?> _subscription;
+
+  @override
+  void initState() {
+    super.initState();
+    _subscription = widget.veepooSdk.originDataProgress.listen((progress) {
+      if (progress != null && mounted) {
+        setState(() {
+          _progress = progress.progress ?? 0.0;
+          _dayLabel = progress.dayLabel ?? '';
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _subscription.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final percentText = '${(_progress * 100).round()}%';
+    return AlertDialog(
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: 80,
+            height: 80,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                SizedBox(
+                  width: 80,
+                  height: 80,
+                  child: CircularProgressIndicator(
+                    value: _progress > 0 ? _progress : null,
+                    strokeWidth: 8,
+                    backgroundColor: Colors.grey.shade200,
+                  ),
+                ),
+                Text(
+                  _progress > 0 ? percentText : '...',
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text('Reading health data for ${widget.label}...'),
+          if (_dayLabel.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              'Processing: $_dayLabel',
+              style: const TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+          ],
+          const SizedBox(height: 8),
+          Text(
+            widget.label == '3 days'
+                ? 'This may take up to 90 seconds'
+                : 'This may take up to 60 seconds',
+            style: const TextStyle(fontSize: 12, color: Colors.grey),
           ),
         ],
       ),

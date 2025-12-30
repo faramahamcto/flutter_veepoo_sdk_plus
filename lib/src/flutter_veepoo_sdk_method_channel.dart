@@ -26,6 +26,8 @@ class MethodChannelFlutterVeepooSdk extends FlutterVeepooSdkPlatform {
       const EventChannel('$_channelName/detect_blood_component_event_channel');
   final EventChannel stepDataEventChannel =
       const EventChannel('$_channelName/step_data_event_channel');
+  final EventChannel originDataProgressEventChannel =
+      const EventChannel('$_channelName/origin_data_progress_event_channel');
 
   // Cached streams
   Stream<List<BluetoothDevice>>? _bluetoothDevicesStream;
@@ -37,6 +39,7 @@ class MethodChannelFlutterVeepooSdk extends FlutterVeepooSdkPlatform {
   Stream<EcgData?>? _ecgDataStream;
   Stream<BloodComponent?>? _bloodComponentStream;
   Stream<StepData?>? _stepDataStream;
+  Stream<OriginDataProgress?>? _originDataProgressStream;
 
   /// Requests Bluetooth permissions.
   ///
@@ -1016,6 +1019,44 @@ class MethodChannelFlutterVeepooSdk extends FlutterVeepooSdkPlatform {
     }
   }
 
+  // ==================== Origin Health Data ====================
+
+  @override
+  Future<List<DailyHealthData>> readOriginData3Days() async {
+    try {
+      final result = await methodChannel.invokeListMethod<Map>(
+        'readOriginData3Days',
+      );
+      if (result == null) return [];
+      return result
+          .map((item) => DailyHealthData.fromMap(Map<String, dynamic>.from(item)))
+          .toList();
+    } on PlatformException catch (error, stackTrace) {
+      throw VeepooException(
+        message: 'Failed to read origin data for 3 days: ${error.message}',
+        details: error.details,
+        stacktrace: stackTrace,
+      );
+    }
+  }
+
+  @override
+  Future<DailyHealthData?> readOriginDataForDay(int day) async {
+    try {
+      final result = await methodChannel.invokeMapMethod<String, dynamic>(
+        'readOriginDataForDay',
+        {'day': day},
+      );
+      return result != null ? DailyHealthData.fromMap(result) : null;
+    } on PlatformException catch (error, stackTrace) {
+      throw VeepooException(
+        message: 'Failed to read origin data for day $day: ${error.message}',
+        details: error.details,
+        stacktrace: stackTrace,
+      );
+    }
+  }
+
   // ==================== Historical Data ====================
 
   @override
@@ -1229,5 +1270,24 @@ class MethodChannelFlutterVeepooSdk extends FlutterVeepooSdkPlatform {
     }).asBroadcastStream();
 
     return _stepDataStream!;
+  }
+
+  @override
+  Stream<OriginDataProgress?> get originDataProgress {
+    _originDataProgressStream ??= originDataProgressEventChannel
+        .receiveBroadcastStream()
+        .map((dynamic event) {
+      if (event is Map<Object?, Object?>) {
+        final result =
+            event.map((key, value) => MapEntry(key.toString(), value));
+        return OriginDataProgress.fromMap(result);
+      } else {
+        throw VeepooException(
+          message: 'Unexpected event type: ${event.runtimeType}',
+        );
+      }
+    }).asBroadcastStream();
+
+    return _originDataProgressStream!;
   }
 }

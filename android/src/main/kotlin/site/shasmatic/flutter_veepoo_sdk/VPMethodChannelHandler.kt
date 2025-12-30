@@ -26,6 +26,7 @@ import site.shasmatic.flutter_veepoo_sdk.utils.SleepDataReader
 import site.shasmatic.flutter_veepoo_sdk.utils.Spoh
 import site.shasmatic.flutter_veepoo_sdk.utils.StepDataReader
 import site.shasmatic.flutter_veepoo_sdk.utils.Temperature
+import site.shasmatic.flutter_veepoo_sdk.utils.OriginDataReader
 import site.shasmatic.flutter_veepoo_sdk.utils.VPBluetoothManager
 
 /**
@@ -52,6 +53,7 @@ class VPMethodChannelHandler(
     private var detectBloodPressureEventSink: EventChannel.EventSink? = null
     private var detectBloodGlucoseEventSink: EventChannel.EventSink? = null
     private var detectBloodComponentEventSink: EventChannel.EventSink? = null
+    private var originDataProgressEventSink: EventChannel.EventSink? = null
     private lateinit var result: MethodChannel.Result
 
     @RequiresApi(Build.VERSION_CODES.S)
@@ -104,6 +106,8 @@ class VPMethodChannelHandler(
             "readStepDataForDate" -> handleReadStepDataForDate(call.argument<Long>("timestamp"))
             "readHRVData" -> handleReadHRVData(call.argument<Int>("days") ?: 7)
             "setUserProfile" -> handleSetUserProfile(call)
+            "readOriginData3Days" -> handleReadOriginData3Days()
+            "readOriginDataForDay" -> handleReadOriginDataForDay(call.argument<Int>("day") ?: 0)
             else -> result.notImplemented()
         }
     }
@@ -416,6 +420,10 @@ class VPMethodChannelHandler(
         this.detectBloodComponentEventSink = eventSink
     }
 
+    fun setOriginDataProgressEventSink(eventSink: EventChannel.EventSink?) {
+        this.originDataProgressEventSink = eventSink
+    }
+
     private fun getBluetoothManager(result: MethodChannel.Result): VPBluetoothManager {
         return VPBluetoothManager(deviceStorage, result, activity!!, scanBluetoothEventSink, vpManager)
     }
@@ -462,6 +470,26 @@ class VPMethodChannelHandler(
 
     private fun getHRVDataReader(): HRVDataReader {
         return HRVDataReader(result, vpManager, vpSpGetUtil)
+    }
+
+    private fun getOriginDataReader(): OriginDataReader {
+        return OriginDataReader(result, vpManager, vpSpGetUtil, originDataProgressEventSink)
+    }
+
+    private fun handleReadOriginData3Days() {
+        try {
+            getOriginDataReader().readOriginData3Days()
+        } catch (e: Exception) {
+            result.error("READ_ORIGIN_DATA_ERROR", "Failed to read origin data: ${e.message}", null)
+        }
+    }
+
+    private fun handleReadOriginDataForDay(day: Int) {
+        try {
+            getOriginDataReader().readOriginDataForDay(day)
+        } catch (e: Exception) {
+            result.error("READ_ORIGIN_DATA_ERROR", "Failed to read origin data for day $day: ${e.message}", null)
+        }
     }
 
     private fun handleSetUserProfile(call: MethodCall) {
