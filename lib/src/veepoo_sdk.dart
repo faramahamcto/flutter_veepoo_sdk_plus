@@ -120,10 +120,28 @@ class VeepooSDK {
     }
   }
 
-  /// Check if the device is connected.
-  Future<bool?> isDeviceConnected() {
+  /// Get the MAC address the SDK currently considers connected, or
+  /// null/empty if nothing is connected.
+  ///
+  /// This is the only reliable way to check connection state per the SDK
+  /// vendor: [isDeviceConnected] relies on this under the hood because the
+  /// SDK's own `isCurrentDeviceConnected()`/`isDeviceConnected(String)`
+  /// always return false regardless of actual connection state.
+  Future<String?> getCurrentDeviceAddress() {
     try {
-      return _platform.isDeviceConnected();
+      return _platform.getCurrentDeviceAddress();
+    } on VeepooException {
+      rethrow;
+    }
+  }
+
+  /// Check if the device is connected.
+  ///
+  /// If [address] is provided, checks that this specific device is the one
+  /// currently connected. Otherwise checks whether any device is connected.
+  Future<bool?> isDeviceConnected({String? address}) {
+    try {
+      return _platform.isDeviceConnected(address: address);
     } on VeepooException {
       rethrow;
     }

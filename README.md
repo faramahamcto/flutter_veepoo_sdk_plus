@@ -158,8 +158,20 @@ await veepooSdk.stopScanDevices();
 // Connect
 await veepooSdk.connectDevice(deviceAddress);
 
-// Check connection status
+// Check connection status.
+// Note: the underlying SDK's own isCurrentDeviceConnected()/isDeviceConnected(String)
+// always return false regardless of actual state, so this checks the currently
+// connected MAC address instead (optionally compared against a specific address).
 bool? isConnected = await veepooSdk.isDeviceConnected();
+bool? isThisDeviceConnected = await veepooSdk.isDeviceConnected(address: deviceAddress);
+
+// Or get the connected address directly
+String? currentAddress = await veepooSdk.getCurrentDeviceAddress();
+
+// Or listen for connection changes reactively
+veepooSdk.connectionStatus.listen((status) {
+  print('Connected: ${status?.isConnected}, address: ${status?.address}');
+});
 
 // Bind device (authenticate with PIN)
 final bindStatus = await veepooSdk.bindDevice('0000', true); // PIN, 24h format

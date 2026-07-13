@@ -37,18 +37,57 @@ class _VeepooSDKDemoState extends State<VeepooSDKDemo>
   late TabController _tabController;
   String? _connectedDeviceAddress;
   bool _isConnected = false;
+  StreamSubscription<ConnectionStatus?>? _connectionStatusSubscription;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 9, vsync: this);
     _requestPermissions();
+
+    // The SDK's own isCurrentDeviceConnected()/isDeviceConnected(String) always
+    // return false, so real connection state is only known via this stream
+    // (backed by registerConnectStatusListener) or by polling
+    // getCurrentDeviceAddress(). Listening here keeps the UI in sync with what
+    // the watch is actually doing, not just what we optimistically assumed
+    // after a connect()/disconnect() call succeeded.
+    _connectionStatusSubscription =
+        _veepooSdk.connectionStatus.listen((status) {
+      if (status == null) return;
+      setState(() {
+        _isConnected = status.isConnected;
+        _connectedDeviceAddress = status.isConnected ? status.address : null;
+      });
+    });
   }
 
   @override
   void dispose() {
     _tabController.dispose();
+    _connectionStatusSubscription?.cancel();
     super.dispose();
+  }
+
+  /// Asks the SDK directly which device (if any) it currently considers
+  /// connected, using the only method that reliably reports this
+  /// (getCurrentDeviceAddress), and syncs local state to match.
+  Future<void> _verifyConnection() async {
+    try {
+      final address = await _veepooSdk.getCurrentDeviceAddress();
+      final connected = address != null && address.isNotEmpty;
+      setState(() {
+        _isConnected = connected;
+        _connectedDeviceAddress = connected ? address : null;
+      });
+      _showInfo(
+        'Connection Check',
+        connected
+            ? 'Device is connected: $address'
+            : 'No device is currently connected.',
+      );
+    } catch (e) {
+      _showError('Failed to verify connection: $e');
+    }
   }
 
   // ==================== Bluetooth & Connection ====================
@@ -303,6 +342,11 @@ Power Model: ${battery?.powerModel?.name ?? 'Unknown'}
                     onPressed: _readBattery,
                     icon: const Icon(Icons.battery_full),
                     label: const Text('Battery'),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: _verifyConnection,
+                    icon: const Icon(Icons.fact_check),
+                    label: const Text('Verify Connection'),
                   ),
                 ],
               ),

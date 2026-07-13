@@ -395,12 +395,32 @@ class VPBluetoothManager(
     }
 
     /**
+     * Returns the MAC address the SDK currently considers connected, or null/empty if nothing
+     * is connected. Per the SDK vendor, this is the only reliable way to check connection state:
+     * [VPOperateManager.isCurrentDeviceConnected] and [VPOperateManager.isDeviceConnected]
+     * always return false regardless of actual connection state.
+     */
+    fun getCurrentDeviceAddress() {
+        result.success(VPOperateManager.getCurrentDeviceAddress())
+    }
+
+    /**
      * Checks if the device is connected.
+     *
+     * `VPOperateManager.isCurrentDeviceConnected()`/`isDeviceConnected(String)` are unreliable
+     * (they always return false), so this compares the SDK's currently-connected address
+     * ([VPOperateManager.getCurrentDeviceAddress]) against [address] instead. When [address] is
+     * omitted, it just checks whether the SDK reports any device as connected.
      *
      * @return `true` if the device is connected, `false` otherwise.
      */
-    fun isDeviceConnected(): Boolean {
-        val isConnected = vpManager.isCurrentDeviceConnected
+    fun isDeviceConnected(address: String? = null): Boolean {
+        val currentAddress = VPOperateManager.getCurrentDeviceAddress()
+        val isConnected = if (address != null) {
+            currentAddress != null && currentAddress.equals(address, ignoreCase = true)
+        } else {
+            !currentAddress.isNullOrEmpty()
+        }
         result.success(isConnected)
         return isConnected
     }

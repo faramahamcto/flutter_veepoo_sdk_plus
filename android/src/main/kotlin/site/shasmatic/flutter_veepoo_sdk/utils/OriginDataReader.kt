@@ -209,8 +209,9 @@ class OriginDataReader(
             String.format("%02d:%02d", timeData.hour, timeData.minute)
         } else null
 
-        // Look up HRV value for this time
-        val hrvValue = timeStr?.let { hrvDataMap[it] }
+        // HRV is delivered separately (onOriginHRVOriginListDataChange) after the five-minute
+        // data for the day, so it can't be resolved yet. It's merged in later via mergeHrvData().
+        val hrvValue = null
 
         val dataMap = mapOf<String, Any?>(
             "date" to originData.date,
@@ -268,8 +269,9 @@ class OriginDataReader(
         val hdl = bloodComponent?.hDL?.takeIf { it > 0 }
         val ldl = bloodComponent?.lDL?.takeIf { it > 0 }
 
-        // Look up HRV value for this time
-        val hrvValue = timeStr?.let { hrvDataMap[it] }
+        // HRV is delivered separately (onOriginHRVOriginListDataChange) after the five-minute
+        // data for the day, so it can't be resolved yet. It's merged in later via mergeHrvData().
+        val hrvValue = null
 
         val dataMap = mapOf<String, Any?>(
             "date" to originData.date,
@@ -308,8 +310,15 @@ class OriginDataReader(
     }
 
     private fun onDayComplete() {
+        // hrvDataMap is fully populated for currentDay at this point (HRV list arrives after the
+        // five-minute data, per SDK docs), and is about to be cleared when the next day starts
+        // reading, so the merge must happen here rather than after all days have been read.
+        val mergedRecords = mergeHrvData(currentDayData)
+        currentDayData = mergedRecords
+        allDaysData[currentDay] = mergedRecords
+
         if (totalDays == 1) {
-            val dailyData = aggregateDailyData(currentDay, currentDayData)
+            val dailyData = aggregateDailyData(currentDay, mergedRecords)
             cancelTimeout()
             returnSuccess(dailyData)
         } else {
@@ -327,6 +336,18 @@ class OriginDataReader(
                 returnSuccessList(result)
             }
         }
+    }
+
+    /**
+     * Fills in `hrvValue` for each record now that HRV data for the day is fully known.
+     */
+    private fun mergeHrvData(records: MutableList<Map<String, Any?>>): MutableList<Map<String, Any?>> {
+        if (hrvDataMap.isEmpty()) return records
+        return records.map { record ->
+            val time = record["time"] as? String
+            val hrv = time?.let { hrvDataMap[it] }
+            if (hrv != null) record + ("hrvValue" to hrv) else record
+        }.toMutableList()
     }
 
     private fun aggregateDailyData(day: Int, records: List<Map<String, Any?>>): Map<String, Any?> {

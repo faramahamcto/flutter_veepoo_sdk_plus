@@ -214,14 +214,37 @@ class MethodChannelFlutterVeepooSdk extends FlutterVeepooSdkPlatform {
     }
   }
 
-  /// Checks if a Bluetooth device is currently connected.
+  /// Gets the MAC address the SDK currently considers connected, or
+  /// null/empty if nothing is connected.
   ///
-  /// Returns [true] if a device is connected, otherwise [false].
   /// Throws a [DeviceConnectionException] if the request fails.
   @override
-  Future<bool?> isDeviceConnected() async {
+  Future<String?> getCurrentDeviceAddress() async {
     try {
-      return await methodChannel.invokeMethod<bool>('isDeviceConnected');
+      return await methodChannel
+          .invokeMethod<String>('getCurrentDeviceAddress');
+    } on PlatformException catch (error, stackTrace) {
+      throw VeepooException(
+        message: 'Failed to get current device address: ${error.message}',
+        details: error.details,
+        stacktrace: stackTrace,
+      );
+    }
+  }
+
+  /// Checks if a Bluetooth device is currently connected.
+  ///
+  /// If [address] is provided, checks that this specific device is the one
+  /// currently connected. Otherwise checks whether any device is connected.
+  /// Returns [true] if connected, otherwise [false].
+  /// Throws a [DeviceConnectionException] if the request fails.
+  @override
+  Future<bool?> isDeviceConnected({String? address}) async {
+    try {
+      return await methodChannel.invokeMethod<bool>(
+        'isDeviceConnected',
+        {'address': address},
+      );
     } on PlatformException catch (error, stackTrace) {
       throw VeepooException(
         message: 'Failed to check device connection: ${error.message}',
