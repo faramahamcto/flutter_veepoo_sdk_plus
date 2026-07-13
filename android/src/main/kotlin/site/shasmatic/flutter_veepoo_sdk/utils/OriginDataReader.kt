@@ -96,10 +96,18 @@ class OriginDataReader(
         val protocolVersion = vpSpGetUtil.getOriginProtocolVersion()
         VPLogger.d("Device origin protocol version: $protocolVersion")
 
+        // readOriginDataSingleDay(response, listener, day, position, watchday) builds
+        // ReadOriginSetting(day, position, onlyReadOneDay=true, watchday) under the hood. The
+        // last argument is the day *count* (watchday), not the day offset again — passing `day`
+        // there (e.g. watchday=0 for "today") was asking the device for zero/wrong-count days
+        // of data, which may be why HRV generation for the day never fires. We always want
+        // exactly one day (this is a single-day read), so watchday must be 1.
+        VPLogger.d("Requesting origin data: day=$day, position=1, watchday=1 (protocol=$protocolVersion)")
+
         if (protocolVersion == 3 || protocolVersion == 5) {
-            vpManager.readOriginDataSingleDay(writeResponse, originData3Listener, day, 1, day)
+            vpManager.readOriginDataSingleDay(writeResponse, originData3Listener, day, 1, 1)
         } else {
-            vpManager.readOriginDataSingleDay(writeResponse, originDataListener, day, 1, day)
+            vpManager.readOriginDataSingleDay(writeResponse, originDataListener, day, 1, 1)
         }
     }
 
@@ -170,6 +178,10 @@ class OriginDataReader(
         }
 
         override fun onOriginFiveMinuteListDataChange(originData3List: MutableList<OriginData3>?) {
+            VPLogger.d(
+                "RAW onOriginFiveMinuteListDataChange: ${originData3List?.size} records" +
+                (originData3List?.firstOrNull()?.let { " | first=${it}" } ?: "")
+            )
             if (originData3List != null) {
                 for (originData in originData3List) {
                     addOriginData3(originData)
@@ -178,12 +190,19 @@ class OriginDataReader(
         }
 
         override fun onOriginHalfHourDataChange(originHalfHourData: OriginHalfHourData?) {
-            VPLogger.d("Half hour data received for day $currentDay")
+            VPLogger.d("RAW onOriginHalfHourDataChange for day $currentDay: $originHalfHourData")
         }
 
         override fun onOriginHRVOriginListDataChange(hrvList: MutableList<HRVOriginData>?) {
-            VPLogger.d("HRV origin data received: ${hrvList?.size} records")
-            hrvList?.forEach { hrvData ->
+            // Logged unconditionally (even null/empty) so a missing "RAW onOriginHRVOrigin..."
+            // line in logcat means the SDK never called this back at all, as opposed to
+            // calling back with nothing.
+            VPLogger.d(
+                "RAW onOriginHRVOriginListDataChange: " +
+                (if (hrvList == null) "null (callback fired with null list)" else "${hrvList.size} records")
+            )
+            hrvList?.forEachIndexed { index, hrvData ->
+                VPLogger.d("RAW HRVOriginData[$index]: $hrvData")
                 val timeData = hrvData.getmTime()
                 if (timeData != null && hrvData.hrvValue > 0) {
                     val timeKey = String.format("%02d:%02d", timeData.hour, timeData.minute)
@@ -194,7 +213,7 @@ class OriginDataReader(
         }
 
         override fun onOriginSpo2OriginListDataChange(spo2List: MutableList<Spo2hOriginData>?) {
-            VPLogger.d("SpO2 origin data received: ${spo2List?.size} records")
+            VPLogger.d("RAW onOriginSpo2OriginListDataChange: ${spo2List?.size} records")
         }
 
         override fun onReadOriginComplete() {

@@ -139,7 +139,10 @@ class HRVDataReader(
 
     private val hrvOriginDataListener = object : IHRVOriginDataListener {
         override fun onReadOriginProgress(progress: Float) {
-            VPLogger.d("HRV data reading progress: ${progress}%")
+            // Logged unconditionally, including 0%, so a total absence of this line in logcat
+            // means the device never acknowledged the read at all (as opposed to acknowledging
+            // and then reporting no progress).
+            VPLogger.d("RAW onReadOriginProgress: ${progress * 100}%")
         }
 
         override fun onReadOriginProgressDetail(
@@ -148,10 +151,14 @@ class HRVDataReader(
             allPackNumber: Int,
             currentAllPackNumber: Int
         ) {
-            VPLogger.d("HRV reading detail - pack: $currentPackNumber/$allPackNumber, date: $date")
+            VPLogger.d(
+                "RAW onReadOriginProgressDetail - pack: $currentPackNumber/$allPackNumber, " +
+                "date: $date, currentAllPackNumber: $currentAllPackNumber"
+            )
         }
 
         override fun onHRVOriginListener(hrvData: HRVOriginData?) {
+            VPLogger.d("RAW onHRVOriginListener: $hrvData")
             if (hrvData != null) {
                 VPLogger.d("HRV data received - date: ${hrvData.date}, value: ${hrvData.hrvValue}, rate: ${hrvData.rate}")
 
