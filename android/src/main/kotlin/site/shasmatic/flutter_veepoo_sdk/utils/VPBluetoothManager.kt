@@ -572,6 +572,11 @@ class VPBluetoothManager(
 
         override fun onDeviceFunctionPackage2Report(data: DeviceFunctionPackage2) {
             VPLogger.i("Device function package2 report: $data")
+            // readHRVOrigin/readHRVOriginBySetting can time out with zero response (not even
+            // an error or empty-complete callback) if the watch reports the HRV function as
+            // SUPPORT_CLOSE here — i.e. HRV monitoring is supported but currently turned off
+            // on the device itself, so there's nothing recorded to read back at all.
+            VPLogger.i("HRV function status: ${data.hrvFunction} (hrvType: ${data.hrvType})")
         }
 
         override fun onDeviceFunctionPackage3Report(data: DeviceFunctionPackage3) {
