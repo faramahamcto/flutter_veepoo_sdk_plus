@@ -96,16 +96,16 @@ class BodyComponentReader(
     // (not plain Java SAMs), so they're implemented with object expressions rather than lambdas
     // to avoid relying on whether the vendor declared them as `fun interface`.
     private val idListener = object : IBodyComponentReadIdListener {
-        override fun readIdFinish(ids: ArrayList<Int>?) {
-            VPLogger.d("Body composition IDs received: ${ids?.size}")
-            returnSuccess(ids?.toList() ?: emptyList())
+        override fun readIdFinish(ids: ArrayList<Int>) {
+            VPLogger.d("Body composition IDs received: ${ids.size}")
+            returnSuccess(ids.toList())
         }
     }
 
     private val dataListener = object : IBodyComponentReadDataListener {
-        override fun readBodyComponentDataFinish(records: MutableList<BodyComponent>?) {
-            VPLogger.d("Body composition data received: ${records?.size} records")
-            returnSuccess((records ?: emptyList()).map { bodyComponentToMap(it) })
+        override fun readBodyComponentDataFinish(bodyComponentList: List<BodyComponent>?) {
+            VPLogger.d("Body composition data received: ${bodyComponentList?.size} records")
+            returnSuccess((bodyComponentList ?: emptyList()).map { bodyComponentToMap(it) })
         }
     }
 

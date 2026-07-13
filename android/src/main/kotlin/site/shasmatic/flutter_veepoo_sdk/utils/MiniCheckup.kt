@@ -194,10 +194,12 @@ private fun MiniCheckupBPPhotoelectric.toMap(): Map<String, Any?> = mapOf(
 
 private fun MiniCheckupBloodComponent.toMap(): Map<String, Any?> = mapOf(
     "uricAcid" to uricAcid.toDouble(),
-    "totalCholesterol" to tCHO.toDouble(),
-    "triglyceride" to tAG.toDouble(),
-    "hdl" to hDL.toDouble(),
-    "ldl" to lDL.toDouble()
+    // tCHO/tAG/hDL/lDL are private with hand-written (non-property) getters in the SDK, so
+    // they must be called as methods rather than accessed via Kotlin property syntax.
+    "totalCholesterol" to gettCHO().toDouble(),
+    "triglyceride" to gettAG().toDouble(),
+    "hdl" to gethDL().toDouble(),
+    "ldl" to getlDL().toDouble()
 )
 
 private fun MiniCheckupBodyComponent.toMap(): Map<String, Any?> = mapOf(
@@ -205,11 +207,12 @@ private fun MiniCheckupBodyComponent.toMap(): Map<String, Any?> = mapOf(
     "age" to age,
     "height" to height,
     "weight" to weight,
-    // Kotlin keeps BMI/FFM uppercase when synthesizing properties from getBMI()/getFFM().
-    "bmi" to BMI.toDouble(),
+    // BMI/FFM are private with hand-written (non-property) getters in the SDK, so they must be
+    // called as methods rather than accessed via Kotlin property syntax.
+    "bmi" to getBMI().toDouble(),
     "bodyFatRate" to bodyFatRate.toDouble(),
     "fatRate" to fatRate.toDouble(),
-    "ffm" to FFM.toDouble(),
+    "ffm" to getFFM().toDouble(),
     "muscleRate" to muscleRate.toDouble(),
     "muscleMass" to muscleMass.toDouble(),
     "subcutaneousFat" to subcutaneousFat.toDouble(),
