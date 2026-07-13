@@ -39,25 +39,31 @@ class _VeepooSDKDemoState extends State<VeepooSDKDemo>
   bool _isConnected = false;
   StreamSubscription<ConnectionStatus?>? _connectionStatusSubscription;
 
+  // Informational only — see the note on _connectionStatusSubscription below
+  // for why this must never gate the UI.
+  ConnectionStatus? _liveConnectionStatus;
+
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 10, vsync: this);
     _requestPermissions();
 
-    // The SDK's own isCurrentDeviceConnected()/isDeviceConnected(String) always
-    // return false, so real connection state is only known via this stream
-    // (backed by registerConnectStatusListener) or by polling
-    // getCurrentDeviceAddress(). Listening here keeps the UI in sync with what
-    // the watch is actually doing, not just what we optimistically assumed
-    // after a connect()/disconnect() call succeeded.
+    // NOTE: none of isCurrentDeviceConnected()/isDeviceConnected(String)/
+    // getCurrentDeviceAddress() are trustworthy on this SDK — this is a known
+    // upstream issue (see HBandSDK/Android_Ble_SDK#12), not something this
+    // plugin can paper over. getCurrentDeviceAddress() in particular is set
+    // as soon as connectDevice() is *called* (before success/failure is even
+    // known) and isn't reliably cleared on disconnect, so it can read as
+    // "connected" when it isn't and vice versa. This stream is fed by the
+    // same unreliable native signal, so it's kept here purely for display —
+    // it must NOT set _isConnected/_connectedDeviceAddress, which gate the
+    // Bind/Disconnect buttons. Those are set optimistically from the
+    // connectDevice()/disconnectDevice() call results below, which is the
+    // only signal that has actually proven reliable.
     _connectionStatusSubscription =
         _veepooSdk.connectionStatus.listen((status) {
-      if (status == null) return;
-      setState(() {
-        _isConnected = status.isConnected;
-        _connectedDeviceAddress = status.isConnected ? status.address : null;
-      });
+      setState(() => _liveConnectionStatus = status);
     });
   }
 
@@ -69,21 +75,17 @@ class _VeepooSDKDemoState extends State<VeepooSDKDemo>
   }
 
   /// Asks the SDK directly which device (if any) it currently considers
-  /// connected, using the only method that reliably reports this
-  /// (getCurrentDeviceAddress), and syncs local state to match.
+  /// connected. Shown for reference only — see the note in [initState]
+  /// on why this can't be trusted to gate the UI.
   Future<void> _verifyConnection() async {
     try {
       final address = await _veepooSdk.getCurrentDeviceAddress();
       final connected = address != null && address.isNotEmpty;
-      setState(() {
-        _isConnected = connected;
-        _connectedDeviceAddress = connected ? address : null;
-      });
       _showInfo(
         'Connection Check',
-        connected
-            ? 'Device is connected: $address'
-            : 'No device is currently connected.',
+        '${connected ? 'SDK reports connected: $address' : 'SDK reports no device connected.'}\n\n'
+            'Known to be unreliable on this SDK (HBandSDK/Android_Ble_SDK#12) — '
+            'if this disagrees with reality, trust the Connected banner instead.',
       );
     } catch (e) {
       _showError('Failed to verify connection: $e');
@@ -313,6 +315,17 @@ Power Model: ${battery?.powerModel?.name ?? 'Unknown'}
                     leading: const Icon(Icons.check_circle, color: Colors.green),
                     title: const Text('Connected'),
                     subtitle: Text(_connectedDeviceAddress!),
+                  ),
+                ),
+              if (_liveConnectionStatus != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(
+                    'SDK connectionStatus stream (informational, unreliable — see #12): '
+                    '${_liveConnectionStatus!.state.name}'
+                    '${_liveConnectionStatus!.address != null ? ' @ ${_liveConnectionStatus!.address}' : ''}',
+                    style: const TextStyle(fontSize: 11, color: Colors.grey),
+                    textAlign: TextAlign.center,
                   ),
                 ),
               const SizedBox(height: 10),
