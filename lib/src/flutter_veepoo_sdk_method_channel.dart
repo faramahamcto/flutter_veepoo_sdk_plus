@@ -172,7 +172,7 @@ class MethodChannelFlutterVeepooSdk extends FlutterVeepooSdkPlatform {
   @override
   Future<void> disconnectDevice() async {
     try {
-      if (await isDeviceConnected() == true) {
+      if (await _isCurrentlyConnected()) {
         await methodChannel.invokeMethod<void>('disconnectDevice');
       } else {
         throw const VeepooException(message: 'Device is not connected');
@@ -260,6 +260,20 @@ class MethodChannelFlutterVeepooSdk extends FlutterVeepooSdkPlatform {
     }
   }
 
+  /// The actual connection gate used before device operations
+  /// (disconnectDevice, startDetectHeart, readBattery, etc).
+  ///
+  /// isCurrentDeviceConnected()/isDeviceConnected(String) on the native SDK
+  /// always return false regardless of real state (see
+  /// HBandSDK/Android_Ble_SDK#12), so this calls [getCurrentDeviceAddress]
+  /// directly instead of going through [isDeviceConnected] (which round-trips
+  /// through that same broken native check) — a non-null, non-empty address
+  /// is treated as connected.
+  Future<bool> _isCurrentlyConnected() async {
+    final address = await getCurrentDeviceAddress();
+    return address != null && address.isNotEmpty;
+  }
+
   /// Checks if a device has been bound (paired) before.
   /// Returns [true] if credentials have been saved during binding, otherwise [false].
   /// Throws a [VeepooException] if the request fails.
@@ -305,7 +319,7 @@ class MethodChannelFlutterVeepooSdk extends FlutterVeepooSdkPlatform {
   @override
   Future<void> startDetectHeart() async {
     try {
-      if (await isDeviceConnected() == true) {
+      if (await _isCurrentlyConnected()) {
         await methodChannel.invokeMethod<void>('startDetectHeart');
       } else {
         throw const VeepooException(message: 'Device is not connected');
@@ -344,7 +358,7 @@ class MethodChannelFlutterVeepooSdk extends FlutterVeepooSdkPlatform {
   @override
   Future<void> stopDetectHeart() async {
     try {
-      if (await isDeviceConnected() == true) {
+      if (await _isCurrentlyConnected()) {
         await methodChannel.invokeMethod<void>('stopDetectHeart');
       } else {
         throw const VeepooException(message: 'Device is not connected');
@@ -411,7 +425,7 @@ class MethodChannelFlutterVeepooSdk extends FlutterVeepooSdkPlatform {
   @override
   Future<void> stopDetectSpoh() async {
     try {
-      if (await isDeviceConnected() == true) {
+      if (await _isCurrentlyConnected()) {
         await methodChannel.invokeMethod<void>('stopDetectSpoh');
       } else {
         throw const VeepooException(message: 'Device is not connected');
@@ -429,7 +443,7 @@ class MethodChannelFlutterVeepooSdk extends FlutterVeepooSdkPlatform {
   @override
   Future<Battery?> readBattery() async {
     try {
-      if (await isDeviceConnected() == true) {
+      if (await _isCurrentlyConnected()) {
         final result =
             await methodChannel.invokeMapMethod<String, dynamic>('readBattery');
         return result != null ? Battery.fromJson(result) : null;
