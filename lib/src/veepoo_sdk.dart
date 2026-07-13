@@ -397,6 +397,47 @@ class VeepooSDK {
   /// Stream of real-time blood component updates.
   Stream<BloodComponent?> get bloodComponent => _platform.bloodComponent;
 
+  // ==================== Body Composition ====================
+
+  /// Start live body composition detection (BMI, body fat, muscle mass,
+  /// water content, bone mass, etc). Progress and results are delivered via
+  /// [bodyComponent].
+  Future<void> startDetectBodyComponent() =>
+      _platform.startDetectBodyComponent();
+
+  /// Stop live body composition detection.
+  Future<void> stopDetectBodyComponent() =>
+      _platform.stopDetectBodyComponent();
+
+  /// Stream of live body composition detection updates.
+  Stream<BodyComponent?> get bodyComponent => _platform.bodyComponent;
+
+  /// Read the IDs of body composition records stored on the device.
+  /// Pass some or all of the returned IDs to [readBodyComponentData] to
+  /// fetch the actual measurements.
+  Future<List<int>> readBodyComponentId() => _platform.readBodyComponentId();
+
+  /// Read body composition record data.
+  /// [ids] - Specific record IDs (from [readBodyComponentId]) to read. When
+  /// omitted, all stored records are read.
+  Future<List<BodyComponent>> readBodyComponentData({List<int>? ids}) =>
+      _platform.readBodyComponentData(ids: ids);
+
+  // ==================== Mini Checkup ====================
+
+  /// Starts a Mini Checkup: a single guided, multi-sensor health check
+  /// covering heart rate, SpO2, stress, emotion, fatigue, blood glucose,
+  /// body temperature, blood pressure, HRV, and optionally blood
+  /// composition, body composition and skin electricity. Progress and
+  /// results are delivered via [miniCheckup].
+  Future<void> startMiniCheckup() => _platform.startMiniCheckup();
+
+  /// Stops the current Mini Checkup session.
+  Future<void> stopMiniCheckup() => _platform.stopMiniCheckup();
+
+  /// Stream of Mini Checkup events (progress, result, detail or error).
+  Stream<MiniCheckupEvent?> get miniCheckup => _platform.miniCheckup;
+
   // ==================== HRV ====================
 
   /// Read HRV (Heart Rate Variability) data.

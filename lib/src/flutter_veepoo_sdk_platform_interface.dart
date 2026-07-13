@@ -312,6 +312,50 @@ abstract class FlutterVeepooSdkPlatform extends PlatformInterface {
     );
   }
 
+  // ==================== Body Composition ====================
+
+  /// Start live body composition detection.
+  Future<void> startDetectBodyComponent() {
+    throw UnimplementedError(
+      'startDetectBodyComponent() has not been implemented.',
+    );
+  }
+
+  /// Stop live body composition detection.
+  Future<void> stopDetectBodyComponent() {
+    throw UnimplementedError(
+      'stopDetectBodyComponent() has not been implemented.',
+    );
+  }
+
+  /// Read the IDs of body composition records stored on the device.
+  Future<List<int>> readBodyComponentId() {
+    throw UnimplementedError(
+      'readBodyComponentId() has not been implemented.',
+    );
+  }
+
+  /// Read body composition record data. When [ids] is omitted, all stored
+  /// records are read.
+  Future<List<BodyComponent>> readBodyComponentData({List<int>? ids}) {
+    throw UnimplementedError(
+      'readBodyComponentData() has not been implemented.',
+    );
+  }
+
+  // ==================== Mini Checkup ====================
+
+  /// Start a Mini Checkup session. Progress and results are delivered via
+  /// [miniCheckup].
+  Future<void> startMiniCheckup() {
+    throw UnimplementedError('startMiniCheckup() has not been implemented.');
+  }
+
+  /// Stop the current Mini Checkup session.
+  Future<void> stopMiniCheckup() {
+    throw UnimplementedError('stopMiniCheckup() has not been implemented.');
+  }
+
   // ==================== HRV ====================
 
   /// Read HRV data.
@@ -482,6 +526,20 @@ abstract class FlutterVeepooSdkPlatform extends PlatformInterface {
   Stream<BloodComponent?> get bloodComponent {
     throw UnimplementedError(
       'bloodComponentEventChannel has not been implemented.',
+    );
+  }
+
+  /// Stream of live body composition detection results.
+  Stream<BodyComponent?> get bodyComponent {
+    throw UnimplementedError(
+      'bodyComponentEventChannel has not been implemented.',
+    );
+  }
+
+  /// Stream of Mini Checkup events (progress, result, detail or error).
+  Stream<MiniCheckupEvent?> get miniCheckup {
+    throw UnimplementedError(
+      'miniCheckupEventChannel has not been implemented.',
     );
   }
 

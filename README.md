@@ -334,6 +334,56 @@ veepooSdk.bloodGlucose.listen((glucose) {
 await veepooSdk.stopDetectBloodGlucose();
 ```
 
+### Body Composition
+
+```dart
+// Live measurement (BMI, body fat, muscle mass, water, bone mass, BMR, etc.)
+await veepooSdk.startDetectBodyComponent();
+
+veepooSdk.bodyComponent.listen((bc) {
+  print('BMI: ${bc?.bmi}, Body Fat: ${bc?.bodyFatRate}%');
+  print('Muscle Mass: ${bc?.muscleMass} kg, Water: ${bc?.bodyWater}%');
+});
+
+await veepooSdk.stopDetectBodyComponent();
+
+// Read previously stored measurements from the device
+final ids = await veepooSdk.readBodyComponentId();
+final records = await veepooSdk.readBodyComponentData(ids: ids); // or omit ids for all records
+```
+
+### Mini Checkup
+
+A single guided, multi-sensor check covering heart rate, SpO2, stress, emotion, fatigue,
+blood glucose, temperature, blood pressure and HRV — and, when the device supports it, a more
+detailed report that also includes blood composition, body composition, and skin electricity.
+
+```dart
+await veepooSdk.startMiniCheckup();
+
+veepooSdk.miniCheckup.listen((event) {
+  switch (event?.type) {
+    case MiniCheckupEventType.progress:
+      print('Progress: ${event?.progress}%');
+      break;
+    case MiniCheckupEventType.result:
+      print('Heart rate: ${event?.result?.heartRate}, SpO2: ${event?.result?.bloodOxygen}');
+      break;
+    case MiniCheckupEventType.detail:
+      final body = event?.detail?.bodyComponent;
+      print('Body fat: ${body?.bodyFatRate}%, Muscle mass: ${body?.muscleMass} kg');
+      break;
+    case MiniCheckupEventType.error:
+      print('Failed: ${event?.errorCode}');
+      break;
+    default:
+      break;
+  }
+});
+
+await veepooSdk.stopMiniCheckup();
+```
+
 ### Device Configuration
 
 ```dart

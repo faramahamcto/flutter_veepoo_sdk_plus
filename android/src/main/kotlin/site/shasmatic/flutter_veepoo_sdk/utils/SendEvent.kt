@@ -108,6 +108,24 @@ class SendEvent(private val eventSink: EventChannel.EventSink?) {
         sendEvent(connectionStatusData)
     }
 
+    /**
+     * Sends a body composition detection event with the given body composition data.
+     *
+     * @param bodyComponentData A map containing the body composition data.
+     */
+    fun sendBodyComponentEvent(bodyComponentData: Map<String, Any?>) {
+        sendEvent(bodyComponentData)
+    }
+
+    /**
+     * Sends a Mini Checkup event with the given Mini Checkup data.
+     *
+     * @param miniCheckupData A map containing the Mini Checkup event data.
+     */
+    fun sendMiniCheckupEvent(miniCheckupData: Map<String, Any?>) {
+        sendEvent(miniCheckupData)
+    }
+
     private fun sendEvent(eventData: Any) {
         if (eventSink == null) {
             VPLogger.w("Event sink is null, cannot send event: $eventData")

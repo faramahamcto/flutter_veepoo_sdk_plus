@@ -30,6 +30,10 @@ class MethodChannelFlutterVeepooSdk extends FlutterVeepooSdkPlatform {
       const EventChannel('$_channelName/origin_data_progress_event_channel');
   final EventChannel connectionStatusEventChannel =
       const EventChannel('$_channelName/connection_status_event_channel');
+  final EventChannel bodyComponentEventChannel =
+      const EventChannel('$_channelName/detect_body_component_event_channel');
+  final EventChannel miniCheckupEventChannel =
+      const EventChannel('$_channelName/mini_checkup_event_channel');
 
   // Cached streams
   Stream<List<BluetoothDevice>>? _bluetoothDevicesStream;
@@ -43,6 +47,8 @@ class MethodChannelFlutterVeepooSdk extends FlutterVeepooSdkPlatform {
   Stream<StepData?>? _stepDataStream;
   Stream<OriginDataProgress?>? _originDataProgressStream;
   Stream<ConnectionStatus?>? _connectionStatusStream;
+  Stream<BodyComponent?>? _bodyComponentStream;
+  Stream<MiniCheckupEvent?>? _miniCheckupStream;
 
   /// Requests Bluetooth permissions.
   ///
@@ -836,6 +842,97 @@ class MethodChannelFlutterVeepooSdk extends FlutterVeepooSdkPlatform {
     }
   }
 
+  // ==================== Body Composition ====================
+
+  @override
+  Future<void> startDetectBodyComponent() async {
+    try {
+      await methodChannel.invokeMethod<void>('startDetectBodyComponent');
+    } on PlatformException catch (error, stackTrace) {
+      throw VeepooException(
+        message: 'Failed to start body composition detection: ${error.message}',
+        details: error.details,
+        stacktrace: stackTrace,
+      );
+    }
+  }
+
+  @override
+  Future<void> stopDetectBodyComponent() async {
+    try {
+      await methodChannel.invokeMethod<void>('stopDetectBodyComponent');
+    } on PlatformException catch (error, stackTrace) {
+      throw VeepooException(
+        message: 'Failed to stop body composition detection: ${error.message}',
+        details: error.details,
+        stacktrace: stackTrace,
+      );
+    }
+  }
+
+  @override
+  Future<List<int>> readBodyComponentId() async {
+    try {
+      final result =
+          await methodChannel.invokeListMethod<int>('readBodyComponentId');
+      return result ?? [];
+    } on PlatformException catch (error, stackTrace) {
+      throw VeepooException(
+        message: 'Failed to read body composition IDs: ${error.message}',
+        details: error.details,
+        stacktrace: stackTrace,
+      );
+    }
+  }
+
+  @override
+  Future<List<BodyComponent>> readBodyComponentData({List<int>? ids}) async {
+    try {
+      final result = await methodChannel.invokeListMethod<Map>(
+        'readBodyComponentData',
+        {'ids': ids},
+      );
+      return result
+              ?.map((item) => BodyComponent.fromMap(Map<String, dynamic>.from(item)))
+              .toList() ??
+          [];
+    } on PlatformException catch (error, stackTrace) {
+      throw VeepooException(
+        message: 'Failed to read body composition data: ${error.message}',
+        details: error.details,
+        stacktrace: stackTrace,
+      );
+    }
+  }
+
+  // ==================== Mini Checkup ====================
+
+  @override
+  Future<void> startMiniCheckup() async {
+    try {
+      await methodChannel.invokeMethod<void>('startMiniCheckup');
+    } on PlatformException catch (error, stackTrace) {
+      throw VeepooException(
+        message: 'Failed to start Mini Checkup: ${error.message}',
+        details: error.details,
+        stacktrace: stackTrace,
+      );
+    }
+  }
+
+  @override
+  Future<void> stopMiniCheckup() async {
+    try {
+      await methodChannel.invokeMethod<void>('stopMiniCheckup');
+    } on PlatformException catch (error, stackTrace) {
+      throw VeepooException(
+        message: 'Failed to stop Mini Checkup: ${error.message}',
+        details: error.details,
+        stacktrace: stackTrace,
+      );
+    }
+  }
+
   // ==================== HRV ====================
 
   @override
@@ -1279,6 +1376,40 @@ class MethodChannelFlutterVeepooSdk extends FlutterVeepooSdkPlatform {
     }).asBroadcastStream();
 
     return _bloodComponentStream!;
+  }
+
+  @override
+  Stream<BodyComponent?> get bodyComponent {
+    _bodyComponentStream ??= bodyComponentEventChannel.receiveBroadcastStream().map((dynamic event) {
+      if (event is Map<Object?, Object?>) {
+        final result =
+            event.map((key, value) => MapEntry(key.toString(), value));
+        return BodyComponent.fromMap(result);
+      } else {
+        throw VeepooException(
+          message: 'Unexpected event type: ${event.runtimeType}',
+        );
+      }
+    }).asBroadcastStream();
+
+    return _bodyComponentStream!;
+  }
+
+  @override
+  Stream<MiniCheckupEvent?> get miniCheckup {
+    _miniCheckupStream ??= miniCheckupEventChannel.receiveBroadcastStream().map((dynamic event) {
+      if (event is Map<Object?, Object?>) {
+        final result =
+            event.map((key, value) => MapEntry(key.toString(), value));
+        return MiniCheckupEvent.fromMap(result);
+      } else {
+        throw VeepooException(
+          message: 'Unexpected event type: ${event.runtimeType}',
+        );
+      }
+    }).asBroadcastStream();
+
+    return _miniCheckupStream!;
   }
 
   @override

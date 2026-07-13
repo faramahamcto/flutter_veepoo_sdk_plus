@@ -42,7 +42,7 @@ class _VeepooSDKDemoState extends State<VeepooSDKDemo>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 9, vsync: this);
+    _tabController = TabController(length: 10, vsync: this);
     _requestPermissions();
 
     // The SDK's own isCurrentDeviceConnected()/isDeviceConnected(String) always
@@ -272,6 +272,7 @@ Power Model: ${battery?.powerModel?.name ?? 'Unknown'}
             Tab(text: 'Steps & Sleep'),
             Tab(text: 'ECG & Glucose'),
             Tab(text: 'Blood Analysis'),
+            Tab(text: 'Body & Checkup'),
             Tab(text: 'Health Data'),
             Tab(text: 'Settings'),
             Tab(text: 'History'),
@@ -287,6 +288,7 @@ Power Model: ${battery?.powerModel?.name ?? 'Unknown'}
           _buildStepsSleepTab(),
           _buildECGGlucoseTab(),
           _buildBloodAnalysisTab(),
+          _buildBodyCompositionTab(),
           _buildHealthDataTab(),
           _buildSettingsTab(),
           _buildHistoryTab(),
@@ -1241,6 +1243,259 @@ Type: ${data.last.hrvType ?? 'N/A'}
                       }
                     },
                     child: const Text('Read Today\'s HRV'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ==================== Body Composition & Mini Checkup Tab ====================
+
+  Widget _buildBodyCompositionTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          // Live Body Composition Card
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  const Text(
+                    'Body Composition',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 10),
+                  StreamBuilder<BodyComponent?>(
+                    stream: _veepooSdk.bodyComponent,
+                    builder: (context, snapshot) {
+                      final bc = snapshot.data;
+                      if (bc == null) return const Text('No data');
+                      return Column(
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceAround,
+                            children: [
+                              Column(
+                                children: [
+                                  const Text('BMI', style: TextStyle(fontSize: 12)),
+                                  Text(
+                                    bc.bmi?.toStringAsFixed(1) ?? '-',
+                                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                                  ),
+                                ],
+                              ),
+                              Column(
+                                children: [
+                                  const Text('Body Fat', style: TextStyle(fontSize: 12)),
+                                  Text(
+                                    '${bc.bodyFatRate?.toStringAsFixed(1) ?? '-'}%',
+                                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                                  ),
+                                ],
+                              ),
+                              Column(
+                                children: [
+                                  const Text('Muscle Mass', style: TextStyle(fontSize: 12)),
+                                  Text(
+                                    '${bc.muscleMass?.toStringAsFixed(1) ?? '-'} kg',
+                                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceAround,
+                            children: [
+                              Column(
+                                children: [
+                                  const Text('Body Water', style: TextStyle(fontSize: 12)),
+                                  Text('${bc.bodyWater?.toStringAsFixed(1) ?? '-'}%'),
+                                ],
+                              ),
+                              Column(
+                                children: [
+                                  const Text('Bone Mass', style: TextStyle(fontSize: 12)),
+                                  Text('${bc.boneMass?.toStringAsFixed(1) ?? '-'} kg'),
+                                ],
+                              ),
+                              Column(
+                                children: [
+                                  const Text('BMR', style: TextStyle(fontSize: 12)),
+                                  Text('${bc.basalMetabolicRate?.toStringAsFixed(0) ?? '-'} kcal'),
+                                ],
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          if (bc.isMeasuring == true)
+                            LinearProgressIndicator(value: (bc.progress ?? 0) / 100),
+                          Text('Status: ${bc.state?.name ?? "Unknown"}'),
+                        ],
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8,
+                    children: [
+                      ElevatedButton(
+                        onPressed: () async {
+                          try {
+                            await _veepooSdk.startDetectBodyComponent();
+                          } catch (e) {
+                            _showError('$e');
+                          }
+                        },
+                        child: const Text('Start'),
+                      ),
+                      ElevatedButton(
+                        onPressed: () async {
+                          try {
+                            await _veepooSdk.stopDetectBodyComponent();
+                          } catch (e) {
+                            _showError('$e');
+                          }
+                        },
+                        child: const Text('Stop'),
+                      ),
+                      OutlinedButton(
+                        onPressed: () async {
+                          try {
+                            final ids = await _veepooSdk.readBodyComponentId();
+                            _showInfo('Body Composition Records',
+                                ids.isEmpty ? 'No stored records.' : 'Record IDs: $ids');
+                          } catch (e) {
+                            _showError('$e');
+                          }
+                        },
+                        child: const Text('Read Record IDs'),
+                      ),
+                      OutlinedButton(
+                        onPressed: () async {
+                          try {
+                            final records = await _veepooSdk.readBodyComponentData();
+                            if (records.isEmpty) {
+                              _showError('No stored body composition records');
+                              return;
+                            }
+                            final last = records.last;
+                            _showInfo('Body Composition History', '''
+Records: ${records.length}
+Latest: ${last.date ?? 'N/A'}
+BMI: ${last.bmi?.toStringAsFixed(1) ?? 'N/A'}
+Body Fat: ${last.bodyFatRate?.toStringAsFixed(1) ?? 'N/A'}%
+Muscle Mass: ${last.muscleMass?.toStringAsFixed(1) ?? 'N/A'} kg
+                            ''');
+                          } catch (e) {
+                            _showError('$e');
+                          }
+                        },
+                        child: const Text('Read All Records'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          // Mini Checkup Card
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  const Text(
+                    'Mini Checkup',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 10),
+                  const Text(
+                    'A single guided, multi-sensor check covering heart rate, SpO2, stress, '
+                    'emotion, fatigue, blood glucose, temperature, blood pressure, HRV and, '
+                    'when supported, blood/body composition and skin electricity.',
+                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 10),
+                  StreamBuilder<MiniCheckupEvent?>(
+                    stream: _veepooSdk.miniCheckup,
+                    builder: (context, snapshot) {
+                      final event = snapshot.data;
+                      if (event == null) return const Text('No data');
+
+                      switch (event.type) {
+                        case MiniCheckupEventType.progress:
+                          return Column(
+                            children: [
+                              LinearProgressIndicator(value: (event.progress ?? 0) / 100),
+                              Text('Testing... ${event.progress ?? 0}%'),
+                            ],
+                          );
+                        case MiniCheckupEventType.error:
+                          return Text('Failed: ${event.errorCode?.name ?? "unknown"}');
+                        case MiniCheckupEventType.stopped:
+                          return const Text('Stopped');
+                        case MiniCheckupEventType.result:
+                          final r = event.result;
+                          return Text('''
+Heart Rate: ${r?.heartRate ?? 'N/A'} BPM
+SpO2: ${r?.bloodOxygen ?? 'N/A'}%
+Stress: ${r?.stress ?? 'N/A'}
+Emotion: ${r?.emotion ?? 'N/A'}
+Fatigue: ${r?.fatigue ?? 'N/A'}
+Blood Pressure: ${r?.systolicBloodPressure ?? '-'}/${r?.diastolicBloodPressure ?? '-'}
+HRV: ${r?.hrv ?? 'N/A'}
+                          ''');
+                        case MiniCheckupEventType.detail:
+                          final d = event.detail;
+                          final body = d?.bodyComponent;
+                          return Text('''
+Heart Rate: ${d?.heartRate ?? 'N/A'} BPM
+SpO2: ${d?.bloodOxygen ?? 'N/A'}%
+Blood Pressure (cuff): ${d?.bpAirPump?.systolicBloodPressure ?? '-'}/${d?.bpAirPump?.diastolicBloodPressure ?? '-'}
+HRV: ${d?.hrv ?? 'N/A'}
+Body Fat: ${body?.bodyFatRate?.toStringAsFixed(1) ?? 'N/A'}%
+Muscle Mass: ${body?.muscleMass?.toStringAsFixed(1) ?? 'N/A'} kg
+                          ''');
+                        case MiniCheckupEventType.unknown:
+                          return const Text('Unknown event');
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8,
+                    children: [
+                      ElevatedButton(
+                        onPressed: () async {
+                          try {
+                            await _veepooSdk.startMiniCheckup();
+                          } catch (e) {
+                            _showError('$e');
+                          }
+                        },
+                        child: const Text('Start'),
+                      ),
+                      ElevatedButton(
+                        onPressed: () async {
+                          try {
+                            await _veepooSdk.stopMiniCheckup();
+                          } catch (e) {
+                            _showError('$e');
+                          }
+                        },
+                        child: const Text('Stop'),
+                      ),
+                    ],
                   ),
                 ],
               ),

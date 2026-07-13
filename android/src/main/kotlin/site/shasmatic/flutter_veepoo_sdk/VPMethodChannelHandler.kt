@@ -18,10 +18,13 @@ import site.shasmatic.flutter_veepoo_sdk.utils.Battery
 import site.shasmatic.flutter_veepoo_sdk.utils.BloodComponentDetection
 import site.shasmatic.flutter_veepoo_sdk.utils.BloodGlucose
 import site.shasmatic.flutter_veepoo_sdk.utils.BloodPressure
+import site.shasmatic.flutter_veepoo_sdk.utils.BodyComponentDetection
+import site.shasmatic.flutter_veepoo_sdk.utils.BodyComponentReader
 import site.shasmatic.flutter_veepoo_sdk.utils.DeviceStorage
 import site.shasmatic.flutter_veepoo_sdk.utils.EcgDetection
 import site.shasmatic.flutter_veepoo_sdk.utils.HeartRate
 import site.shasmatic.flutter_veepoo_sdk.utils.HRVDataReader
+import site.shasmatic.flutter_veepoo_sdk.utils.MiniCheckup
 import site.shasmatic.flutter_veepoo_sdk.utils.SleepDataReader
 import site.shasmatic.flutter_veepoo_sdk.utils.Spoh
 import site.shasmatic.flutter_veepoo_sdk.utils.StepDataReader
@@ -55,6 +58,8 @@ class VPMethodChannelHandler(
     private var detectBloodComponentEventSink: EventChannel.EventSink? = null
     private var originDataProgressEventSink: EventChannel.EventSink? = null
     private var connectionStatusEventSink: EventChannel.EventSink? = null
+    private var detectBodyComponentEventSink: EventChannel.EventSink? = null
+    private var miniCheckupEventSink: EventChannel.EventSink? = null
     private lateinit var result: MethodChannel.Result
 
     @RequiresApi(Build.VERSION_CODES.S)
@@ -103,6 +108,12 @@ class VPMethodChannelHandler(
             "stopDetectBloodGlucose" -> handleStopDetectBloodGlucose()
             "startDetectBloodComponent" -> handleStartDetectBloodComponent(call.argument<Boolean>("needCalibration") ?: false)
             "stopDetectBloodComponent" -> handleStopDetectBloodComponent()
+            "startDetectBodyComponent" -> handleStartDetectBodyComponent()
+            "stopDetectBodyComponent" -> handleStopDetectBodyComponent()
+            "readBodyComponentId" -> handleReadBodyComponentId()
+            "readBodyComponentData" -> handleReadBodyComponentData(call.argument<List<Int>>("ids"))
+            "startMiniCheckup" -> handleStartMiniCheckup()
+            "stopMiniCheckup" -> handleStopMiniCheckup()
             "readSleepData" -> handleReadSleepData()
             "readStepData" -> handleReadStepData()
             "readStepDataForDate" -> handleReadStepDataForDate(call.argument<Long>("timestamp"))
@@ -382,6 +393,58 @@ class VPMethodChannelHandler(
         }
     }
 
+    private fun handleStartDetectBodyComponent() {
+        try {
+            getBodyComponentManager().startDetectBodyComponent()
+            result.success(null)
+        } catch (e: Exception) {
+            result.error("START_BODY_COMPONENT_ERROR", "Failed to start body composition detection: ${e.message}", null)
+        }
+    }
+
+    private fun handleStopDetectBodyComponent() {
+        try {
+            getBodyComponentManager().stopDetectBodyComponent()
+            result.success(null)
+        } catch (e: Exception) {
+            result.error("STOP_BODY_COMPONENT_ERROR", "Failed to stop body composition detection: ${e.message}", null)
+        }
+    }
+
+    private fun handleReadBodyComponentId() {
+        try {
+            getBodyComponentReader().readBodyComponentId()
+        } catch (e: Exception) {
+            result.error("READ_BODY_COMPONENT_ID_ERROR", "Failed to read body composition IDs: ${e.message}", null)
+        }
+    }
+
+    private fun handleReadBodyComponentData(ids: List<Int>?) {
+        try {
+            getBodyComponentReader().readBodyComponentData(ids)
+        } catch (e: Exception) {
+            result.error("READ_BODY_COMPONENT_DATA_ERROR", "Failed to read body composition data: ${e.message}", null)
+        }
+    }
+
+    private fun handleStartMiniCheckup() {
+        try {
+            getMiniCheckup().startMiniCheckup()
+            result.success(null)
+        } catch (e: Exception) {
+            result.error("START_MINI_CHECKUP_ERROR", "Failed to start Mini Checkup: ${e.message}", null)
+        }
+    }
+
+    private fun handleStopMiniCheckup() {
+        try {
+            getMiniCheckup().stopMiniCheckup()
+            result.success(null)
+        } catch (e: Exception) {
+            result.error("STOP_MINI_CHECKUP_ERROR", "Failed to stop Mini Checkup: ${e.message}", null)
+        }
+    }
+
     private fun handleReadHRVData(days: Int) {
         try {
             getHRVDataReader().readHRVData(days)
@@ -434,6 +497,14 @@ class VPMethodChannelHandler(
         this.connectionStatusEventSink = eventSink
     }
 
+    fun setDetectBodyComponentEventSink(eventSink: EventChannel.EventSink?) {
+        this.detectBodyComponentEventSink = eventSink
+    }
+
+    fun setMiniCheckupEventSink(eventSink: EventChannel.EventSink?) {
+        this.miniCheckupEventSink = eventSink
+    }
+
     private fun getBluetoothManager(result: MethodChannel.Result): VPBluetoothManager {
         return VPBluetoothManager(deviceStorage, result, activity!!, scanBluetoothEventSink, connectionStatusEventSink, vpManager)
     }
@@ -476,6 +547,18 @@ class VPMethodChannelHandler(
 
     private fun getBloodComponentManager(): BloodComponentDetection {
         return BloodComponentDetection(detectBloodComponentEventSink, vpManager)
+    }
+
+    private fun getBodyComponentManager(): BodyComponentDetection {
+        return BodyComponentDetection(detectBodyComponentEventSink, vpManager)
+    }
+
+    private fun getBodyComponentReader(): BodyComponentReader {
+        return BodyComponentReader(result, vpManager)
+    }
+
+    private fun getMiniCheckup(): MiniCheckup {
+        return MiniCheckup(miniCheckupEventSink, vpManager)
     }
 
     private fun getHRVDataReader(): HRVDataReader {
