@@ -95,6 +95,13 @@ class BodyComponent extends Equatable {
   /// Measurement progress, 0-100 (live detection only)
   final int? progress;
 
+  /// Raw per-step code reported by the device while measuring (live
+  /// detection only). Unlike ECG's waveform-derived signal quality, the
+  /// vendor doesn't document what this value means beyond "still
+  /// measuring" — there's no true signal-quality metric for body
+  /// composition. Shown as a coarse, undocumented diagnostic only.
+  final int? detectStep;
+
   /// Timestamp of this event
   final int? timestamp;
 
@@ -120,6 +127,7 @@ class BodyComponent extends Equatable {
     this.state,
     this.isMeasuring,
     this.progress,
+    this.detectStep,
     this.timestamp,
   });
 
@@ -151,6 +159,7 @@ class BodyComponent extends Equatable {
           : null,
       isMeasuring: map['isMeasuring'] as bool?,
       progress: (map['progress'] as num?)?.toInt(),
+      detectStep: (map['detectStep'] as num?)?.toInt(),
       timestamp: (map['timestamp'] as num?)?.toInt(),
     );
   }
@@ -178,6 +187,7 @@ class BodyComponent extends Equatable {
       'state': state?.name,
       'isMeasuring': isMeasuring,
       'progress': progress,
+      'detectStep': detectStep,
       'timestamp': timestamp,
     };
   }
@@ -205,6 +215,7 @@ class BodyComponent extends Equatable {
         state,
         isMeasuring,
         progress,
+        detectStep,
         timestamp,
       ];
 }

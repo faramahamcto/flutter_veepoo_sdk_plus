@@ -360,7 +360,14 @@ abstract class FlutterVeepooSdkPlatform extends PlatformInterface {
   // ==================== HRV ====================
 
   /// Read HRV data.
-  Future<List<HRVData>> readHRVData({int days = 7}) {
+  ///
+  /// [startDay] is the day offset to start from: 0 = today, 1 = yesterday,
+  /// etc. HRV is generated as an end-of-day statistic, so day 0 (today,
+  /// still accumulating) may have nothing to return yet — some devices will
+  /// then never respond at all, which surfaces as a timeout rather than an
+  /// empty list. If today's HRV keeps timing out, try startDay: 1 to read
+  /// yesterday's (complete) data instead.
+  Future<List<HRVData>> readHRVData({int days = 7, int startDay = 0}) {
     throw UnimplementedError('readHRVData() has not been implemented.');
   }
 

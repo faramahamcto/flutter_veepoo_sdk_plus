@@ -949,15 +949,17 @@ class MethodChannelFlutterVeepooSdk extends FlutterVeepooSdkPlatform {
   // ==================== HRV ====================
 
   @override
-  Future<List<HRVData>> readHRVData({int days = 7}) async {
+  Future<List<HRVData>> readHRVData({int days = 7, int startDay = 0}) async {
     try {
-      final result = await methodChannel.invokeMethod<List<dynamic>>(
+      // Native returns a map ({hrvDataList, dayHrvScore, totalRecords}), not a bare list.
+      final result = await methodChannel.invokeMapMethod<String, dynamic>(
         'readHRVData',
-        {'days': days},
+        {'days': days, 'startDay': startDay},
       );
-      if (result == null) return [];
-      return result
-          .map((e) => HRVData.fromMap(e as Map<String, dynamic>))
+      final list = result?['hrvDataList'] as List<dynamic>?;
+      if (list == null) return [];
+      return list
+          .map((e) => HRVData.fromMap(Map<String, dynamic>.from(e as Map)))
           .toList();
     } on PlatformException catch (error, stackTrace) {
       throw VeepooException(

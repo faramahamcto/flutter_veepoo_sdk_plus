@@ -5,6 +5,7 @@ import com.veepoo.protocol.VPOperateManager
 import com.veepoo.protocol.listener.base.IBleWriteResponse
 import com.veepoo.protocol.listener.data.IHRVOriginDataListener
 import com.veepoo.protocol.model.datas.HRVOriginData
+import com.veepoo.protocol.model.settings.ReadOriginSetting
 import com.veepoo.protocol.shareprence.VpSpGetUtil
 import io.flutter.plugin.common.MethodChannel
 import kotlinx.coroutines.CoroutineScope
@@ -43,11 +44,17 @@ class HRVDataReader(
 
     /**
      * Reads HRV data for the specified number of days.
+     *
      * @param days Number of days to read (default: 7)
+     * @param startDay Day offset to start from: 0 = today, 1 = yesterday, etc (default: 0).
+     * HRV is generated as an end-of-day statistic, so day 0 (today, still accumulating) may
+     * have nothing to return yet — some devices will then never send a response at all,
+     * which surfaces here as a timeout rather than an empty result. If today's HRV keeps
+     * timing out, try startDay = 1 to read yesterday's (complete) data instead.
      */
-    fun readHRVData(days: Int = 7) {
+    fun readHRVData(days: Int = 7, startDay: Int = 0) {
         try {
-            VPLogger.d("Starting to read HRV data for $days days...")
+            VPLogger.d("Starting to read HRV data for $days days starting from day $startDay...")
 
             // Check if device supports HRV
             val supportsHRV = vpSpGetUtil.isSupportHRV()
@@ -82,9 +89,13 @@ class HRVDataReader(
                 }
             }
 
-            VPLogger.d("Calling vpManager.readHRVOrigin with days=$days")
-            vpManager.readHRVOrigin(writeResponse, hrvOriginDataListener, days)
-            VPLogger.d("vpManager.readHRVOrigin called, waiting for response...")
+            // Call readHRVOriginBySetting directly rather than the readHRVOrigin(days)
+            // convenience wrapper, since that wrapper always hardcodes day=0 (today) and
+            // gives no way to start from an earlier, complete day.
+            val setting = ReadOriginSetting(startDay, 1, days == 1, days)
+            VPLogger.d("Calling vpManager.readHRVOriginBySetting with $setting")
+            vpManager.readHRVOriginBySetting(writeResponse, hrvOriginDataListener, setting)
+            VPLogger.d("vpManager.readHRVOriginBySetting called, waiting for response...")
         } catch (e: Exception) {
             VPLogger.e("Error reading HRV data: ${e.message}")
             cancelTimeout()
@@ -97,7 +108,12 @@ class HRVDataReader(
         timeoutJob = coroutineScope.launch {
             delay(READ_TIMEOUT_MS)
             VPLogger.w("HRV data read timeout after ${READ_TIMEOUT_MS}ms")
-            returnError("HRV_TIMEOUT", "HRV data read timed out. Device may not have HRV data or is not responding.")
+            returnError(
+                "HRV_TIMEOUT",
+                "HRV data read timed out. HRV is generated as an end-of-day statistic, so " +
+                "the device may simply have nothing yet for today and never reply — try " +
+                "again with startDay: 1 (yesterday) or later."
+            )
         }
     }
 

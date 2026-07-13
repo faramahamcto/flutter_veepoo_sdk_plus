@@ -1255,6 +1255,32 @@ Type: ${data.last.hrvType ?? 'N/A'}
                     },
                     child: const Text('Read Today\'s HRV'),
                   ),
+                  const SizedBox(height: 8),
+                  ElevatedButton(
+                    onPressed: () async {
+                      try {
+                        // HRV is generated as an end-of-day statistic, so today (still
+                        // accumulating) can time out with nothing to return. Yesterday is a
+                        // complete day, so it's the most reliable single day to read.
+                        final data =
+                            await _veepooSdk.readHRVData(days: 1, startDay: 1);
+                        if (data.isEmpty) {
+                          _showError('No HRV data available for yesterday');
+                          return;
+                        }
+
+                        _showInfo('Yesterday\'s HRV', '''
+Records: ${data.length}
+HRV Value: ${data.last.hrvValue ?? 'N/A'}
+Heart Rate: ${data.last.heartRate ?? 'N/A'} BPM
+Type: ${data.last.hrvType ?? 'N/A'}
+                        ''');
+                      } catch (e) {
+                        _showError('$e');
+                      }
+                    },
+                    child: const Text('Read Yesterday\'s HRV'),
+                  ),
                 ],
               ),
             ),
@@ -1346,8 +1372,17 @@ Type: ${data.last.hrvType ?? 'N/A'}
                             ],
                           ),
                           const SizedBox(height: 8),
-                          if (bc.isMeasuring == true)
+                          if (bc.isMeasuring == true) ...[
                             LinearProgressIndicator(value: (bc.progress ?? 0) / 100),
+                            if (bc.detectStep != null)
+                              Text(
+                                // Not a real signal-quality metric like ECG's — the vendor
+                                // doesn't document what this device-reported code means
+                                // beyond "still measuring". Shown as a raw diagnostic only.
+                                'Device step code: ${bc.detectStep}',
+                                style: const TextStyle(fontSize: 11, color: Colors.grey),
+                              ),
+                          ],
                           Text('Status: ${bc.state?.name ?? "Unknown"}'),
                         ],
                       );

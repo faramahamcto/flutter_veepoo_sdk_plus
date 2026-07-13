@@ -117,7 +117,7 @@ class VPMethodChannelHandler(
             "readSleepData" -> handleReadSleepData()
             "readStepData" -> handleReadStepData()
             "readStepDataForDate" -> handleReadStepDataForDate(call.argument<Long>("timestamp"))
-            "readHRVData" -> handleReadHRVData(call.argument<Int>("days") ?: 7)
+            "readHRVData" -> handleReadHRVData(call.argument<Int>("days") ?: 7, call.argument<Int>("startDay") ?: 0)
             "setUserProfile" -> handleSetUserProfile(call)
             "readOriginData3Days" -> handleReadOriginData3Days()
             "readOriginDataForDay" -> handleReadOriginDataForDay(call.argument<Int>("day") ?: 0)
@@ -445,9 +445,9 @@ class VPMethodChannelHandler(
         }
     }
 
-    private fun handleReadHRVData(days: Int) {
+    private fun handleReadHRVData(days: Int, startDay: Int) {
         try {
-            getHRVDataReader().readHRVData(days)
+            getHRVDataReader().readHRVData(days, startDay)
         } catch (e: Exception) {
             result.error("READ_HRV_ERROR", "Failed to read HRV data: ${e.message}", null)
         }
