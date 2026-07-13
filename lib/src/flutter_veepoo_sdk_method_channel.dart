@@ -220,8 +220,12 @@ class MethodChannelFlutterVeepooSdk extends FlutterVeepooSdkPlatform {
     }
   }
 
-  /// Gets the MAC address the SDK currently considers connected, or
-  /// null/empty if nothing is connected.
+  /// Gets the MAC address of the currently connected device, or null if
+  /// nothing is connected. Reads the live GATT connection (the same source
+  /// [VeepooSDK.getDeviceInfo] uses), since the SDK's own connection-state
+  /// checks (isCurrentDeviceConnected/isDeviceConnected/its static
+  /// getCurrentDeviceAddress) are unreliable — see
+  /// HBandSDK/Android_Ble_SDK#12.
   ///
   /// Throws a [DeviceConnectionException] if the request fails.
   @override
@@ -261,14 +265,9 @@ class MethodChannelFlutterVeepooSdk extends FlutterVeepooSdkPlatform {
   }
 
   /// The actual connection gate used before device operations
-  /// (disconnectDevice, startDetectHeart, readBattery, etc).
-  ///
-  /// isCurrentDeviceConnected()/isDeviceConnected(String) on the native SDK
-  /// always return false regardless of real state (see
-  /// HBandSDK/Android_Ble_SDK#12), so this calls [getCurrentDeviceAddress]
-  /// directly instead of going through [isDeviceConnected] (which round-trips
-  /// through that same broken native check) — a non-null, non-empty address
-  /// is treated as connected.
+  /// (disconnectDevice, startDetectHeart, readBattery, etc). Calls
+  /// [getCurrentDeviceAddress] and treats a non-null, non-empty address as
+  /// connected.
   Future<bool> _isCurrentlyConnected() async {
     final address = await getCurrentDeviceAddress();
     return address != null && address.isNotEmpty;

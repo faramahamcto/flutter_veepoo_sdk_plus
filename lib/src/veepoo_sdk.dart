@@ -120,13 +120,14 @@ class VeepooSDK {
     }
   }
 
-  /// Get the MAC address the SDK currently considers connected, or
-  /// null/empty if nothing is connected.
+  /// Get the MAC address of the currently connected device, or null if
+  /// nothing is connected. [isDeviceConnected] relies on this under the hood.
   ///
-  /// This is the only reliable way to check connection state per the SDK
-  /// vendor: [isDeviceConnected] relies on this under the hood because the
-  /// SDK's own `isCurrentDeviceConnected()`/`isDeviceConnected(String)`
-  /// always return false regardless of actual connection state.
+  /// Reads the live GATT connection (the same source [getDeviceInfo] uses)
+  /// rather than the SDK's own connection-state checks
+  /// (`isCurrentDeviceConnected()`/`isDeviceConnected(String)`/its static
+  /// `getCurrentDeviceAddress()`), which are unreliable — see
+  /// HBandSDK/Android_Ble_SDK#12.
   Future<String?> getCurrentDeviceAddress() {
     try {
       return _platform.getCurrentDeviceAddress();

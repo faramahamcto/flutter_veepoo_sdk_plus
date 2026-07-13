@@ -49,18 +49,17 @@ class _VeepooSDKDemoState extends State<VeepooSDKDemo>
     _tabController = TabController(length: 10, vsync: this);
     _requestPermissions();
 
-    // NOTE: none of isCurrentDeviceConnected()/isDeviceConnected(String)/
-    // getCurrentDeviceAddress() are trustworthy on this SDK — this is a known
-    // upstream issue (see HBandSDK/Android_Ble_SDK#12), not something this
-    // plugin can paper over. getCurrentDeviceAddress() in particular is set
-    // as soon as connectDevice() is *called* (before success/failure is even
-    // known) and isn't reliably cleared on disconnect, so it can read as
-    // "connected" when it isn't and vice versa. This stream is fed by the
-    // same unreliable native signal, so it's kept here purely for display —
-    // it must NOT set _isConnected/_connectedDeviceAddress, which gate the
-    // Bind/Disconnect buttons. Those are set optimistically from the
-    // connectDevice()/disconnectDevice() call results below, which is the
-    // only signal that has actually proven reliable.
+    // NOTE: the SDK's own isCurrentDeviceConnected()/isDeviceConnected(String)
+    // and its static getCurrentDeviceAddress() are unreliable — a known
+    // upstream issue (see HBandSDK/Android_Ble_SDK#12). The plugin's
+    // getCurrentDeviceAddress()/isDeviceConnected() work around this by
+    // reading the live GATT connection instead (see _verifyConnection below),
+    // which has proven reliable. This *stream*, however, is driven by a
+    // separate native callback (onConnectStatusChanged) whose reliability
+    // hasn't been verified the same way, so it's kept here purely for
+    // display — it must NOT set _isConnected/_connectedDeviceAddress, which
+    // gate the Bind/Disconnect buttons. Those are set optimistically from the
+    // connectDevice()/disconnectDevice() call results below.
     _connectionStatusSubscription =
         _veepooSdk.connectionStatus.listen((status) {
       setState(() => _liveConnectionStatus = status);
@@ -74,18 +73,17 @@ class _VeepooSDKDemoState extends State<VeepooSDKDemo>
     super.dispose();
   }
 
-  /// Asks the SDK directly which device (if any) it currently considers
-  /// connected. Shown for reference only — see the note in [initState]
-  /// on why this can't be trusted to gate the UI.
+  /// Asks the SDK whether a device is currently connected, via
+  /// [VeepooSDK.isDeviceConnected] (backed by the live GATT connection —
+  /// see the note in [initState]).
   Future<void> _verifyConnection() async {
     try {
-      final address = await _veepooSdk.getCurrentDeviceAddress();
-      final connected = address != null && address.isNotEmpty;
+      final connected = await _veepooSdk.isDeviceConnected();
       _showInfo(
         'Connection Check',
-        '${connected ? 'SDK reports connected: $address' : 'SDK reports no device connected.'}\n\n'
-            'Known to be unreliable on this SDK (HBandSDK/Android_Ble_SDK#12) — '
-            'if this disagrees with reality, trust the Connected banner instead.',
+        connected == true
+            ? 'Device is connected.'
+            : 'No device is currently connected.',
       );
     } catch (e) {
       _showError('Failed to verify connection: $e');

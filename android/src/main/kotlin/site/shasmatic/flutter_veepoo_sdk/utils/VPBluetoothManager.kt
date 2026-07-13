@@ -395,27 +395,29 @@ class VPBluetoothManager(
     }
 
     /**
-     * Returns the MAC address the SDK currently considers connected, or null/empty if nothing
-     * is connected. Per the SDK vendor, this is the only reliable way to check connection state:
-     * [VPOperateManager.isCurrentDeviceConnected] and [VPOperateManager.isDeviceConnected]
-     * always return false regardless of actual connection state.
+     * Returns the MAC address of the currently connected device, or null if nothing is
+     * connected.
+     *
+     * `VPOperateManager.isCurrentDeviceConnected()`/`isDeviceConnected(String)` always return
+     * false regardless of actual connection state, and the vendor-documented alternative,
+     * the static `VPOperateManager.getCurrentDeviceAddress()`, was also found to go stale/empty
+     * during a real connect+bind flow even while still connected. This instead reads the live
+     * GATT connection the same way [VPMethodChannelHandler.handleGetDeviceInfo] does, which has
+     * proven reliable.
      */
     fun getCurrentDeviceAddress() {
-        result.success(VPOperateManager.getCurrentDeviceAddress())
+        result.success(vpManager.currentConnectGatt?.device?.address)
     }
 
     /**
-     * Checks if the device is connected.
-     *
-     * `VPOperateManager.isCurrentDeviceConnected()`/`isDeviceConnected(String)` are unreliable
-     * (they always return false), so this compares the SDK's currently-connected address
-     * ([VPOperateManager.getCurrentDeviceAddress]) against [address] instead. When [address] is
-     * omitted, it just checks whether the SDK reports any device as connected.
+     * Checks if the device is connected, by checking whether [getCurrentDeviceAddress]'s
+     * underlying live-GATT lookup can resolve an address at all (or, when [address] is given,
+     * whether that specific device is the one connected).
      *
      * @return `true` if the device is connected, `false` otherwise.
      */
     fun isDeviceConnected(address: String? = null): Boolean {
-        val currentAddress = VPOperateManager.getCurrentDeviceAddress()
+        val currentAddress = vpManager.currentConnectGatt?.device?.address
         val isConnected = if (address != null) {
             currentAddress != null && currentAddress.equals(address, ignoreCase = true)
         } else {
