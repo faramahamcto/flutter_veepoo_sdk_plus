@@ -49,6 +49,7 @@ import kotlin.math.abs
  * @param result The result instance for the current method call.
  * @param activity The activity instance to be associated with this manager.
  * @param bluetoothEventSink The EventSink instance to be used for Bluetooth scan events.
+ * @param connectionStatusEventSink The EventSink instance to be used for connection status events.
  * @param vpManager An instance of [VPOperateManager] used to control operations on the wearable device.
  */
 class VPBluetoothManager(
@@ -56,6 +57,7 @@ class VPBluetoothManager(
     private val result: MethodChannel.Result,
     private val activity: Activity,
     private val bluetoothEventSink: EventChannel.EventSink?,
+    private val connectionStatusEventSink: EventChannel.EventSink?,
     private val vpManager: VPOperateManager
 ) {
 
@@ -64,6 +66,7 @@ class VPBluetoothManager(
     private var permissionCallback: ((PermissionStatuses) -> Unit)? = null
     private val discoveredDevices = mutableMapOf<String, Map<String, Any>>()
     private val sendEvent = SendEvent(bluetoothEventSink)
+    private val connectionStatusSendEvent = SendEvent(connectionStatusEventSink)
     private val currentGatt = vpManager.currentConnectGatt
     private val writeResponse: VPWriteResponse = VPWriteResponse()
     private val coroutineScope = CoroutineScope(Dispatchers.Main + Job())
@@ -484,6 +487,13 @@ class VPBluetoothManager(
 
     private val bleConnectStatusListener = object : IABleConnectStatusListener() {
         override fun onConnectStatusChanged(address: String?, status: Int) {
+            val statusData = mapOf<String, Any?>(
+                "state" to status,
+                "address" to address,
+                "timestamp" to System.currentTimeMillis()
+            )
+            connectionStatusSendEvent.sendConnectionStatusEvent(statusData)
+
             when (status) {
                 Constants.STATUS_CONNECTED -> VPLogger.i("Connected to device: $address")
                 Constants.STATUS_DISCONNECTED -> VPLogger.i("Disconnected from device, resetting $address.")

@@ -54,6 +54,7 @@ class VPMethodChannelHandler(
     private var detectBloodGlucoseEventSink: EventChannel.EventSink? = null
     private var detectBloodComponentEventSink: EventChannel.EventSink? = null
     private var originDataProgressEventSink: EventChannel.EventSink? = null
+    private var connectionStatusEventSink: EventChannel.EventSink? = null
     private lateinit var result: MethodChannel.Result
 
     @RequiresApi(Build.VERSION_CODES.S)
@@ -424,8 +425,12 @@ class VPMethodChannelHandler(
         this.originDataProgressEventSink = eventSink
     }
 
+    fun setConnectionStatusEventSink(eventSink: EventChannel.EventSink?) {
+        this.connectionStatusEventSink = eventSink
+    }
+
     private fun getBluetoothManager(result: MethodChannel.Result): VPBluetoothManager {
-        return VPBluetoothManager(deviceStorage, result, activity!!, scanBluetoothEventSink, vpManager)
+        return VPBluetoothManager(deviceStorage, result, activity!!, scanBluetoothEventSink, connectionStatusEventSink, vpManager)
     }
 
     private fun getHeartRateManager(): HeartRate {

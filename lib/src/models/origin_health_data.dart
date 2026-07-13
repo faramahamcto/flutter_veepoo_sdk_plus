@@ -30,6 +30,8 @@ class OriginHealthData extends Equatable {
   final double? triglyceride;       // mmol/L
   final double? hdl;                // mmol/L (High-density lipoprotein)
   final double? ldl;                // mmol/L (Low-density lipoprotein)
+  // HRV (Heart Rate Variability)
+  final int? hrvValue;              // HRV value in milliseconds
 
   const OriginHealthData({
     this.date,
@@ -51,6 +53,7 @@ class OriginHealthData extends Equatable {
     this.triglyceride,
     this.hdl,
     this.ldl,
+    this.hrvValue,
   });
 
   factory OriginHealthData.fromMap(Map<String, dynamic> map) {
@@ -74,6 +77,7 @@ class OriginHealthData extends Equatable {
       triglyceride: (map['triglyceride'] as num?)?.toDouble(),
       hdl: (map['hdl'] as num?)?.toDouble(),
       ldl: (map['ldl'] as num?)?.toDouble(),
+      hrvValue: (map['hrvValue'] as num?)?.toInt(),
     );
   }
 
@@ -98,6 +102,7 @@ class OriginHealthData extends Equatable {
       'triglyceride': triglyceride,
       'hdl': hdl,
       'ldl': ldl,
+      'hrvValue': hrvValue,
     };
   }
 
@@ -107,6 +112,7 @@ class OriginHealthData extends Equatable {
         bloodOxygen, steps, calories, distance, sportValue,
         bloodGlucose, respirationRate, ecgHeartRate,
         uricAcid, totalCholesterol, triglyceride, hdl, ldl,
+        hrvValue,
       ];
 }
 
@@ -147,6 +153,10 @@ class DailyHealthData extends Equatable {
   final double? avgTriglyceride;       // mmol/L
   final double? avgHdl;                // mmol/L
   final double? avgLdl;                // mmol/L
+  // HRV (Heart Rate Variability)
+  final int? avgHrvValue;              // Average HRV in milliseconds
+  final int? maxHrvValue;              // Maximum HRV in milliseconds
+  final int? minHrvValue;              // Minimum HRV in milliseconds
   // Hourly data
   final List<HourlyHealthData>? hourlyData;
 
@@ -177,6 +187,9 @@ class DailyHealthData extends Equatable {
     this.avgTriglyceride,
     this.avgHdl,
     this.avgLdl,
+    this.avgHrvValue,
+    this.maxHrvValue,
+    this.minHrvValue,
     this.hourlyData,
   });
 
@@ -215,6 +228,9 @@ class DailyHealthData extends Equatable {
       avgTriglyceride: (map['avgTriglyceride'] as num?)?.toDouble(),
       avgHdl: (map['avgHdl'] as num?)?.toDouble(),
       avgLdl: (map['avgLdl'] as num?)?.toDouble(),
+      avgHrvValue: (map['avgHrvValue'] as num?)?.toInt(),
+      maxHrvValue: (map['maxHrvValue'] as num?)?.toInt(),
+      minHrvValue: (map['minHrvValue'] as num?)?.toInt(),
       hourlyData: hourlyData,
     );
   }
@@ -247,6 +263,9 @@ class DailyHealthData extends Equatable {
       'avgTriglyceride': avgTriglyceride,
       'avgHdl': avgHdl,
       'avgLdl': avgLdl,
+      'avgHrvValue': avgHrvValue,
+      'maxHrvValue': maxHrvValue,
+      'minHrvValue': minHrvValue,
       'hourlyData': hourlyData?.map((e) => e.toMap()).toList(),
     };
   }
@@ -260,6 +279,7 @@ class DailyHealthData extends Equatable {
         totalSteps, totalCalories, totalDistance, avgSportValue,
         avgBloodGlucose, avgRespirationRate, avgEcgHeartRate,
         avgUricAcid, avgTotalCholesterol, avgTriglyceride, avgHdl, avgLdl,
+        avgHrvValue, maxHrvValue, minHrvValue,
         hourlyData,
       ];
 }
@@ -294,6 +314,10 @@ class HourlyHealthData extends Equatable {
   final double? avgTriglyceride;       // mmol/L
   final double? avgHdl;                // mmol/L
   final double? avgLdl;                // mmol/L
+  // HRV (Heart Rate Variability)
+  final int? avgHrvValue;              // Average HRV in milliseconds
+  final int? maxHrvValue;              // Maximum HRV in milliseconds
+  final int? minHrvValue;              // Minimum HRV in milliseconds
   // Raw records
   final List<OriginHealthData>? records;
 
@@ -318,6 +342,9 @@ class HourlyHealthData extends Equatable {
     this.avgTriglyceride,
     this.avgHdl,
     this.avgLdl,
+    this.avgHrvValue,
+    this.maxHrvValue,
+    this.minHrvValue,
     this.records,
   });
 
@@ -350,6 +377,9 @@ class HourlyHealthData extends Equatable {
       avgTriglyceride: (map['avgTriglyceride'] as num?)?.toDouble(),
       avgHdl: (map['avgHdl'] as num?)?.toDouble(),
       avgLdl: (map['avgLdl'] as num?)?.toDouble(),
+      avgHrvValue: (map['avgHrvValue'] as num?)?.toInt(),
+      maxHrvValue: (map['maxHrvValue'] as num?)?.toInt(),
+      minHrvValue: (map['minHrvValue'] as num?)?.toInt(),
       records: records,
     );
   }
@@ -376,6 +406,9 @@ class HourlyHealthData extends Equatable {
       'avgTriglyceride': avgTriglyceride,
       'avgHdl': avgHdl,
       'avgLdl': avgLdl,
+      'avgHrvValue': avgHrvValue,
+      'maxHrvValue': maxHrvValue,
+      'minHrvValue': minHrvValue,
       'records': records?.map((e) => e.toMap()).toList(),
     };
   }
@@ -387,6 +420,7 @@ class HourlyHealthData extends Equatable {
         steps, calories, distance, avgSportValue,
         avgBloodGlucose, avgRespirationRate,
         avgUricAcid, avgTotalCholesterol, avgTriglyceride, avgHdl, avgLdl,
+        avgHrvValue, maxHrvValue, minHrvValue,
         records,
       ];
 }

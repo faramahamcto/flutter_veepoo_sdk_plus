@@ -42,6 +42,7 @@ class OriginDataReader(
     private var totalDays: Int = 3
     private var currentDayData = mutableListOf<Map<String, Any?>>()
     private val allDaysData = mutableMapOf<Int, MutableList<Map<String, Any?>>>()
+    private val hrvDataMap = mutableMapOf<String, Int>() // Maps "HH:mm" to HRV value
 
     companion object {
         private const val READ_TIMEOUT_MS = 90000L // 90 seconds timeout
@@ -83,6 +84,7 @@ class OriginDataReader(
         VPLogger.d("Reading origin data for day $day...")
         currentDayData = mutableListOf()
         allDaysData[day] = currentDayData
+        hrvDataMap.clear() // Clear HRV data for new day
 
         val writeResponse = IBleWriteResponse { code ->
             VPLogger.d("Origin data write response for day $day: $code")
@@ -181,6 +183,14 @@ class OriginDataReader(
 
         override fun onOriginHRVOriginListDataChange(hrvList: MutableList<HRVOriginData>?) {
             VPLogger.d("HRV origin data received: ${hrvList?.size} records")
+            hrvList?.forEach { hrvData ->
+                val timeData = hrvData.getmTime()
+                if (timeData != null && hrvData.hrvValue > 0) {
+                    val timeKey = String.format("%02d:%02d", timeData.hour, timeData.minute)
+                    hrvDataMap[timeKey] = hrvData.hrvValue
+                    VPLogger.d("HRV data stored: $timeKey -> ${hrvData.hrvValue}")
+                }
+            }
         }
 
         override fun onOriginSpo2OriginListDataChange(spo2List: MutableList<Spo2hOriginData>?) {
@@ -198,6 +208,9 @@ class OriginDataReader(
         val timeStr = if (timeData != null) {
             String.format("%02d:%02d", timeData.hour, timeData.minute)
         } else null
+
+        // Look up HRV value for this time
+        val hrvValue = timeStr?.let { hrvDataMap[it] }
 
         val dataMap = mapOf<String, Any?>(
             "date" to originData.date,
@@ -227,7 +240,9 @@ class OriginDataReader(
             "totalCholesterol" to null,
             "triglyceride" to null,
             "hdl" to null,
-            "ldl" to null
+            "ldl" to null,
+            // HRV
+            "hrvValue" to hrvValue
         )
 
         currentDayData.add(dataMap)
@@ -252,6 +267,9 @@ class OriginDataReader(
         val triglyceride = bloodComponent?.tAG?.takeIf { it > 0 }
         val hdl = bloodComponent?.hDL?.takeIf { it > 0 }
         val ldl = bloodComponent?.lDL?.takeIf { it > 0 }
+
+        // Look up HRV value for this time
+        val hrvValue = timeStr?.let { hrvDataMap[it] }
 
         val dataMap = mapOf<String, Any?>(
             "date" to originData.date,
@@ -281,7 +299,9 @@ class OriginDataReader(
             "totalCholesterol" to totalCholesterol,
             "triglyceride" to triglyceride,
             "hdl" to hdl,
-            "ldl" to ldl
+            "ldl" to ldl,
+            // HRV
+            "hrvValue" to hrvValue
         )
 
         currentDayData.add(dataMap)
@@ -341,6 +361,8 @@ class OriginDataReader(
         val triglycerides = records.mapNotNull { (it["triglyceride"] as? Number)?.toDouble() }.filter { it > 0 }
         val hdls = records.mapNotNull { (it["hdl"] as? Number)?.toDouble() }.filter { it > 0 }
         val ldls = records.mapNotNull { (it["ldl"] as? Number)?.toDouble() }.filter { it > 0 }
+        // HRV
+        val hrvValues = records.mapNotNull { it["hrvValue"] as? Int }.filter { it > 0 }
 
         // Group by hour for hourly data
         val hourlyDataList = mutableListOf<Map<String, Any?>>()
@@ -393,6 +415,10 @@ class OriginDataReader(
             "avgTriglyceride" to if (triglycerides.isNotEmpty()) triglycerides.average() else null,
             "avgHdl" to if (hdls.isNotEmpty()) hdls.average() else null,
             "avgLdl" to if (ldls.isNotEmpty()) ldls.average() else null,
+            // HRV
+            "avgHrvValue" to if (hrvValues.isNotEmpty()) hrvValues.average().toInt() else null,
+            "maxHrvValue" to hrvValues.maxOrNull(),
+            "minHrvValue" to hrvValues.minOrNull(),
             // Hourly data
             "hourlyData" to hourlyDataList
         )
@@ -416,6 +442,8 @@ class OriginDataReader(
         val triglycerides = records.mapNotNull { (it["triglyceride"] as? Number)?.toDouble() }.filter { it > 0 }
         val hdls = records.mapNotNull { (it["hdl"] as? Number)?.toDouble() }.filter { it > 0 }
         val ldls = records.mapNotNull { (it["ldl"] as? Number)?.toDouble() }.filter { it > 0 }
+        // HRV
+        val hrvValues = records.mapNotNull { it["hrvValue"] as? Int }.filter { it > 0 }
 
         return mapOf<String, Any?>(
             "hour" to hour,
@@ -446,6 +474,10 @@ class OriginDataReader(
             "avgTriglyceride" to if (triglycerides.isNotEmpty()) triglycerides.average() else null,
             "avgHdl" to if (hdls.isNotEmpty()) hdls.average() else null,
             "avgLdl" to if (ldls.isNotEmpty()) ldls.average() else null,
+            // HRV
+            "avgHrvValue" to if (hrvValues.isNotEmpty()) hrvValues.average().toInt() else null,
+            "maxHrvValue" to hrvValues.maxOrNull(),
+            "minHrvValue" to hrvValues.minOrNull(),
             // Raw records
             "records" to records
         )

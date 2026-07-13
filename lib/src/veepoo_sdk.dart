@@ -460,6 +460,24 @@ class VeepooSDK {
   Stream<OriginDataProgress?> get originDataProgress =>
       _platform.originDataProgress;
 
+  /// Stream of device connection status updates.
+  ///
+  /// This stream emits [ConnectionStatus] events whenever the device
+  /// connection state changes (connected/disconnected).
+  ///
+  /// Example usage:
+  /// ```dart
+  /// veepooSdk.connectionStatus.listen((status) {
+  ///   if (status?.isConnected == true) {
+  ///     print('Device connected: ${status?.address}');
+  ///   } else if (status?.isDisconnected == true) {
+  ///     print('Device disconnected');
+  ///   }
+  /// });
+  /// ```
+  Stream<ConnectionStatus?> get connectionStatus =>
+      _platform.connectionStatus;
+
   // ==================== Historical Data ====================
 
   /// Read heart rate history for a date range.

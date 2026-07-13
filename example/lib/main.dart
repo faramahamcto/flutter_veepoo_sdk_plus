@@ -1646,6 +1646,8 @@ class HealthDataSummaryPage extends StatelessWidget {
                       _buildCategoryRow('Blood Glucose', '${day.avgBloodGlucose} mg/dL', Colors.pink, Icons.bloodtype),
                     if (day.avgRespirationRate != null)
                       _buildCategoryRow('Respiration', '${day.avgRespirationRate} /min', Colors.teal, Icons.air),
+                    if (day.avgHrvValue != null)
+                      _buildCategoryRow('HRV', '${day.avgHrvValue} ms', Colors.deepPurple, Icons.timeline),
                     const SizedBox(height: 8),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.end,
@@ -1743,6 +1745,12 @@ class DailyHealthDataPage extends StatelessWidget {
               if (data.avgTriglyceride != null) _DataItem('Triglyceride', '${data.avgTriglyceride?.toStringAsFixed(2)} mmol/L'),
               if (data.avgHdl != null) _DataItem('HDL', '${data.avgHdl?.toStringAsFixed(2)} mmol/L'),
               if (data.avgLdl != null) _DataItem('LDL', '${data.avgLdl?.toStringAsFixed(2)} mmol/L'),
+            ]),
+          if (data.avgHrvValue != null)
+            _buildCategoryCard('Heart Rate Variability', Icons.timeline, Colors.deepPurple, [
+              _DataItem('Average', '${data.avgHrvValue} ms'),
+              if (data.maxHrvValue != null) _DataItem('Maximum', '${data.maxHrvValue} ms'),
+              if (data.minHrvValue != null) _DataItem('Minimum', '${data.minHrvValue} ms'),
             ]),
           const SizedBox(height: 16),
           const Text('Hourly Breakdown', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
@@ -1900,6 +1908,12 @@ class HourlyHealthDataPage extends StatelessWidget {
               if (data.avgHdl != null) _HourlyDataItem('HDL', '${data.avgHdl?.toStringAsFixed(2)} mmol/L'),
               if (data.avgLdl != null) _HourlyDataItem('LDL', '${data.avgLdl?.toStringAsFixed(2)} mmol/L'),
             ]),
+          if (data.avgHrvValue != null)
+            _buildCategoryCard('Heart Rate Variability', Icons.timeline, Colors.deepPurple, [
+              _HourlyDataItem('Average', '${data.avgHrvValue} ms'),
+              if (data.maxHrvValue != null) _HourlyDataItem('Maximum', '${data.maxHrvValue} ms'),
+              if (data.minHrvValue != null) _HourlyDataItem('Minimum', '${data.minHrvValue} ms'),
+            ]),
           const SizedBox(height: 20),
           Row(
             children: [
@@ -2015,6 +2029,8 @@ class HourlyHealthDataPage extends StatelessWidget {
                   _buildRecordItem('HDL', '${record.hdl?.toStringAsFixed(2)} mmol/L', Icons.science, Colors.green.shade600),
                 if (record.ldl != null)
                   _buildRecordItem('LDL', '${record.ldl?.toStringAsFixed(2)} mmol/L', Icons.science, Colors.red.shade600),
+                if (record.hrvValue != null)
+                  _buildRecordItem('HRV', '${record.hrvValue} ms', Icons.timeline, Colors.deepPurple),
               ],
             ),
           ],
