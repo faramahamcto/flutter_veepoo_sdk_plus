@@ -459,6 +459,68 @@ final bpHistory = await veepooSdk.readBloodPressureHistory(startDate, endDate);
 final tempHistory = await veepooSdk.readTemperatureHistory(startDate, endDate);
 ```
 
+### Raw Origin Data Field Reference
+
+`OriginHealthData` (from `readOriginData3Days`/`readOriginDataForDay`, one record per
+5-minute window) exposes every field the device's raw origin-data protocol carries —
+including several the vendor's own SDK doesn't document beyond a field name. This
+table tells you which is which, so you know how much to trust each value.
+
+**Confirmed** — documented behavior, or values with an established unit/format.
+**Named only** — the vendor's own API docs mention the field exists, but not what its
+numbers mean. **Undocumented** — no mention anywhere in the vendor's docs or SDK
+source beyond the decompiled field name itself; exposed as-is in case it's useful for
+your own experimentation.
+
+| Field | Type | Status | Meaning |
+|---|---|---|---|
+| `date` | `String` | Confirmed | `YYYY-MM-DD` |
+| `time` | `String` | Confirmed | `HH:mm`, start of this 5-minute window |
+| `heartRate` | `int` | Confirmed | BPM, first valid reading in `ppgValues` |
+| `systolic` / `diastolic` | `int` | Confirmed | mmHg |
+| `temperature` | `double` | Confirmed | °C, calibrated from `tempOne`/`tempTwo` |
+| `bloodOxygen` | `int` | Confirmed | SpO2 %, first valid reading in `oxygenValues` |
+| `steps` | `int` | Confirmed | Step count in this window |
+| `calories` | `double` | Confirmed | kcal burned in this window |
+| `distance` | `double` | Confirmed | km covered in this window |
+| `sportValue` | `int` | Named only | Activity/exertion intensity code; scale undocumented |
+| `bloodGlucose` | `int` | Confirmed | mg/dL |
+| `bloodGlucoseRiskLevel` | `String` | Confirmed | Device-reported enum name, e.g. `"NONE"` |
+| `respirationRate` | `int` | Confirmed | Breaths/min, first valid reading in `respirationRateValues` |
+| `ecgHeartRate` | `int` | Confirmed | BPM from the ECG sensor specifically (vs. PPG-derived `heartRate`) |
+| `uricAcid` | `double` | Confirmed | μmol/L |
+| `totalCholesterol` / `triglyceride` / `hdl` / `ldl` | `double` | Confirmed | mmol/L |
+| `hrvValue` | `int` | Confirmed | Milliseconds |
+| `wear` | `int` | Named only | Wear-detection code (e.g. worn/not-worn/uncertain); exact value mapping undocumented |
+| `tempOne` / `tempTwo` | `int` | Undocumented | Raw dual-sensor temperature readings `temperature` is derived from |
+| `calcType` | `int` | Undocumented | Calorie calculation algorithm type/version |
+| `baseTemperature` | `double` | Undocumented | Baseline/reference body temperature, distinct from `temperature` |
+| `drinkPartOne` / `drinkPartTwo` | `String` | Undocumented | Hydration-tracking raw values, on devices with drink reminders |
+| `gesture` | `List<int>` | Undocumented | Raw wrist-gesture event codes |
+| `ppgValues` | `List<int>` | Confirmed | Raw per-minute PPG readings; **255 = no reading** for that minute |
+| `ecgValues` | `List<int>` | Confirmed | Raw per-minute ECG readings; **255 = no reading** |
+| `respirationRateValues` | `List<int>` | Confirmed | Raw per-minute respiration readings; **255 = no reading** |
+| `oxygenValues` | `List<int>` | Confirmed | Raw per-minute SpO2 readings; **255 = no reading** |
+| `sleepStates` | `List<int>` | Named only | Vendor docs confirm this is "5-minute sleep state value", but publish no code table (no awake/light/deep/REM mapping). 255 appears to be a sentinel, consistent with the arrays above |
+| `sleepStatusQuantity` | `List<int>` | Undocumented | Not mentioned anywhere in vendor docs, only the decompiled field name |
+| `sleepSports` | `List<int>` | Undocumented | Not mentioned anywhere in vendor docs |
+| `resetTagContent` | `List<int>` | Undocumented | Device reset markers, presumably |
+| `apneaResults` | `List<int>` | Undocumented | Sleep apnea detection results |
+| `hypoxiaTimes` | `List<int>` | Undocumented | Hypoxia event timing values |
+| `cardiacLoads` | `List<int>` | Undocumented | Cardiac load/strain readings |
+| `isHypoxias` | `List<int>` | Undocumented | Presumed boolean-like (0/1) per-minute hypoxia flags |
+| `corrects` | `List<int>` | Undocumented | Correction/adjustment flags |
+| `pressure` | `int` | Undocumented | Stress/pressure level; scale not documented |
+| `met` | `double` | Confirmed | Metabolic equivalent — standard fitness unit, 1.0 ≈ resting metabolic rate |
+
+If you need to figure out what an "Undocumented"/"Named only" field's numbers
+actually mean, the most reliable approach is empirical: log a record's raw values
+during a period where you independently know the ground truth (e.g. you know you
+were asleep/awake/deep-in-sleep at a specific time, or the watch's own companion app
+shows a specific sleep stage for that time), and compare. Do **not** trust a
+plausible-looking guess (including from an LLM) over an empirical check — none of
+these codes are confirmed by the vendor.
+
 ## Data Models
 
 The SDK provides comprehensive data models for all health metrics:

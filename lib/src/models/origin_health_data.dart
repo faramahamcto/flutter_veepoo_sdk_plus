@@ -1,114 +1,192 @@
 part of '../../flutter_veepoo_sdk.dart';
 
-/// Origin health data model representing 5-minute interval health data
+/// Origin health data model representing 5-minute interval health data.
+///
+/// See `README.md`'s "Raw Origin Data Field Reference" section for a scannable table
+/// version of the documentation below, including which fields are vendor-confirmed
+/// vs. undocumented-but-exposed.
 class OriginHealthData extends Equatable {
+  /// Date of this record, `YYYY-MM-DD`.
   final String? date;
+
+  /// Time of day this 5-minute window starts, `HH:mm`.
   final String? time;
-  // Heart Rate
+
+  // ==================== Heart Rate ====================
+
+  /// Heart rate in BPM, derived from the first valid (non-sentinel) reading in
+  /// [ppgValues] (or the device's own rate field on older protocol versions).
   final int? heartRate;
-  // Blood Pressure
+
+  // ==================== Blood Pressure ====================
+
+  /// Systolic blood pressure, mmHg.
   final int? systolic;
+
+  /// Diastolic blood pressure, mmHg.
   final int? diastolic;
-  // Temperature
+
+  // ==================== Temperature ====================
+
+  /// Calibrated body temperature, °C. Derived from [tempOne]/[tempTwo].
   final double? temperature;
-  // Blood Oxygen
+
+  // ==================== Blood Oxygen ====================
+
+  /// Blood oxygen saturation (SpO2), %, derived from the first valid reading in
+  /// [oxygenValues].
   final int? bloodOxygen;
-  // Activity
+
+  // ==================== Activity ====================
+
+  /// Step count within this 5-minute window.
   final int? steps;
+
+  /// Calories burned within this window, kcal.
   final double? calories;
+
+  /// Distance covered within this window, km.
   final double? distance;
+
+  /// Raw activity/exertion intensity code for this window. Vendor doesn't document
+  /// the scale (units, range, or what counts as "high").
   final int? sportValue;
-  // Blood Glucose
+
+  // ==================== Blood Glucose ====================
+
+  /// Blood glucose reading, mg/dL.
   final int? bloodGlucose;
-  // Respiration Rate
-  final int? respirationRate;
-  // ECG Heart Rate
-  final int? ecgHeartRate;
-  // Blood Components
-  final double? uricAcid;           // μmol/L
-  final double? totalCholesterol;   // mmol/L
-  final double? triglyceride;       // mmol/L
-  final double? hdl;                // mmol/L (High-density lipoprotein)
-  final double? ldl;                // mmol/L (Low-density lipoprotein)
-  // HRV (Heart Rate Variability)
-  final int? hrvValue;              // HRV value in milliseconds
-  // Raw device wear-detection code. The vendor doesn't document the exact value
-  // mapping (e.g. worn/not-worn/uncertain) — exposed as-is for filtering.
-  final int? wear;
 
-  // ==================== Remaining raw fields ====================
-  // Everything below is exposed as-is from the device; the vendor doesn't document
-  // these beyond their names. Prefer the reduced fields above (bloodOxygen,
-  // respirationRate, ecgHeartRate, heartRate) unless you specifically need the raw,
-  // undivided per-minute detail.
-
-  /// Raw dual-sensor temperature readings that [temperature] is derived from.
-  final int? tempOne;
-  final int? tempTwo;
-
-  /// Calorie calculation type/version used by the device.
-  final int? calcType;
-
-  /// Baseline body temperature, distinct from [temperature].
-  final double? baseTemperature;
-
-  /// Hydration-tracking fields, on devices that support drink reminders/logging.
-  final String? drinkPartOne;
-  final String? drinkPartTwo;
-
-  /// Raw wrist-gesture codes.
-  final List<int>? gesture;
-
-  /// Raw per-minute PPG readings within this 5-minute window (heartRate is derived
-  /// from the first valid — non-sentinel — entry in this array).
-  final List<int>? ppgValues;
-
-  /// Raw per-minute ECG readings within this 5-minute window ([ecgHeartRate] is
-  /// derived from the first valid entry in this array).
-  final List<int>? ecgValues;
-
-  /// Raw per-minute respiration readings within this 5-minute window
-  /// ([respirationRate] is derived from the first valid entry in this array).
-  final List<int>? respirationRateValues;
-
-  /// Raw per-minute SpO2 readings within this 5-minute window ([bloodOxygen] is
-  /// derived from the first valid entry in this array).
-  final List<int>? oxygenValues;
-
-  /// Raw sleep-stage codes for this window.
-  final List<int>? sleepStates;
-
-  /// Raw counts per sleep status for this window.
-  final List<int>? sleepStatusQuantity;
-
-  /// Raw sleep/activity codes for this window.
-  final List<int>? sleepSports;
-
-  /// Raw reset-marker content.
-  final List<int>? resetTagContent;
-
-  /// Raw sleep apnea detection results for this window.
-  final List<int>? apneaResults;
-
-  /// Raw hypoxia event timings for this window.
-  final List<int>? hypoxiaTimes;
-
-  /// Raw cardiac load/strain readings for this window.
-  final List<int>? cardiacLoads;
-
-  /// Raw per-minute hypoxia flags for this window.
-  final List<int>? isHypoxias;
-
-  /// Raw correction/adjustment flags for this window.
-  final List<int>? corrects;
-
-  /// Blood glucose risk level, as reported by the device (enum name, e.g. "NONE").
+  /// Blood glucose risk level, as reported by the device (enum name, e.g. `"NONE"`).
   final String? bloodGlucoseRiskLevel;
 
-  /// Stress/pressure level reading.
+  // ==================== Respiration Rate ====================
+
+  /// Respiration rate, breaths/min, derived from the first valid reading in
+  /// [respirationRateValues].
+  final int? respirationRate;
+
+  // ==================== ECG ====================
+
+  /// Heart rate specifically from the ECG sensor (as opposed to [heartRate], which
+  /// is PPG-derived), BPM. Derived from the first valid reading in [ecgValues].
+  final int? ecgHeartRate;
+
+  // ==================== Blood Components ====================
+
+  /// Uric acid, μmol/L.
+  final double? uricAcid;
+
+  /// Total cholesterol, mmol/L.
+  final double? totalCholesterol;
+
+  /// Triglyceride, mmol/L.
+  final double? triglyceride;
+
+  /// HDL (high-density lipoprotein) cholesterol, mmol/L.
+  final double? hdl;
+
+  /// LDL (low-density lipoprotein) cholesterol, mmol/L.
+  final double? ldl;
+
+  // ==================== HRV ====================
+
+  /// Heart Rate Variability, milliseconds.
+  final int? hrvValue;
+
+  // ==================== Device/sensor diagnostics ====================
+  // The vendor doesn't document the exact meaning of these beyond their field
+  // names — no "0 = X, 1 = Y" style code table exists anywhere in the SDK's docs
+  // or decompiled source. They're exposed as-is for apps that want to experiment
+  // or empirically reverse-engineer the encoding (e.g. by cross-referencing known
+  // sleep/wear periods against these raw values).
+
+  /// Raw wear-detection code (e.g. worn/not-worn/uncertain — exact mapping unknown).
+  final int? wear;
+
+  /// Raw dual-sensor temperature reading #1, that [temperature] is calibrated/derived
+  /// from. Units/scale not documented.
+  final int? tempOne;
+
+  /// Raw dual-sensor temperature reading #2. See [tempOne].
+  final int? tempTwo;
+
+  /// Calorie calculation algorithm type/version used by the device for this record.
+  final int? calcType;
+
+  /// Baseline/reference body temperature, distinct from the calibrated [temperature].
+  final double? baseTemperature;
+
+  /// Hydration-tracking raw value, on devices that support drink reminders/logging.
+  final String? drinkPartOne;
+
+  /// Hydration-tracking raw value. See [drinkPartOne].
+  final String? drinkPartTwo;
+
+  /// Raw wrist-gesture event codes (e.g. wrist raise/flip) for this window.
+  final List<int>? gesture;
+
+  /// Raw per-minute PPG (photoplethysmography) readings within this 5-minute window,
+  /// one entry per minute. 255 means "no reading" for this minute. [heartRate] is
+  /// the first non-255 entry.
+  final List<int>? ppgValues;
+
+  /// Raw per-minute ECG readings within this 5-minute window, one entry per minute.
+  /// 255 means "no reading" for this minute. [ecgHeartRate] is the first non-255
+  /// entry.
+  final List<int>? ecgValues;
+
+  /// Raw per-minute respiration readings within this 5-minute window, one entry per
+  /// minute. 255 means "no reading" for this minute. [respirationRate] is the first
+  /// non-255 entry.
+  final List<int>? respirationRateValues;
+
+  /// Raw per-minute SpO2 readings within this 5-minute window, one entry per minute.
+  /// 255 means "no reading" for this minute. [bloodOxygen] is the first non-255
+  /// entry.
+  final List<int>? oxygenValues;
+
+  /// Raw per-sub-interval sleep-stage codes for this window. The vendor's own API
+  /// docs confirm this represents "5-minute sleep state value" but do NOT publish
+  /// what each numeric code means (no awake/light/deep/REM table) — treat the exact
+  /// values as unverified. 255 appears to be a sentinel/padding value, consistent
+  /// with the other raw arrays above.
+  final List<int>? sleepStates;
+
+  /// Raw per-sleep-status counts for this window. Not documented by the vendor at
+  /// all — not even a field description exists in their API docs, only the
+  /// decompiled field name.
+  final List<int>? sleepStatusQuantity;
+
+  /// Raw sleep/activity codes for this window. Not documented by the vendor.
+  final List<int>? sleepSports;
+
+  /// Raw device reset-marker content. Not documented by the vendor.
+  final List<int>? resetTagContent;
+
+  /// Raw sleep apnea detection results for this window. Not documented by the
+  /// vendor.
+  final List<int>? apneaResults;
+
+  /// Raw hypoxia event timing values for this window. Not documented by the vendor.
+  final List<int>? hypoxiaTimes;
+
+  /// Raw cardiac load/strain readings for this window. Not documented by the
+  /// vendor.
+  final List<int>? cardiacLoads;
+
+  /// Raw per-minute hypoxia flags for this window. Presumed boolean-like (0/1) but
+  /// not documented by the vendor.
+  final List<int>? isHypoxias;
+
+  /// Raw correction/adjustment flags for this window. Not documented by the vendor.
+  final List<int>? corrects;
+
+  /// Stress/pressure level reading. Scale not documented by the vendor.
   final int? pressure;
 
-  /// Metabolic equivalent (MET) value.
+  /// Metabolic equivalent (MET) value — a standard fitness unit where 1.0 ≈ resting
+  /// metabolic rate (sitting quietly); higher values indicate more intense activity.
   final double? met;
 
   const OriginHealthData({
