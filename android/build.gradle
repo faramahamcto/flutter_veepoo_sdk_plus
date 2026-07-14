@@ -24,14 +24,6 @@ allprojects {
 apply plugin: "com.android.library"
 apply plugin: "kotlin-android"
 
-// Scoped to this module only (unlike allprojects above) so it doesn't affect dependency
-// resolution for the consuming app or other plugins sharing this Gradle build.
-repositories {
-    flatDir {
-        dirs "$projectDir/libs"
-    }
-}
-
 android {
     if (project.android.hasProperty("namespace")) {
         namespace = "site.shasmatic.flutter_veepoo_sdk"
@@ -58,16 +50,16 @@ android {
     }
 
     dependencies {
-        implementation fileTree(dir: 'libs', include: ['*.jar'])
-        // Vendor SDK libraries, as .aar (not .jar) so their bundled native (.so) libraries and
-        // manifests get merged in properly by AGP. Resolved via the flatDir repository above.
-        implementation(name: 'vpprotocol-2.3.71.15', ext: 'aar')
-        implementation(name: 'vpbluetooth-1.20', ext: 'aar')
-        implementation(name: 'JL_Watch_V1.13.1_11214-release', ext: 'aar')
-        implementation(name: 'jl_rcsp_V0.7.2_527-release', ext: 'aar')
-        implementation(name: 'jl_bt_ota_V1.10.0_10931-release', ext: 'aar')
-        implementation(name: 'BmpConvert_V1.6.0_10604-release', ext: 'aar')
-        implementation(name: 'abpartool-release', ext: 'aar')
+        // Vendor SDK libraries (.jar and .aar) as plain local file dependencies rather than
+        // flatDir + name/ext module notation. flatDir repositories are only visible to the
+        // project that declares them — when this plugin is included as a subproject of a
+        // consuming app's Gradle build, resolving the app's own classpath needs these same
+        // artifacts, but the app has no way to know about a flatDir repo declared only in our
+        // build.gradle, so that dependency edge fails to resolve ("Could not find :xxx-1.0:").
+        // A plain file reference has no repository/module-coordinate lookup at all, so it can't
+        // hit that problem — AGP still merges each .aar's manifest/resources/native libraries
+        // correctly either way.
+        implementation fileTree(dir: 'libs', include: ['*.jar', '*.aar'])
         implementation "com.google.code.gson:gson:2.12.1"
         testImplementation("org.jetbrains.kotlin:kotlin-test")
         testImplementation("org.mockito:mockito-core:5.2.0")
