@@ -43,9 +43,19 @@ class OriginDataReader(
     private var currentDayData = mutableListOf<Map<String, Any?>>()
     private val allDaysData = mutableMapOf<Int, MutableList<Map<String, Any?>>>()
     private val hrvDataMap = mutableMapOf<String, Int>() // Maps "HH:mm" to HRV value
+    private var dayCompleteJob: Job? = null
 
     companion object {
         private const val READ_TIMEOUT_MS = 90000L // 90 seconds timeout
+
+        // Per the vendor docs, HRV is generated as a post-processing step "after reading the
+        // original data of the day" — i.e. on its own timer, not pushed alongside the rest of
+        // the day's data. Real device logs confirm onOriginFiveMinuteListDataChange/
+        // onOriginSpo2OriginListDataChange/onOriginHalfHourDataChange/onReadOriginComplete all
+        // fire within ~100ms of each other with zero onOriginHRVOriginListDataChange calls in
+        // between. Finalizing the instant onReadOriginComplete fires was very likely cutting
+        // off HRV before the device had a chance to send it, so we wait a bit longer first.
+        private const val HRV_GRACE_PERIOD_MS = 2500L
     }
 
     fun readOriginData3Days() {
@@ -158,7 +168,7 @@ class OriginDataReader(
 
         override fun onReadOriginComplete() {
             VPLogger.d("Origin data reading complete for day $currentDay. Records: ${currentDayData.size}")
-            onDayComplete()
+            scheduleDayComplete()
         }
     }
 
@@ -218,7 +228,7 @@ class OriginDataReader(
 
         override fun onReadOriginComplete() {
             VPLogger.d("Origin data reading complete for day $currentDay. Records: ${currentDayData.size}")
-            onDayComplete()
+            scheduleDayComplete()
         }
     }
 
@@ -274,11 +284,14 @@ class OriginDataReader(
             String.format("%02d:%02d", timeData.hour, timeData.minute)
         } else null
 
-        // Extract values from arrays
-        val bloodOxygen = originData.oxygens?.firstOrNull { it > 0 }
-        val respirationRate = originData.resRates?.firstOrNull { it > 0 }
-        val ecgHeartRate = originData.ecgs?.firstOrNull { it > 0 }
-        val ppgHeartRate = originData.ppgs?.firstOrNull { it > 0 }
+        // Extract values from arrays. 255 is the device's "no reading" sentinel for these
+        // byte-range channels (confirmed from real device logs: resRates comes back as
+        // [255, 255, 255, 255, 255] with no respiration sensor active) — treating it as a
+        // valid reading of 255 breaths/min was a real bug, not just a theoretical edge case.
+        val bloodOxygen = originData.oxygens?.firstOrNull { it in 1..254 }
+        val respirationRate = originData.resRates?.firstOrNull { it in 1..254 }
+        val ecgHeartRate = originData.ecgs?.firstOrNull { it in 1..254 }
+        val ppgHeartRate = originData.ppgs?.firstOrNull { it in 1..254 }
 
         // Extract blood component data
         val bloodComponent = originData.bloodComponent
@@ -326,6 +339,19 @@ class OriginDataReader(
         )
 
         currentDayData.add(dataMap)
+    }
+
+    /**
+     * Waits [HRV_GRACE_PERIOD_MS] after onReadOriginComplete before finalizing the day, to give
+     * a chance for onOriginHRVOriginListDataChange to arrive — it's generated as a trailing
+     * post-processing step, not pushed alongside the rest of the day's data.
+     */
+    private fun scheduleDayComplete() {
+        dayCompleteJob?.cancel()
+        dayCompleteJob = coroutineScope.launch {
+            delay(HRV_GRACE_PERIOD_MS)
+            onDayComplete()
+        }
     }
 
     private fun onDayComplete() {
@@ -535,6 +561,8 @@ class OriginDataReader(
     private fun cancelTimeout() {
         timeoutJob?.cancel()
         timeoutJob = null
+        dayCompleteJob?.cancel()
+        dayCompleteJob = null
     }
 
     private fun returnError(code: String, message: String) {
