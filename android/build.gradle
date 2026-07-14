@@ -50,16 +50,13 @@ android {
     }
 
     dependencies {
-        // Vendor SDK libraries (.jar and .aar) as plain local file dependencies rather than
-        // flatDir + name/ext module notation. flatDir repositories are only visible to the
-        // project that declares them — when this plugin is included as a subproject of a
-        // consuming app's Gradle build, resolving the app's own classpath needs these same
-        // artifacts, but the app has no way to know about a flatDir repo declared only in our
-        // build.gradle, so that dependency edge fails to resolve ("Could not find :xxx-1.0:").
-        // A plain file reference has no repository/module-coordinate lookup at all, so it can't
-        // hit that problem — AGP still merges each .aar's manifest/resources/native libraries
-        // correctly either way.
-        implementation fileTree(dir: 'libs', include: ['*.jar', '*.aar'])
+        // Vendor SDK libraries as plain .jar files (not .aar): AGP explicitly forbids a library
+        // module (which is what this plugin is - it produces its own AAR via bundleDebugAar)
+        // from directly depending on local .aar files at all, regardless of dependency notation
+        // ("Direct local .aar file dependencies are not supported when building an AAR").
+        // Their bundled native (.so) libraries live under src/main/jniLibs/ instead - see
+        // NATIVE_LIBRARIES.md.
+        implementation fileTree(dir: 'libs', include: ['*.jar'])
         implementation "com.google.code.gson:gson:2.12.1"
         testImplementation("org.jetbrains.kotlin:kotlin-test")
         testImplementation("org.mockito:mockito-core:5.2.0")

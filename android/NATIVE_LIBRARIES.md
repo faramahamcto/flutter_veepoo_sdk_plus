@@ -64,15 +64,21 @@ The following native libraries are required and working:
 - `libjl_pack_format.so` - Data packing
 - `libabpartool.so` - A/B partition tool (Bluetrum devices)
 
-As of the vpprotocol 2.3.71.15 upgrade, these are bundled *inside* the vendor's own
-`.aar` dependencies (`android/libs/*.aar`) rather than manually placed under
-`android/src/main/jniLibs/` — Android Gradle Plugin merges them in automatically at
-build time. Do not manually add copies of these specific files under
-`android/src/main/jniLibs/`; that would cause a "more than one file was found with OS
-independent path" merge conflict.
+As of the vpprotocol 2.3.71.15 upgrade, the vendor now distributes these bundled
+*inside* `.aar` files rather than as plain `.jar`s. However, AGP explicitly forbids a
+library module (which is what this plugin is) from directly depending on local `.aar`
+files at all ("Direct local .aar file dependencies are not supported when building an
+AAR" — `bundleDebugAar` fails outright if you try). So this plugin extracts just the
+`classes.jar` from each vendor `.aar` into `android/libs/*.jar`, and manually places
+each `.aar`'s bundled native libraries here under `android/src/main/jniLibs/` instead
+(the same approach used before the upgrade). If you upgrade any of these vendor
+libraries again in the future and they now ship as `.aar`, repeat this: extract
+`classes.jar` -> rename into `android/libs/`, extract `jni/<abi>/*.so` -> merge into
+`android/src/main/jniLibs/<abi>/`.
 
-`libnative-lib.so` (below) is the one exception: none of the vendor's `.aar` files
-provide it, so it remains manually placed under `android/src/main/jniLibs/`.
+`libnative-lib.so` (below) is the one exception: it isn't bundled in any of the
+vendor's `.aar` files, so it was always manually placed here, independent of this
+jar/aar extraction process.
 
 ## Features Status
 
