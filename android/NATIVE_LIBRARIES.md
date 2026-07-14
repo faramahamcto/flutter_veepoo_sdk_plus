@@ -53,7 +53,7 @@ All other features (heart rate, SpO2, blood pressure, blood glucose, temperature
 
 ## Current Native Libraries (Working)
 
-The following native libraries are already present and working:
+The following native libraries are required and working:
 
 ### JL (JieLi) Libraries
 - `libjl_auth.so` - Authentication
@@ -62,15 +62,17 @@ The following native libraries are already present and working:
 - `libjl_fatfs.so` - FAT file system
 - `libjl_ota_auth.so` - OTA update authentication
 - `libjl_pack_format.so` - Data packing
+- `libabpartool.so` - A/B partition tool (Bluetrum devices)
 
-These are located in:
-```
-android/src/main/jniLibs/
-├── arm64-v8a/
-├── armeabi-v7a/
-├── x86/
-└── x86_64/
-```
+As of the vpprotocol 2.3.71.15 upgrade, these are bundled *inside* the vendor's own
+`.aar` dependencies (`android/libs/*.aar`) rather than manually placed under
+`android/src/main/jniLibs/` — Android Gradle Plugin merges them in automatically at
+build time. Do not manually add copies of these specific files under
+`android/src/main/jniLibs/`; that would cause a "more than one file was found with OS
+independent path" merge conflict.
+
+`libnative-lib.so` (below) is the one exception: none of the vendor's `.aar` files
+provide it, so it remains manually placed under `android/src/main/jniLibs/`.
 
 ## Features Status
 
