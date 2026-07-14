@@ -43,6 +43,8 @@ class FlutterVeepooSdkPlugin: FlutterPlugin, ActivityAware {
     private const val DETECT_BLOOD_COMPONENT_EVENT_CHANNEL = "$CHANNEL/detect_blood_component_event_channel"
     private const val ORIGIN_DATA_PROGRESS_EVENT_CHANNEL = "$CHANNEL/origin_data_progress_event_channel"
     private const val CONNECTION_STATUS_EVENT_CHANNEL = "$CHANNEL/connection_status_event_channel"
+    private const val DETECT_BODY_COMPONENT_EVENT_CHANNEL = "$CHANNEL/detect_body_component_event_channel"
+    private const val MINI_CHECKUP_EVENT_CHANNEL = "$CHANNEL/mini_checkup_event_channel"
   }
 
   override fun onAttachedToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
@@ -67,6 +69,8 @@ class FlutterVeepooSdkPlugin: FlutterPlugin, ActivityAware {
     setupEventChannels(messenger, DETECT_BLOOD_COMPONENT_EVENT_CHANNEL) { methodChannelHandler.setDetectBloodComponentEventSink(it) }
     setupEventChannels(messenger, ORIGIN_DATA_PROGRESS_EVENT_CHANNEL) { methodChannelHandler.setOriginDataProgressEventSink(it) }
     setupEventChannels(messenger, CONNECTION_STATUS_EVENT_CHANNEL) { methodChannelHandler.setConnectionStatusEventSink(it) }
+    setupEventChannels(messenger, DETECT_BODY_COMPONENT_EVENT_CHANNEL) { methodChannelHandler.setDetectBodyComponentEventSink(it) }
+    setupEventChannels(messenger, MINI_CHECKUP_EVENT_CHANNEL) { methodChannelHandler.setMiniCheckupEventSink(it) }
   }
 
   private fun stopChannels() {

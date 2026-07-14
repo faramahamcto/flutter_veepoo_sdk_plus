@@ -30,6 +30,10 @@ class MethodChannelFlutterVeepooSdk extends FlutterVeepooSdkPlatform {
       const EventChannel('$_channelName/origin_data_progress_event_channel');
   final EventChannel connectionStatusEventChannel =
       const EventChannel('$_channelName/connection_status_event_channel');
+  final EventChannel bodyComponentEventChannel =
+      const EventChannel('$_channelName/detect_body_component_event_channel');
+  final EventChannel miniCheckupEventChannel =
+      const EventChannel('$_channelName/mini_checkup_event_channel');
 
   // Cached streams
   Stream<List<BluetoothDevice>>? _bluetoothDevicesStream;
@@ -43,6 +47,8 @@ class MethodChannelFlutterVeepooSdk extends FlutterVeepooSdkPlatform {
   Stream<StepData?>? _stepDataStream;
   Stream<OriginDataProgress?>? _originDataProgressStream;
   Stream<ConnectionStatus?>? _connectionStatusStream;
+  Stream<BodyComponent?>? _bodyComponentStream;
+  Stream<MiniCheckupEvent?>? _miniCheckupStream;
 
   /// Requests Bluetooth permissions.
   ///
@@ -166,7 +172,7 @@ class MethodChannelFlutterVeepooSdk extends FlutterVeepooSdkPlatform {
   @override
   Future<void> disconnectDevice() async {
     try {
-      if (await isDeviceConnected() == true) {
+      if (await _isCurrentlyConnected()) {
         await methodChannel.invokeMethod<void>('disconnectDevice');
       } else {
         throw const VeepooException(message: 'Device is not connected');
@@ -214,14 +220,41 @@ class MethodChannelFlutterVeepooSdk extends FlutterVeepooSdkPlatform {
     }
   }
 
-  /// Checks if a Bluetooth device is currently connected.
+  /// Gets the MAC address of the currently connected device, or null if
+  /// nothing is connected. Reads the live GATT connection (the same source
+  /// [VeepooSDK.getDeviceInfo] uses), since the SDK's own connection-state
+  /// checks (isCurrentDeviceConnected/isDeviceConnected/its static
+  /// getCurrentDeviceAddress) are unreliable — see
+  /// HBandSDK/Android_Ble_SDK#12.
   ///
-  /// Returns [true] if a device is connected, otherwise [false].
   /// Throws a [DeviceConnectionException] if the request fails.
   @override
-  Future<bool?> isDeviceConnected() async {
+  Future<String?> getCurrentDeviceAddress() async {
     try {
-      return await methodChannel.invokeMethod<bool>('isDeviceConnected');
+      return await methodChannel
+          .invokeMethod<String>('getCurrentDeviceAddress');
+    } on PlatformException catch (error, stackTrace) {
+      throw VeepooException(
+        message: 'Failed to get current device address: ${error.message}',
+        details: error.details,
+        stacktrace: stackTrace,
+      );
+    }
+  }
+
+  /// Checks if a Bluetooth device is currently connected.
+  ///
+  /// If [address] is provided, checks that this specific device is the one
+  /// currently connected. Otherwise checks whether any device is connected.
+  /// Returns [true] if connected, otherwise [false].
+  /// Throws a [DeviceConnectionException] if the request fails.
+  @override
+  Future<bool?> isDeviceConnected({String? address}) async {
+    try {
+      return await methodChannel.invokeMethod<bool>(
+        'isDeviceConnected',
+        {'address': address},
+      );
     } on PlatformException catch (error, stackTrace) {
       throw VeepooException(
         message: 'Failed to check device connection: ${error.message}',
@@ -229,6 +262,15 @@ class MethodChannelFlutterVeepooSdk extends FlutterVeepooSdkPlatform {
         stacktrace: stackTrace,
       );
     }
+  }
+
+  /// The actual connection gate used before device operations
+  /// (disconnectDevice, startDetectHeart, readBattery, etc). Calls
+  /// [getCurrentDeviceAddress] and treats a non-null, non-empty address as
+  /// connected.
+  Future<bool> _isCurrentlyConnected() async {
+    final address = await getCurrentDeviceAddress();
+    return address != null && address.isNotEmpty;
   }
 
   /// Checks if a device has been bound (paired) before.
@@ -276,7 +318,7 @@ class MethodChannelFlutterVeepooSdk extends FlutterVeepooSdkPlatform {
   @override
   Future<void> startDetectHeart() async {
     try {
-      if (await isDeviceConnected() == true) {
+      if (await _isCurrentlyConnected()) {
         await methodChannel.invokeMethod<void>('startDetectHeart');
       } else {
         throw const VeepooException(message: 'Device is not connected');
@@ -315,7 +357,7 @@ class MethodChannelFlutterVeepooSdk extends FlutterVeepooSdkPlatform {
   @override
   Future<void> stopDetectHeart() async {
     try {
-      if (await isDeviceConnected() == true) {
+      if (await _isCurrentlyConnected()) {
         await methodChannel.invokeMethod<void>('stopDetectHeart');
       } else {
         throw const VeepooException(message: 'Device is not connected');
@@ -382,7 +424,7 @@ class MethodChannelFlutterVeepooSdk extends FlutterVeepooSdkPlatform {
   @override
   Future<void> stopDetectSpoh() async {
     try {
-      if (await isDeviceConnected() == true) {
+      if (await _isCurrentlyConnected()) {
         await methodChannel.invokeMethod<void>('stopDetectSpoh');
       } else {
         throw const VeepooException(message: 'Device is not connected');
@@ -400,7 +442,7 @@ class MethodChannelFlutterVeepooSdk extends FlutterVeepooSdkPlatform {
   @override
   Future<Battery?> readBattery() async {
     try {
-      if (await isDeviceConnected() == true) {
+      if (await _isCurrentlyConnected()) {
         final result =
             await methodChannel.invokeMapMethod<String, dynamic>('readBattery');
         return result != null ? Battery.fromJson(result) : null;
@@ -813,18 +855,111 @@ class MethodChannelFlutterVeepooSdk extends FlutterVeepooSdkPlatform {
     }
   }
 
+  // ==================== Body Composition ====================
+
+  @override
+  Future<void> startDetectBodyComponent() async {
+    try {
+      await methodChannel.invokeMethod<void>('startDetectBodyComponent');
+    } on PlatformException catch (error, stackTrace) {
+      throw VeepooException(
+        message: 'Failed to start body composition detection: ${error.message}',
+        details: error.details,
+        stacktrace: stackTrace,
+      );
+    }
+  }
+
+  @override
+  Future<void> stopDetectBodyComponent() async {
+    try {
+      await methodChannel.invokeMethod<void>('stopDetectBodyComponent');
+    } on PlatformException catch (error, stackTrace) {
+      throw VeepooException(
+        message: 'Failed to stop body composition detection: ${error.message}',
+        details: error.details,
+        stacktrace: stackTrace,
+      );
+    }
+  }
+
+  @override
+  Future<List<int>> readBodyComponentId() async {
+    try {
+      final result =
+          await methodChannel.invokeListMethod<int>('readBodyComponentId');
+      return result ?? [];
+    } on PlatformException catch (error, stackTrace) {
+      throw VeepooException(
+        message: 'Failed to read body composition IDs: ${error.message}',
+        details: error.details,
+        stacktrace: stackTrace,
+      );
+    }
+  }
+
+  @override
+  Future<List<BodyComponent>> readBodyComponentData({List<int>? ids}) async {
+    try {
+      final result = await methodChannel.invokeListMethod<Map>(
+        'readBodyComponentData',
+        {'ids': ids},
+      );
+      return result
+              ?.map((item) => BodyComponent.fromMap(Map<String, dynamic>.from(item)))
+              .toList() ??
+          [];
+    } on PlatformException catch (error, stackTrace) {
+      throw VeepooException(
+        message: 'Failed to read body composition data: ${error.message}',
+        details: error.details,
+        stacktrace: stackTrace,
+      );
+    }
+  }
+
+  // ==================== Mini Checkup ====================
+
+  @override
+  Future<void> startMiniCheckup() async {
+    try {
+      await methodChannel.invokeMethod<void>('startMiniCheckup');
+    } on PlatformException catch (error, stackTrace) {
+      throw VeepooException(
+        message: 'Failed to start Mini Checkup: ${error.message}',
+        details: error.details,
+        stacktrace: stackTrace,
+      );
+    }
+  }
+
+  @override
+  Future<void> stopMiniCheckup() async {
+    try {
+      await methodChannel.invokeMethod<void>('stopMiniCheckup');
+    } on PlatformException catch (error, stackTrace) {
+      throw VeepooException(
+        message: 'Failed to stop Mini Checkup: ${error.message}',
+        details: error.details,
+        stacktrace: stackTrace,
+      );
+    }
+  }
+
   // ==================== HRV ====================
 
   @override
-  Future<List<HRVData>> readHRVData({int days = 7}) async {
+  Future<List<HRVData>> readHRVData({int days = 7, int startDay = 0}) async {
     try {
-      final result = await methodChannel.invokeMethod<List<dynamic>>(
+      // Native returns a map ({hrvDataList, dayHrvScore, totalRecords}), not a bare list.
+      final result = await methodChannel.invokeMapMethod<String, dynamic>(
         'readHRVData',
-        {'days': days},
+        {'days': days, 'startDay': startDay},
       );
-      if (result == null) return [];
-      return result
-          .map((e) => HRVData.fromMap(e as Map<String, dynamic>))
+      final list = result?['hrvDataList'] as List<dynamic>?;
+      if (list == null) return [];
+      return list
+          .map((e) => HRVData.fromMap(Map<String, dynamic>.from(e as Map)))
           .toList();
     } on PlatformException catch (error, stackTrace) {
       throw VeepooException(
@@ -1256,6 +1391,40 @@ class MethodChannelFlutterVeepooSdk extends FlutterVeepooSdkPlatform {
     }).asBroadcastStream();
 
     return _bloodComponentStream!;
+  }
+
+  @override
+  Stream<BodyComponent?> get bodyComponent {
+    _bodyComponentStream ??= bodyComponentEventChannel.receiveBroadcastStream().map((dynamic event) {
+      if (event is Map<Object?, Object?>) {
+        final result =
+            event.map((key, value) => MapEntry(key.toString(), value));
+        return BodyComponent.fromMap(result);
+      } else {
+        throw VeepooException(
+          message: 'Unexpected event type: ${event.runtimeType}',
+        );
+      }
+    }).asBroadcastStream();
+
+    return _bodyComponentStream!;
+  }
+
+  @override
+  Stream<MiniCheckupEvent?> get miniCheckup {
+    _miniCheckupStream ??= miniCheckupEventChannel.receiveBroadcastStream().map((dynamic event) {
+      if (event is Map<Object?, Object?>) {
+        final result =
+            event.map((key, value) => MapEntry(key.toString(), value));
+        return MiniCheckupEvent.fromMap(result);
+      } else {
+        throw VeepooException(
+          message: 'Unexpected event type: ${event.runtimeType}',
+        );
+      }
+    }).asBroadcastStream();
+
+    return _miniCheckupStream!;
   }
 
   @override

@@ -17,7 +17,12 @@
     <application
         android:label="flutter_veepoo_sdk_example"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        tools:replace="android:label">
+        <!-- vpprotocol-2.3.71.15.aar's own AndroidManifest.xml declares
+             android:label="@string/app_name" on <application> (a leftover from being built
+             as a standalone demo app), which otherwise conflicts with this app's label
+             during manifest merging. -->
         <activity
             android:name=".MainActivity"
             android:exported="true"

@@ -53,7 +53,7 @@ All other features (heart rate, SpO2, blood pressure, blood glucose, temperature
 
 ## Current Native Libraries (Working)
 
-The following native libraries are already present and working:
+The following native libraries are required and working:
 
 ### JL (JieLi) Libraries
 - `libjl_auth.so` - Authentication
@@ -62,15 +62,60 @@ The following native libraries are already present and working:
 - `libjl_fatfs.so` - FAT file system
 - `libjl_ota_auth.so` - OTA update authentication
 - `libjl_pack_format.so` - Data packing
+- `libabpartool.so` - A/B partition tool (Bluetrum devices)
 
-These are located in:
+As of the vpprotocol 2.3.71.15 upgrade, the vendor now distributes these bundled
+*inside* `.aar` files rather than as plain `.jar`s. However, AGP explicitly forbids a
+library module (which is what this plugin is) from directly depending on local `.aar`
+files at all ("Direct local .aar file dependencies are not supported when building an
+AAR" — `bundleDebugAar` fails outright if you try). So this plugin extracts just the
+`classes.jar` from each vendor `.aar` into `android/libs/*.jar`, and manually places
+each `.aar`'s bundled native libraries here under `android/src/main/jniLibs/` instead
+(the same approach used before the upgrade). If you upgrade any of these vendor
+libraries again in the future and they now ship as `.aar`, repeat this: extract
+`classes.jar` -> rename into `android/libs/`, extract `jni/<abi>/*.so` -> merge into
+`android/src/main/jniLibs/<abi>/`.
+
+`libnative-lib.so` (below) is the one exception: it isn't bundled in any of the
+vendor's `.aar` files, so it was always manually placed here, independent of this
+jar/aar extraction process.
+
+## Nordic McuManager Dependency (Required for Every BLE Connection)
+
+As of vpprotocol 2.3.71.15, `VPOperateManager` unconditionally calls
+`com.veepoo.protocol.nordic.McuMgrOtaManager.init()` on every successful BLE
+connection (added for Nordic-chip OTA/DFU support), regardless of the connected
+device's actual chipset. The vendor does not bundle the classes this needs
+(`io.runtime.mcumgr.ble.McuMgrBleTransport`,
+`io.runtime.mcumgr.dfu.mcuboot.FirmwareUpgradeManager`, `ImageSet`,
+`CacheImageSet`, etc.) in any of its own jars, so without supplying them,
+**every connection crashes immediately** with
+`NoClassDefFoundError`/`ClassNotFoundException`.
+
+This plugin declares them as remote Maven Central dependencies in
+`android/build.gradle`:
+
+```groovy
+implementation "no.nordicsemi.android:mcumgr-ble:2.7.4"
+implementation "no.nordicsemi.android:mcumgr-core:2.7.4"
 ```
-android/src/main/jniLibs/
-├── arm64-v8a/
-├── armeabi-v7a/
-├── x86/
-└── x86_64/
-```
+
+Three version-compatibility traps to know about if you ever bump these:
+- The original Maven coordinates for this library were `io.runtime.mcumgr:mcumgr-ble`/
+  `mcumgr-core`, last published at `0.12.0-beta4` (2021). That version predates the
+  `io.runtime.mcumgr.dfu.mcuboot` package split vpprotocol's compiled bytecode
+  references, so it fails with `NoClassDefFoundError` on
+  `io/runtime/mcumgr/dfu/mcuboot/FirmwareUpgradeManager` even though it resolves fine.
+- Starting at `3.0.0`, Nordic renamed the Maven group to `no.nordicsemi.android:mcumgr-*`
+  **and** moved the Java package itself to `no.nordicsemi.android.mcumgr.*` — a hard
+  break, since vpprotocol's bytecode references the old `io.runtime.mcumgr.*` package
+  names directly.
+- `2.8.0`+ declare an increasingly high `minCompileSdk` in their AAR metadata
+  (`2.8.0` → 36, `2.9.0` → 37), which can fail `:app:checkDebugAarMetadata` if the
+  consuming app's `compileSdk`/AGP version hasn't caught up yet. `2.7.4` declares
+  `minCompileSdk=1` (no restriction) and, verified via `javap` bytecode diff, has an
+  identical API surface to `2.9.0` for everything `McuMgrOtaManager.class` actually
+  calls — so it's the version pinned here.
 
 ## Features Status
 

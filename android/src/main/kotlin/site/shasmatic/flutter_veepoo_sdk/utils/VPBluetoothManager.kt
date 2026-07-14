@@ -395,12 +395,34 @@ class VPBluetoothManager(
     }
 
     /**
-     * Checks if the device is connected.
+     * Returns the MAC address of the currently connected device, or null if nothing is
+     * connected.
+     *
+     * `VPOperateManager.isCurrentDeviceConnected()`/`isDeviceConnected(String)` always return
+     * false regardless of actual connection state, and the vendor-documented alternative,
+     * the static `VPOperateManager.getCurrentDeviceAddress()`, was also found to go stale/empty
+     * during a real connect+bind flow even while still connected. This instead reads the live
+     * GATT connection the same way [VPMethodChannelHandler.handleGetDeviceInfo] does, which has
+     * proven reliable.
+     */
+    fun getCurrentDeviceAddress() {
+        result.success(vpManager.currentConnectGatt?.device?.address)
+    }
+
+    /**
+     * Checks if the device is connected, by checking whether [getCurrentDeviceAddress]'s
+     * underlying live-GATT lookup can resolve an address at all (or, when [address] is given,
+     * whether that specific device is the one connected).
      *
      * @return `true` if the device is connected, `false` otherwise.
      */
-    fun isDeviceConnected(): Boolean {
-        val isConnected = vpManager.isCurrentDeviceConnected
+    fun isDeviceConnected(address: String? = null): Boolean {
+        val currentAddress = vpManager.currentConnectGatt?.device?.address
+        val isConnected = if (address != null) {
+            currentAddress != null && currentAddress.equals(address, ignoreCase = true)
+        } else {
+            !currentAddress.isNullOrEmpty()
+        }
         result.success(isConnected)
         return isConnected
     }
@@ -527,15 +549,28 @@ class VPBluetoothManager(
     }
 
     private fun passwordDataListener(password: String, is24H: Boolean) =
-        IPwdDataListener { data ->
-            if (!isSubmitted) {
-                isSubmitted = true
-                if (data.getmStatus() == EPwdStatus.CHECK_AND_TIME_SUCCESS) {
-                    deviceStorage.saveCredentials(password, is24H)
+        // IPwdDataListener gained a second abstract method (onConnectionConfirmTimeout) in
+        // vpprotocol 2.3.71.15, so it's no longer a single-abstract-method interface and can't
+        // use the lambda/SAM-conversion shorthand — needs an explicit object expression instead.
+        object : IPwdDataListener {
+            override fun onPwdDataChange(data: PwdData) {
+                if (!isSubmitted) {
+                    isSubmitted = true
+                    if (data.getmStatus() == EPwdStatus.CHECK_AND_TIME_SUCCESS) {
+                        deviceStorage.saveCredentials(password, is24H)
+                    }
+                    result.success(data.getmStatus().name)
+                } else {
+                    VPLogger.w("Reply already submitted for passwordDataListener")
                 }
-                result.success(data.getmStatus().name)
-            } else {
-                VPLogger.w("Reply already submitted for passwordDataListener")
+            }
+
+            override fun onConnectionConfirmTimeout() {
+                VPLogger.w("Connection confirmation timed out while binding device")
+                if (!isSubmitted) {
+                    isSubmitted = true
+                    result.error("BIND_TIMEOUT", "Connection confirmation timed out", null)
+                }
             }
         }
 
@@ -550,6 +585,11 @@ class VPBluetoothManager(
 
         override fun onDeviceFunctionPackage2Report(data: DeviceFunctionPackage2) {
             VPLogger.i("Device function package2 report: $data")
+            // readHRVOrigin/readHRVOriginBySetting can time out with zero response (not even
+            // an error or empty-complete callback) if the watch reports the HRV function as
+            // SUPPORT_CLOSE here — i.e. HRV monitoring is supported but currently turned off
+            // on the device itself, so there's nothing recorded to read back at all.
+            VPLogger.i("HRV function status: ${data.hrvFunction} (hrvType: ${data.hrvType})")
         }
 
         override fun onDeviceFunctionPackage3Report(data: DeviceFunctionPackage3) {

@@ -37,18 +37,57 @@ class _VeepooSDKDemoState extends State<VeepooSDKDemo>
   late TabController _tabController;
   String? _connectedDeviceAddress;
   bool _isConnected = false;
+  StreamSubscription<ConnectionStatus?>? _connectionStatusSubscription;
+
+  // Informational only — see the note on _connectionStatusSubscription below
+  // for why this must never gate the UI.
+  ConnectionStatus? _liveConnectionStatus;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 9, vsync: this);
+    _tabController = TabController(length: 10, vsync: this);
     _requestPermissions();
+
+    // NOTE: the SDK's own isCurrentDeviceConnected()/isDeviceConnected(String)
+    // and its static getCurrentDeviceAddress() are unreliable — a known
+    // upstream issue (see HBandSDK/Android_Ble_SDK#12). The plugin's
+    // getCurrentDeviceAddress()/isDeviceConnected() work around this by
+    // reading the live GATT connection instead (see _verifyConnection below),
+    // which has proven reliable. This *stream*, however, is driven by a
+    // separate native callback (onConnectStatusChanged) whose reliability
+    // hasn't been verified the same way, so it's kept here purely for
+    // display — it must NOT set _isConnected/_connectedDeviceAddress, which
+    // gate the Bind/Disconnect buttons. Those are set optimistically from the
+    // connectDevice()/disconnectDevice() call results below.
+    _connectionStatusSubscription =
+        _veepooSdk.connectionStatus.listen((status) {
+      setState(() => _liveConnectionStatus = status);
+    });
   }
 
   @override
   void dispose() {
     _tabController.dispose();
+    _connectionStatusSubscription?.cancel();
     super.dispose();
+  }
+
+  /// Asks the SDK whether a device is currently connected, via
+  /// [VeepooSDK.isDeviceConnected] (backed by the live GATT connection —
+  /// see the note in [initState]).
+  Future<void> _verifyConnection() async {
+    try {
+      final connected = await _veepooSdk.isDeviceConnected();
+      _showInfo(
+        'Connection Check',
+        connected == true
+            ? 'Device is connected.'
+            : 'No device is currently connected.',
+      );
+    } catch (e) {
+      _showError('Failed to verify connection: $e');
+    }
   }
 
   // ==================== Bluetooth & Connection ====================
@@ -233,6 +272,7 @@ Power Model: ${battery?.powerModel?.name ?? 'Unknown'}
             Tab(text: 'Steps & Sleep'),
             Tab(text: 'ECG & Glucose'),
             Tab(text: 'Blood Analysis'),
+            Tab(text: 'Body & Checkup'),
             Tab(text: 'Health Data'),
             Tab(text: 'Settings'),
             Tab(text: 'History'),
@@ -248,6 +288,7 @@ Power Model: ${battery?.powerModel?.name ?? 'Unknown'}
           _buildStepsSleepTab(),
           _buildECGGlucoseTab(),
           _buildBloodAnalysisTab(),
+          _buildBodyCompositionTab(),
           _buildHealthDataTab(),
           _buildSettingsTab(),
           _buildHistoryTab(),
@@ -272,6 +313,17 @@ Power Model: ${battery?.powerModel?.name ?? 'Unknown'}
                     leading: const Icon(Icons.check_circle, color: Colors.green),
                     title: const Text('Connected'),
                     subtitle: Text(_connectedDeviceAddress!),
+                  ),
+                ),
+              if (_liveConnectionStatus != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(
+                    'SDK connectionStatus stream (informational, unreliable — see #12): '
+                    '${_liveConnectionStatus!.state.name}'
+                    '${_liveConnectionStatus!.address != null ? ' @ ${_liveConnectionStatus!.address}' : ''}',
+                    style: const TextStyle(fontSize: 11, color: Colors.grey),
+                    textAlign: TextAlign.center,
                   ),
                 ),
               const SizedBox(height: 10),
@@ -303,6 +355,11 @@ Power Model: ${battery?.powerModel?.name ?? 'Unknown'}
                     onPressed: _readBattery,
                     icon: const Icon(Icons.battery_full),
                     label: const Text('Battery'),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: _verifyConnection,
+                    icon: const Icon(Icons.fact_check),
+                    label: const Text('Verify Connection'),
                   ),
                 ],
               ),
@@ -1198,6 +1255,294 @@ Type: ${data.last.hrvType ?? 'N/A'}
                     },
                     child: const Text('Read Today\'s HRV'),
                   ),
+                  const SizedBox(height: 8),
+                  ElevatedButton(
+                    onPressed: () async {
+                      try {
+                        // HRV is generated as an end-of-day statistic, so today (still
+                        // accumulating) can time out with nothing to return. Yesterday is a
+                        // complete day, so it's the most reliable single day to read.
+                        final data =
+                            await _veepooSdk.readHRVData(days: 1, startDay: 1);
+                        if (data.isEmpty) {
+                          _showError('No HRV data available for yesterday');
+                          return;
+                        }
+
+                        _showInfo('Yesterday\'s HRV', '''
+Records: ${data.length}
+HRV Value: ${data.last.hrvValue ?? 'N/A'}
+Heart Rate: ${data.last.heartRate ?? 'N/A'} BPM
+Type: ${data.last.hrvType ?? 'N/A'}
+                        ''');
+                      } catch (e) {
+                        _showError('$e');
+                      }
+                    },
+                    child: const Text('Read Yesterday\'s HRV'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ==================== Body Composition & Mini Checkup Tab ====================
+
+  Widget _buildBodyCompositionTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          // Live Body Composition Card
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  const Text(
+                    'Body Composition',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 10),
+                  StreamBuilder<BodyComponent?>(
+                    stream: _veepooSdk.bodyComponent,
+                    builder: (context, snapshot) {
+                      final bc = snapshot.data;
+                      if (bc == null) return const Text('No data');
+                      return Column(
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceAround,
+                            children: [
+                              Column(
+                                children: [
+                                  const Text('BMI', style: TextStyle(fontSize: 12)),
+                                  Text(
+                                    bc.bmi?.toStringAsFixed(1) ?? '-',
+                                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                                  ),
+                                ],
+                              ),
+                              Column(
+                                children: [
+                                  const Text('Body Fat', style: TextStyle(fontSize: 12)),
+                                  Text(
+                                    '${bc.bodyFatRate?.toStringAsFixed(1) ?? '-'}%',
+                                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                                  ),
+                                ],
+                              ),
+                              Column(
+                                children: [
+                                  const Text('Muscle Mass', style: TextStyle(fontSize: 12)),
+                                  Text(
+                                    '${bc.muscleMass?.toStringAsFixed(1) ?? '-'} kg',
+                                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceAround,
+                            children: [
+                              Column(
+                                children: [
+                                  const Text('Body Water', style: TextStyle(fontSize: 12)),
+                                  Text('${bc.bodyWater?.toStringAsFixed(1) ?? '-'}%'),
+                                ],
+                              ),
+                              Column(
+                                children: [
+                                  const Text('Bone Mass', style: TextStyle(fontSize: 12)),
+                                  Text('${bc.boneMass?.toStringAsFixed(1) ?? '-'} kg'),
+                                ],
+                              ),
+                              Column(
+                                children: [
+                                  const Text('BMR', style: TextStyle(fontSize: 12)),
+                                  Text('${bc.basalMetabolicRate?.toStringAsFixed(0) ?? '-'} kcal'),
+                                ],
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          if (bc.isMeasuring == true) ...[
+                            LinearProgressIndicator(value: (bc.progress ?? 0) / 100),
+                            if (bc.detectStep != null)
+                              Text(
+                                // Not a real signal-quality metric like ECG's — the vendor
+                                // doesn't document what this device-reported code means
+                                // beyond "still measuring". Shown as a raw diagnostic only.
+                                'Device step code: ${bc.detectStep}',
+                                style: const TextStyle(fontSize: 11, color: Colors.grey),
+                              ),
+                          ],
+                          Text('Status: ${bc.state?.name ?? "Unknown"}'),
+                        ],
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8,
+                    children: [
+                      ElevatedButton(
+                        onPressed: () async {
+                          try {
+                            await _veepooSdk.startDetectBodyComponent();
+                          } catch (e) {
+                            _showError('$e');
+                          }
+                        },
+                        child: const Text('Start'),
+                      ),
+                      ElevatedButton(
+                        onPressed: () async {
+                          try {
+                            await _veepooSdk.stopDetectBodyComponent();
+                          } catch (e) {
+                            _showError('$e');
+                          }
+                        },
+                        child: const Text('Stop'),
+                      ),
+                      OutlinedButton(
+                        onPressed: () async {
+                          try {
+                            final ids = await _veepooSdk.readBodyComponentId();
+                            _showInfo('Body Composition Records',
+                                ids.isEmpty ? 'No stored records.' : 'Record IDs: $ids');
+                          } catch (e) {
+                            _showError('$e');
+                          }
+                        },
+                        child: const Text('Read Record IDs'),
+                      ),
+                      OutlinedButton(
+                        onPressed: () async {
+                          try {
+                            final records = await _veepooSdk.readBodyComponentData();
+                            if (records.isEmpty) {
+                              _showError('No stored body composition records');
+                              return;
+                            }
+                            final last = records.last;
+                            _showInfo('Body Composition History', '''
+Records: ${records.length}
+Latest: ${last.date ?? 'N/A'}
+BMI: ${last.bmi?.toStringAsFixed(1) ?? 'N/A'}
+Body Fat: ${last.bodyFatRate?.toStringAsFixed(1) ?? 'N/A'}%
+Muscle Mass: ${last.muscleMass?.toStringAsFixed(1) ?? 'N/A'} kg
+                            ''');
+                          } catch (e) {
+                            _showError('$e');
+                          }
+                        },
+                        child: const Text('Read All Records'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          // Mini Checkup Card
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  const Text(
+                    'Mini Checkup',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 10),
+                  const Text(
+                    'A single guided, multi-sensor check covering heart rate, SpO2, stress, '
+                    'emotion, fatigue, blood glucose, temperature, blood pressure, HRV and, '
+                    'when supported, blood/body composition and skin electricity.',
+                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 10),
+                  StreamBuilder<MiniCheckupEvent?>(
+                    stream: _veepooSdk.miniCheckup,
+                    builder: (context, snapshot) {
+                      final event = snapshot.data;
+                      if (event == null) return const Text('No data');
+
+                      switch (event.type) {
+                        case MiniCheckupEventType.progress:
+                          return Column(
+                            children: [
+                              LinearProgressIndicator(value: (event.progress ?? 0) / 100),
+                              Text('Testing... ${event.progress ?? 0}%'),
+                            ],
+                          );
+                        case MiniCheckupEventType.error:
+                          return Text('Failed: ${event.errorCode?.name ?? "unknown"}');
+                        case MiniCheckupEventType.stopped:
+                          return const Text('Stopped');
+                        case MiniCheckupEventType.result:
+                          final r = event.result;
+                          return Text('''
+Heart Rate: ${r?.heartRate ?? 'N/A'} BPM
+SpO2: ${r?.bloodOxygen ?? 'N/A'}%
+Stress: ${r?.stress ?? 'N/A'}
+Emotion: ${r?.emotion ?? 'N/A'}
+Fatigue: ${r?.fatigue ?? 'N/A'}
+Blood Pressure: ${r?.systolicBloodPressure ?? '-'}/${r?.diastolicBloodPressure ?? '-'}
+HRV: ${r?.hrv ?? 'N/A'}
+                          ''');
+                        case MiniCheckupEventType.detail:
+                          final d = event.detail;
+                          final body = d?.bodyComponent;
+                          return Text('''
+Heart Rate: ${d?.heartRate ?? 'N/A'} BPM
+SpO2: ${d?.bloodOxygen ?? 'N/A'}%
+Blood Pressure (cuff): ${d?.bpAirPump?.systolicBloodPressure ?? '-'}/${d?.bpAirPump?.diastolicBloodPressure ?? '-'}
+HRV: ${d?.hrv ?? 'N/A'}
+Body Fat: ${body?.bodyFatRate?.toStringAsFixed(1) ?? 'N/A'}%
+Muscle Mass: ${body?.muscleMass?.toStringAsFixed(1) ?? 'N/A'} kg
+                          ''');
+                        case MiniCheckupEventType.unknown:
+                          return const Text('Unknown event');
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8,
+                    children: [
+                      ElevatedButton(
+                        onPressed: () async {
+                          try {
+                            await _veepooSdk.startMiniCheckup();
+                          } catch (e) {
+                            _showError('$e');
+                          }
+                        },
+                        child: const Text('Start'),
+                      ),
+                      ElevatedButton(
+                        onPressed: () async {
+                          try {
+                            await _veepooSdk.stopMiniCheckup();
+                          } catch (e) {
+                            _showError('$e');
+                          }
+                        },
+                        child: const Text('Stop'),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -2031,13 +2376,72 @@ class HourlyHealthDataPage extends StatelessWidget {
                   _buildRecordItem('LDL', '${record.ldl?.toStringAsFixed(2)} mmol/L', Icons.science, Colors.red.shade600),
                 if (record.hrvValue != null)
                   _buildRecordItem('HRV', '${record.hrvValue} ms', Icons.timeline, Colors.deepPurple),
+                if (record.wear != null)
+                  _buildRecordItem('Wear Code', '${record.wear}', Icons.watch, Colors.brown),
+                if (record.pressure != null)
+                  _buildRecordItem('Pressure', '${record.pressure}', Icons.speed, Colors.blueGrey),
+                if (record.met != null)
+                  _buildRecordItem('MET', '${record.met?.toStringAsFixed(2)}', Icons.directions_run, Colors.lightGreen),
+                if (record.bloodGlucoseRiskLevel != null)
+                  _buildRecordItem('Glucose Risk', '${record.bloodGlucoseRiskLevel}', Icons.warning_amber, Colors.amber),
+                if (record.tempOne != null || record.tempTwo != null)
+                  _buildRecordItem('Raw Temp', '${record.tempOne ?? '-'} / ${record.tempTwo ?? '-'}', Icons.device_thermostat, Colors.orange.shade300),
+                if (record.baseTemperature != null)
+                  _buildRecordItem('Base Temp', '${record.baseTemperature?.toStringAsFixed(1)}°C', Icons.thermostat_auto, Colors.orange.shade700),
               ],
             ),
+            if (_hasRawArrayData(record)) ...[
+              const SizedBox(height: 8),
+              ExpansionTile(
+                tilePadding: EdgeInsets.zero,
+                title: const Text('Raw per-minute arrays', style: TextStyle(fontSize: 13, color: Colors.grey)),
+                children: [
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      [
+                        if (record.gesture != null) 'gesture: ${record.gesture}',
+                        if (record.ppgValues != null) 'ppgValues: ${record.ppgValues}',
+                        if (record.ecgValues != null) 'ecgValues: ${record.ecgValues}',
+                        if (record.respirationRateValues != null) 'respirationRateValues: ${record.respirationRateValues}',
+                        if (record.oxygenValues != null) 'oxygenValues: ${record.oxygenValues}',
+                        if (record.sleepStates != null) 'sleepStates: ${record.sleepStates}',
+                        if (record.sleepStatusQuantity != null) 'sleepStatusQuantity: ${record.sleepStatusQuantity}',
+                        if (record.sleepSports != null) 'sleepSports: ${record.sleepSports}',
+                        if (record.resetTagContent != null) 'resetTagContent: ${record.resetTagContent}',
+                        if (record.apneaResults != null) 'apneaResults: ${record.apneaResults}',
+                        if (record.hypoxiaTimes != null) 'hypoxiaTimes: ${record.hypoxiaTimes}',
+                        if (record.cardiacLoads != null) 'cardiacLoads: ${record.cardiacLoads}',
+                        if (record.isHypoxias != null) 'isHypoxias: ${record.isHypoxias}',
+                        if (record.corrects != null) 'corrects: ${record.corrects}',
+                      ].join('\n'),
+                      style: const TextStyle(fontSize: 11, fontFamily: 'monospace'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ],
         ),
       ),
     );
   }
+
+  bool _hasRawArrayData(OriginHealthData record) =>
+      record.gesture != null ||
+      record.ppgValues != null ||
+      record.ecgValues != null ||
+      record.respirationRateValues != null ||
+      record.oxygenValues != null ||
+      record.sleepStates != null ||
+      record.sleepStatusQuantity != null ||
+      record.sleepSports != null ||
+      record.resetTagContent != null ||
+      record.apneaResults != null ||
+      record.hypoxiaTimes != null ||
+      record.cardiacLoads != null ||
+      record.isHypoxias != null ||
+      record.corrects != null;
 
   Widget _buildRecordItem(String label, String value, IconData icon, Color color) {
     return SizedBox(

@@ -89,8 +89,24 @@ abstract class FlutterVeepooSdkPlatform extends PlatformInterface {
     throw UnimplementedError('getCurrentStatus() has not been implemented.');
   }
 
+  /// Get the MAC address of the currently connected device, or null if
+  /// nothing is connected. [isDeviceConnected] relies on this under the hood.
+  ///
+  /// Reads the live GATT connection (the same source `getDeviceInfo` uses)
+  /// rather than the SDK's own connection-state checks
+  /// (`isCurrentDeviceConnected()`/`isDeviceConnected(String)`/its static
+  /// `getCurrentDeviceAddress()`), which are unreliable — see
+  /// HBandSDK/Android_Ble_SDK#12.
+  Future<String?> getCurrentDeviceAddress() {
+    throw UnimplementedError(
+        'getCurrentDeviceAddress() has not been implemented.');
+  }
+
   /// Check if the device is connected.
-  Future<bool?> isDeviceConnected() {
+  ///
+  /// If [address] is provided, checks that this specific device is the one
+  /// currently connected. Otherwise checks whether any device is connected.
+  Future<bool?> isDeviceConnected({String? address}) {
     throw UnimplementedError('isDeviceConnected() has not been implemented.');
   }
 
@@ -297,10 +313,61 @@ abstract class FlutterVeepooSdkPlatform extends PlatformInterface {
     );
   }
 
+  // ==================== Body Composition ====================
+
+  /// Start live body composition detection.
+  Future<void> startDetectBodyComponent() {
+    throw UnimplementedError(
+      'startDetectBodyComponent() has not been implemented.',
+    );
+  }
+
+  /// Stop live body composition detection.
+  Future<void> stopDetectBodyComponent() {
+    throw UnimplementedError(
+      'stopDetectBodyComponent() has not been implemented.',
+    );
+  }
+
+  /// Read the IDs of body composition records stored on the device.
+  Future<List<int>> readBodyComponentId() {
+    throw UnimplementedError(
+      'readBodyComponentId() has not been implemented.',
+    );
+  }
+
+  /// Read body composition record data. When [ids] is omitted, all stored
+  /// records are read.
+  Future<List<BodyComponent>> readBodyComponentData({List<int>? ids}) {
+    throw UnimplementedError(
+      'readBodyComponentData() has not been implemented.',
+    );
+  }
+
+  // ==================== Mini Checkup ====================
+
+  /// Start a Mini Checkup session. Progress and results are delivered via
+  /// [miniCheckup].
+  Future<void> startMiniCheckup() {
+    throw UnimplementedError('startMiniCheckup() has not been implemented.');
+  }
+
+  /// Stop the current Mini Checkup session.
+  Future<void> stopMiniCheckup() {
+    throw UnimplementedError('stopMiniCheckup() has not been implemented.');
+  }
+
   // ==================== HRV ====================
 
   /// Read HRV data.
-  Future<List<HRVData>> readHRVData({int days = 7}) {
+  ///
+  /// [startDay] is the day offset to start from: 0 = today, 1 = yesterday,
+  /// etc. HRV is generated as an end-of-day statistic, so day 0 (today,
+  /// still accumulating) may have nothing to return yet — some devices will
+  /// then never respond at all, which surfaces as a timeout rather than an
+  /// empty list. If today's HRV keeps timing out, try startDay: 1 to read
+  /// yesterday's (complete) data instead.
+  Future<List<HRVData>> readHRVData({int days = 7, int startDay = 0}) {
     throw UnimplementedError('readHRVData() has not been implemented.');
   }
 
@@ -467,6 +534,20 @@ abstract class FlutterVeepooSdkPlatform extends PlatformInterface {
   Stream<BloodComponent?> get bloodComponent {
     throw UnimplementedError(
       'bloodComponentEventChannel has not been implemented.',
+    );
+  }
+
+  /// Stream of live body composition detection results.
+  Stream<BodyComponent?> get bodyComponent {
+    throw UnimplementedError(
+      'bodyComponentEventChannel has not been implemented.',
+    );
+  }
+
+  /// Stream of Mini Checkup events (progress, result, detail or error).
+  Stream<MiniCheckupEvent?> get miniCheckup {
+    throw UnimplementedError(
+      'miniCheckupEventChannel has not been implemented.',
     );
   }
 

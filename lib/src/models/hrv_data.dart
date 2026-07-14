@@ -33,7 +33,9 @@ class HRVData extends Equatable {
     return HRVData(
       date: map['date'] as String?,
       hrvValue: map['hrvValue'] as int?,
-      heartRate: map['heartRate'] as int?,
+      heartRate: map['heartRate'] is String
+          ? int.tryParse(map['heartRate'] as String)
+          : map['heartRate'] as int?,
       rrValues: (map['rrValues'] as List<dynamic>?)
           ?.map((e) => e as int)
           .toList(),

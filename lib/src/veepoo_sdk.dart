@@ -120,10 +120,29 @@ class VeepooSDK {
     }
   }
 
-  /// Check if the device is connected.
-  Future<bool?> isDeviceConnected() {
+  /// Get the MAC address of the currently connected device, or null if
+  /// nothing is connected. [isDeviceConnected] relies on this under the hood.
+  ///
+  /// Reads the live GATT connection (the same source [getDeviceInfo] uses)
+  /// rather than the SDK's own connection-state checks
+  /// (`isCurrentDeviceConnected()`/`isDeviceConnected(String)`/its static
+  /// `getCurrentDeviceAddress()`), which are unreliable — see
+  /// HBandSDK/Android_Ble_SDK#12.
+  Future<String?> getCurrentDeviceAddress() {
     try {
-      return _platform.isDeviceConnected();
+      return _platform.getCurrentDeviceAddress();
+    } on VeepooException {
+      rethrow;
+    }
+  }
+
+  /// Check if the device is connected.
+  ///
+  /// If [address] is provided, checks that this specific device is the one
+  /// currently connected. Otherwise checks whether any device is connected.
+  Future<bool?> isDeviceConnected({String? address}) {
+    try {
+      return _platform.isDeviceConnected(address: address);
     } on VeepooException {
       rethrow;
     }
@@ -379,12 +398,60 @@ class VeepooSDK {
   /// Stream of real-time blood component updates.
   Stream<BloodComponent?> get bloodComponent => _platform.bloodComponent;
 
+  // ==================== Body Composition ====================
+
+  /// Start live body composition detection (BMI, body fat, muscle mass,
+  /// water content, bone mass, etc). Progress and results are delivered via
+  /// [bodyComponent].
+  Future<void> startDetectBodyComponent() =>
+      _platform.startDetectBodyComponent();
+
+  /// Stop live body composition detection.
+  Future<void> stopDetectBodyComponent() =>
+      _platform.stopDetectBodyComponent();
+
+  /// Stream of live body composition detection updates.
+  Stream<BodyComponent?> get bodyComponent => _platform.bodyComponent;
+
+  /// Read the IDs of body composition records stored on the device.
+  /// Pass some or all of the returned IDs to [readBodyComponentData] to
+  /// fetch the actual measurements.
+  Future<List<int>> readBodyComponentId() => _platform.readBodyComponentId();
+
+  /// Read body composition record data.
+  /// [ids] - Specific record IDs (from [readBodyComponentId]) to read. When
+  /// omitted, all stored records are read.
+  Future<List<BodyComponent>> readBodyComponentData({List<int>? ids}) =>
+      _platform.readBodyComponentData(ids: ids);
+
+  // ==================== Mini Checkup ====================
+
+  /// Starts a Mini Checkup: a single guided, multi-sensor health check
+  /// covering heart rate, SpO2, stress, emotion, fatigue, blood glucose,
+  /// body temperature, blood pressure, HRV, and optionally blood
+  /// composition, body composition and skin electricity. Progress and
+  /// results are delivered via [miniCheckup].
+  Future<void> startMiniCheckup() => _platform.startMiniCheckup();
+
+  /// Stops the current Mini Checkup session.
+  Future<void> stopMiniCheckup() => _platform.stopMiniCheckup();
+
+  /// Stream of Mini Checkup events (progress, result, detail or error).
+  Stream<MiniCheckupEvent?> get miniCheckup => _platform.miniCheckup;
+
   // ==================== HRV ====================
 
   /// Read HRV (Heart Rate Variability) data.
+  ///
   /// [days] - Number of days to read (default: 7)
-  Future<List<HRVData>> readHRVData({int days = 7}) =>
-      _platform.readHRVData(days: days);
+  /// [startDay] - Day offset to start from: 0 = today, 1 = yesterday, etc
+  /// (default: 0). HRV is generated as an end-of-day statistic, so day 0
+  /// (today, still accumulating) may have nothing to return yet — some
+  /// devices will then never respond at all, which surfaces as a timeout
+  /// rather than an empty list. If today's HRV keeps timing out, try
+  /// startDay: 1 to read yesterday's (complete) data instead.
+  Future<List<HRVData>> readHRVData({int days = 7, int startDay = 0}) =>
+      _platform.readHRVData(days: days, startDay: startDay);
 
   // ==================== Device Info ====================
 

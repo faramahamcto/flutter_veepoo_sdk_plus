@@ -50,8 +50,39 @@ android {
     }
 
     dependencies {
+        // Vendor SDK libraries as plain .jar files (not .aar): AGP explicitly forbids a library
+        // module (which is what this plugin is - it produces its own AAR via bundleDebugAar)
+        // from directly depending on local .aar files at all, regardless of dependency notation
+        // ("Direct local .aar file dependencies are not supported when building an AAR").
+        // Their bundled native (.so) libraries live under src/main/jniLibs/ instead - see
+        // NATIVE_LIBRARIES.md.
         implementation fileTree(dir: 'libs', include: ['*.jar'])
         implementation "com.google.code.gson:gson:2.12.1"
+        // vpprotocol-2.3.71.15 unconditionally calls McuMgrOtaManager.init() on every BLE
+        // connect (added for Nordic-chip OTA support), referencing classes under
+        // io.runtime.mcumgr.dfu.mcuboot/dfu.suit that aren't bundled in any of the vendor's
+        // own jars, so every connection crashed with NoClassDefFoundError unless we supply
+        // them ourselves. Unlike the vendor .aar files, this is a normal remote Maven Central
+        // artifact, so it isn't subject to AGP's "local .aar" library-module restriction.
+        //
+        // Must be io.runtime.mcumgr (not the renamed no.nordicsemi.android.mcumgr group that
+        // took over at 3.0.0+, which moves everything to the no.nordicsemi.android.mcumgr.*
+        // package and breaks vpprotocol's compiled references). The original io.runtime.mcumgr
+        // group's last release, 0.12.0-beta4, predates the io.runtime.mcumgr.dfu.mcuboot
+        // package split vpprotocol needs, so we pin to no.nordicsemi.android:mcumgr-*
+        // instead - published under the new group but still the old io.runtime.mcumgr.*
+        // Java package.
+        //
+        // Version 2.9.0 (latest under this group) declares minCompileSdk=37 in its AAR
+        // metadata, which is newer than what AGP 9.0.1 in the example app's Flutter
+        // template supports (max recommended compileSdk 36) - fails at
+        // :app:checkDebugAarMetadata. 2.8.0 requires minCompileSdk=36 (a tight fit). 2.7.4
+        // declares minCompileSdk=1 (no restriction) and, verified via javap bytecode diff,
+        // has an identical API surface to 2.9.0 for everything McuMgrOtaManager.class
+        // references (FirmwareUpgradeManager, its Settings.Builder, ImageSet,
+        // CacheImageSet, McuMgrBleTransport) - so it's the safer pin.
+        implementation "no.nordicsemi.android:mcumgr-ble:2.7.4"
+        implementation "no.nordicsemi.android:mcumgr-core:2.7.4"
         testImplementation("org.jetbrains.kotlin:kotlin-test")
         testImplementation("org.mockito:mockito-core:5.2.0")
     }
