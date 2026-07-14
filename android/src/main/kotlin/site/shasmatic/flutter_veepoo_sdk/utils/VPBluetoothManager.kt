@@ -549,15 +549,28 @@ class VPBluetoothManager(
     }
 
     private fun passwordDataListener(password: String, is24H: Boolean) =
-        IPwdDataListener { data ->
-            if (!isSubmitted) {
-                isSubmitted = true
-                if (data.getmStatus() == EPwdStatus.CHECK_AND_TIME_SUCCESS) {
-                    deviceStorage.saveCredentials(password, is24H)
+        // IPwdDataListener gained a second abstract method (onConnectionConfirmTimeout) in
+        // vpprotocol 2.3.71.15, so it's no longer a single-abstract-method interface and can't
+        // use the lambda/SAM-conversion shorthand — needs an explicit object expression instead.
+        object : IPwdDataListener {
+            override fun onPwdDataChange(data: PwdData) {
+                if (!isSubmitted) {
+                    isSubmitted = true
+                    if (data.getmStatus() == EPwdStatus.CHECK_AND_TIME_SUCCESS) {
+                        deviceStorage.saveCredentials(password, is24H)
+                    }
+                    result.success(data.getmStatus().name)
+                } else {
+                    VPLogger.w("Reply already submitted for passwordDataListener")
                 }
-                result.success(data.getmStatus().name)
-            } else {
-                VPLogger.w("Reply already submitted for passwordDataListener")
+            }
+
+            override fun onConnectionConfirmTimeout() {
+                VPLogger.w("Connection confirmation timed out while binding device")
+                if (!isSubmitted) {
+                    isSubmitted = true
+                    result.error("BIND_TIMEOUT", "Connection confirmation timed out", null)
+                }
             }
         }
 

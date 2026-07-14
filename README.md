@@ -112,6 +112,26 @@ android {
 }
 ```
 
+### 4. Manifest Merge Fix (Required)
+
+The vendor's `vpprotocol` library ships its own `AndroidManifest.xml` with an
+`android:label` on `<application>` (a leftover from being built as a standalone demo
+app), which conflicts with your app's own label during manifest merging. Add
+`tools:replace="android:label"` to your app's `<application>` tag in
+`android/app/src/main/AndroidManifest.xml` (and add the `tools` namespace to the
+`<manifest>` tag if it isn't already there):
+
+```xml
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+          xmlns:tools="http://schemas.android.com/tools">
+    <application
+        android:label="your_app_name"
+        tools:replace="android:label">
+        <!-- ... -->
+    </application>
+</manifest>
+```
+
 ## Quick Start
 
 ### Initialize SDK
