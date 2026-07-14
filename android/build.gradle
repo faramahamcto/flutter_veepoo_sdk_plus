@@ -58,6 +58,14 @@ android {
         // NATIVE_LIBRARIES.md.
         implementation fileTree(dir: 'libs', include: ['*.jar'])
         implementation "com.google.code.gson:gson:2.12.1"
+        // vpprotocol-2.3.71.15 unconditionally calls McuMgrOtaManager.init() on every BLE
+        // connect (added for Nordic-chip OTA support), referencing
+        // io.runtime.mcumgr.ble.McuMgrBleTransport. That class isn't bundled in any of the
+        // vendor's own jars, so every connection crashes with NoClassDefFoundError unless we
+        // supply it ourselves. Unlike the vendor .aar files, this is a normal remote Maven
+        // Central artifact, so it isn't subject to AGP's "local .aar" library-module
+        // restriction and resolves transitively (mcumgr-core, Nordic's ble library, etc.).
+        implementation "io.runtime.mcumgr:mcumgr-ble:0.12.0-beta4"
         testImplementation("org.jetbrains.kotlin:kotlin-test")
         testImplementation("org.mockito:mockito-core:5.2.0")
     }
