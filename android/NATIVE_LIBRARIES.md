@@ -80,6 +80,40 @@ libraries again in the future and they now ship as `.aar`, repeat this: extract
 vendor's `.aar` files, so it was always manually placed here, independent of this
 jar/aar extraction process.
 
+## Nordic McuManager Dependency (Required for Every BLE Connection)
+
+As of vpprotocol 2.3.71.15, `VPOperateManager` unconditionally calls
+`com.veepoo.protocol.nordic.McuMgrOtaManager.init()` on every successful BLE
+connection (added for Nordic-chip OTA/DFU support), regardless of the connected
+device's actual chipset. The vendor does not bundle the classes this needs
+(`io.runtime.mcumgr.ble.McuMgrBleTransport`,
+`io.runtime.mcumgr.dfu.mcuboot.FirmwareUpgradeManager`, `ImageSet`,
+`CacheImageSet`, etc.) in any of its own jars, so without supplying them,
+**every connection crashes immediately** with
+`NoClassDefFoundError`/`ClassNotFoundException`.
+
+This plugin declares them as remote Maven Central dependencies in
+`android/build.gradle`:
+
+```groovy
+implementation "no.nordicsemi.android:mcumgr-ble:2.9.0"
+implementation "no.nordicsemi.android:mcumgr-core:2.9.0"
+```
+
+Two version-compatibility traps to know about if you ever bump these:
+- The original Maven coordinates for this library were `io.runtime.mcumgr:mcumgr-ble`/
+  `mcumgr-core`, last published at `0.12.0-beta4` (2021). That version predates the
+  `io.runtime.mcumgr.dfu.mcuboot` package split vpprotocol's compiled bytecode
+  references, so it fails with `NoClassDefFoundError` on
+  `io/runtime/mcumgr/dfu/mcuboot/FirmwareUpgradeManager` even though it resolves fine.
+- Starting at `3.0.0`, Nordic renamed the Maven group to `no.nordicsemi.android:mcumgr-*`
+  **and** moved the Java package itself to `no.nordicsemi.android.mcumgr.*` — a hard
+  break, since vpprotocol's bytecode references the old `io.runtime.mcumgr.*` package
+  names directly. `2.9.0` is the last release still under `no.nordicsemi.android` Maven
+  coordinates but the original `io.runtime.mcumgr` Java package, which is why it was
+  chosen (verified via `javap` bytecode diff against every method/field
+  `McuMgrOtaManager.class` actually calls).
+
 ## Features Status
 
 | Feature | Status | Native Library Required |
