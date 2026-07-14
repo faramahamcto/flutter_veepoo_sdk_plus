@@ -272,7 +272,10 @@ class OriginDataReader(
             "hdl" to null,
             "ldl" to null,
             // HRV
-            "hrvValue" to hrvValue
+            "hrvValue" to hrvValue,
+            // Raw device wear-detection code (vendor doesn't document the exact value
+            // mapping, e.g. worn/not-worn/uncertain — exposed as-is for filtering).
+            "wear" to originData.wear
         )
 
         currentDayData.add(dataMap)
@@ -335,7 +338,10 @@ class OriginDataReader(
             "hdl" to hdl,
             "ldl" to ldl,
             // HRV
-            "hrvValue" to hrvValue
+            "hrvValue" to hrvValue,
+            // Raw device wear-detection code (vendor doesn't document the exact value
+            // mapping, e.g. worn/not-worn/uncertain — exposed as-is for filtering).
+            "wear" to originData.wear
         )
 
         currentDayData.add(dataMap)

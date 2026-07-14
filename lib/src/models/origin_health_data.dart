@@ -32,6 +32,9 @@ class OriginHealthData extends Equatable {
   final double? ldl;                // mmol/L (Low-density lipoprotein)
   // HRV (Heart Rate Variability)
   final int? hrvValue;              // HRV value in milliseconds
+  // Raw device wear-detection code. The vendor doesn't document the exact value
+  // mapping (e.g. worn/not-worn/uncertain) — exposed as-is for filtering.
+  final int? wear;
 
   const OriginHealthData({
     this.date,
@@ -54,6 +57,7 @@ class OriginHealthData extends Equatable {
     this.hdl,
     this.ldl,
     this.hrvValue,
+    this.wear,
   });
 
   factory OriginHealthData.fromMap(Map<String, dynamic> map) {
@@ -78,6 +82,7 @@ class OriginHealthData extends Equatable {
       hdl: (map['hdl'] as num?)?.toDouble(),
       ldl: (map['ldl'] as num?)?.toDouble(),
       hrvValue: (map['hrvValue'] as num?)?.toInt(),
+      wear: (map['wear'] as num?)?.toInt(),
     );
   }
 
@@ -103,6 +108,7 @@ class OriginHealthData extends Equatable {
       'hdl': hdl,
       'ldl': ldl,
       'hrvValue': hrvValue,
+      'wear': wear,
     };
   }
 
@@ -112,7 +118,7 @@ class OriginHealthData extends Equatable {
         bloodOxygen, steps, calories, distance, sportValue,
         bloodGlucose, respirationRate, ecgHeartRate,
         uricAcid, totalCholesterol, triglyceride, hdl, ldl,
-        hrvValue,
+        hrvValue, wear,
       ];
 }
 
