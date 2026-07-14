@@ -96,11 +96,11 @@ This plugin declares them as remote Maven Central dependencies in
 `android/build.gradle`:
 
 ```groovy
-implementation "no.nordicsemi.android:mcumgr-ble:2.9.0"
-implementation "no.nordicsemi.android:mcumgr-core:2.9.0"
+implementation "no.nordicsemi.android:mcumgr-ble:2.7.4"
+implementation "no.nordicsemi.android:mcumgr-core:2.7.4"
 ```
 
-Two version-compatibility traps to know about if you ever bump these:
+Three version-compatibility traps to know about if you ever bump these:
 - The original Maven coordinates for this library were `io.runtime.mcumgr:mcumgr-ble`/
   `mcumgr-core`, last published at `0.12.0-beta4` (2021). That version predates the
   `io.runtime.mcumgr.dfu.mcuboot` package split vpprotocol's compiled bytecode
@@ -109,10 +109,13 @@ Two version-compatibility traps to know about if you ever bump these:
 - Starting at `3.0.0`, Nordic renamed the Maven group to `no.nordicsemi.android:mcumgr-*`
   **and** moved the Java package itself to `no.nordicsemi.android.mcumgr.*` — a hard
   break, since vpprotocol's bytecode references the old `io.runtime.mcumgr.*` package
-  names directly. `2.9.0` is the last release still under `no.nordicsemi.android` Maven
-  coordinates but the original `io.runtime.mcumgr` Java package, which is why it was
-  chosen (verified via `javap` bytecode diff against every method/field
-  `McuMgrOtaManager.class` actually calls).
+  names directly.
+- `2.8.0`+ declare an increasingly high `minCompileSdk` in their AAR metadata
+  (`2.8.0` → 36, `2.9.0` → 37), which can fail `:app:checkDebugAarMetadata` if the
+  consuming app's `compileSdk`/AGP version hasn't caught up yet. `2.7.4` declares
+  `minCompileSdk=1` (no restriction) and, verified via `javap` bytecode diff, has an
+  identical API surface to `2.9.0` for everything `McuMgrOtaManager.class` actually
+  calls — so it's the version pinned here.
 
 ## Features Status
 

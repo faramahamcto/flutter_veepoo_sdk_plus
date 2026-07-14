@@ -67,15 +67,22 @@ android {
         //
         // Must be io.runtime.mcumgr (not the renamed no.nordicsemi.android.mcumgr group that
         // took over at 3.0.0+, which moves everything to the no.nordicsemi.android.mcumgr.*
-        // package and breaks vpprotocol's compiled references). The last io.runtime.mcumgr
-        // group release, 0.12.0-beta4, predates the io.runtime.mcumgr.dfu.mcuboot package
-        // split vpprotocol needs, so we pin to no.nordicsemi.android:mcumgr-*:2.9.0 instead -
-        // last version published before the 3.x package rename, and verified via bytecode
-        // diff (javap) that every class/method/field McuMgrOtaManager.class references
-        // (FirmwareUpgradeManager, its Settings.Builder, ImageSet, CacheImageSet,
-        // McuMgrBleTransport) matches exactly.
-        implementation "no.nordicsemi.android:mcumgr-ble:2.9.0"
-        implementation "no.nordicsemi.android:mcumgr-core:2.9.0"
+        // package and breaks vpprotocol's compiled references). The original io.runtime.mcumgr
+        // group's last release, 0.12.0-beta4, predates the io.runtime.mcumgr.dfu.mcuboot
+        // package split vpprotocol needs, so we pin to no.nordicsemi.android:mcumgr-*
+        // instead - published under the new group but still the old io.runtime.mcumgr.*
+        // Java package.
+        //
+        // Version 2.9.0 (latest under this group) declares minCompileSdk=37 in its AAR
+        // metadata, which is newer than what AGP 9.0.1 in the example app's Flutter
+        // template supports (max recommended compileSdk 36) - fails at
+        // :app:checkDebugAarMetadata. 2.8.0 requires minCompileSdk=36 (a tight fit). 2.7.4
+        // declares minCompileSdk=1 (no restriction) and, verified via javap bytecode diff,
+        // has an identical API surface to 2.9.0 for everything McuMgrOtaManager.class
+        // references (FirmwareUpgradeManager, its Settings.Builder, ImageSet,
+        // CacheImageSet, McuMgrBleTransport) - so it's the safer pin.
+        implementation "no.nordicsemi.android:mcumgr-ble:2.7.4"
+        implementation "no.nordicsemi.android:mcumgr-core:2.7.4"
         testImplementation("org.jetbrains.kotlin:kotlin-test")
         testImplementation("org.mockito:mockito-core:5.2.0")
     }
