@@ -2376,13 +2376,72 @@ class HourlyHealthDataPage extends StatelessWidget {
                   _buildRecordItem('LDL', '${record.ldl?.toStringAsFixed(2)} mmol/L', Icons.science, Colors.red.shade600),
                 if (record.hrvValue != null)
                   _buildRecordItem('HRV', '${record.hrvValue} ms', Icons.timeline, Colors.deepPurple),
+                if (record.wear != null)
+                  _buildRecordItem('Wear Code', '${record.wear}', Icons.watch, Colors.brown),
+                if (record.pressure != null)
+                  _buildRecordItem('Pressure', '${record.pressure}', Icons.speed, Colors.blueGrey),
+                if (record.met != null)
+                  _buildRecordItem('MET', '${record.met?.toStringAsFixed(2)}', Icons.directions_run, Colors.lightGreen),
+                if (record.bloodGlucoseRiskLevel != null)
+                  _buildRecordItem('Glucose Risk', '${record.bloodGlucoseRiskLevel}', Icons.warning_amber, Colors.amber),
+                if (record.tempOne != null || record.tempTwo != null)
+                  _buildRecordItem('Raw Temp', '${record.tempOne ?? '-'} / ${record.tempTwo ?? '-'}', Icons.device_thermostat, Colors.orange.shade300),
+                if (record.baseTemperature != null)
+                  _buildRecordItem('Base Temp', '${record.baseTemperature?.toStringAsFixed(1)}°C', Icons.thermostat_auto, Colors.orange.shade700),
               ],
             ),
+            if (_hasRawArrayData(record)) ...[
+              const SizedBox(height: 8),
+              ExpansionTile(
+                tilePadding: EdgeInsets.zero,
+                title: const Text('Raw per-minute arrays', style: TextStyle(fontSize: 13, color: Colors.grey)),
+                children: [
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      [
+                        if (record.gesture != null) 'gesture: ${record.gesture}',
+                        if (record.ppgValues != null) 'ppgValues: ${record.ppgValues}',
+                        if (record.ecgValues != null) 'ecgValues: ${record.ecgValues}',
+                        if (record.respirationRateValues != null) 'respirationRateValues: ${record.respirationRateValues}',
+                        if (record.oxygenValues != null) 'oxygenValues: ${record.oxygenValues}',
+                        if (record.sleepStates != null) 'sleepStates: ${record.sleepStates}',
+                        if (record.sleepStatusQuantity != null) 'sleepStatusQuantity: ${record.sleepStatusQuantity}',
+                        if (record.sleepSports != null) 'sleepSports: ${record.sleepSports}',
+                        if (record.resetTagContent != null) 'resetTagContent: ${record.resetTagContent}',
+                        if (record.apneaResults != null) 'apneaResults: ${record.apneaResults}',
+                        if (record.hypoxiaTimes != null) 'hypoxiaTimes: ${record.hypoxiaTimes}',
+                        if (record.cardiacLoads != null) 'cardiacLoads: ${record.cardiacLoads}',
+                        if (record.isHypoxias != null) 'isHypoxias: ${record.isHypoxias}',
+                        if (record.corrects != null) 'corrects: ${record.corrects}',
+                      ].join('\n'),
+                      style: const TextStyle(fontSize: 11, fontFamily: 'monospace'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ],
         ),
       ),
     );
   }
+
+  bool _hasRawArrayData(OriginHealthData record) =>
+      record.gesture != null ||
+      record.ppgValues != null ||
+      record.ecgValues != null ||
+      record.respirationRateValues != null ||
+      record.oxygenValues != null ||
+      record.sleepStates != null ||
+      record.sleepStatusQuantity != null ||
+      record.sleepSports != null ||
+      record.resetTagContent != null ||
+      record.apneaResults != null ||
+      record.hypoxiaTimes != null ||
+      record.cardiacLoads != null ||
+      record.isHypoxias != null ||
+      record.corrects != null;
 
   Widget _buildRecordItem(String label, String value, IconData icon, Color color) {
     return SizedBox(

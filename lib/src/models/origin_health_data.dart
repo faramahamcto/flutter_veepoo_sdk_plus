@@ -36,6 +36,81 @@ class OriginHealthData extends Equatable {
   // mapping (e.g. worn/not-worn/uncertain) — exposed as-is for filtering.
   final int? wear;
 
+  // ==================== Remaining raw fields ====================
+  // Everything below is exposed as-is from the device; the vendor doesn't document
+  // these beyond their names. Prefer the reduced fields above (bloodOxygen,
+  // respirationRate, ecgHeartRate, heartRate) unless you specifically need the raw,
+  // undivided per-minute detail.
+
+  /// Raw dual-sensor temperature readings that [temperature] is derived from.
+  final int? tempOne;
+  final int? tempTwo;
+
+  /// Calorie calculation type/version used by the device.
+  final int? calcType;
+
+  /// Baseline body temperature, distinct from [temperature].
+  final double? baseTemperature;
+
+  /// Hydration-tracking fields, on devices that support drink reminders/logging.
+  final String? drinkPartOne;
+  final String? drinkPartTwo;
+
+  /// Raw wrist-gesture codes.
+  final List<int>? gesture;
+
+  /// Raw per-minute PPG readings within this 5-minute window (heartRate is derived
+  /// from the first valid — non-sentinel — entry in this array).
+  final List<int>? ppgValues;
+
+  /// Raw per-minute ECG readings within this 5-minute window ([ecgHeartRate] is
+  /// derived from the first valid entry in this array).
+  final List<int>? ecgValues;
+
+  /// Raw per-minute respiration readings within this 5-minute window
+  /// ([respirationRate] is derived from the first valid entry in this array).
+  final List<int>? respirationRateValues;
+
+  /// Raw per-minute SpO2 readings within this 5-minute window ([bloodOxygen] is
+  /// derived from the first valid entry in this array).
+  final List<int>? oxygenValues;
+
+  /// Raw sleep-stage codes for this window.
+  final List<int>? sleepStates;
+
+  /// Raw counts per sleep status for this window.
+  final List<int>? sleepStatusQuantity;
+
+  /// Raw sleep/activity codes for this window.
+  final List<int>? sleepSports;
+
+  /// Raw reset-marker content.
+  final List<int>? resetTagContent;
+
+  /// Raw sleep apnea detection results for this window.
+  final List<int>? apneaResults;
+
+  /// Raw hypoxia event timings for this window.
+  final List<int>? hypoxiaTimes;
+
+  /// Raw cardiac load/strain readings for this window.
+  final List<int>? cardiacLoads;
+
+  /// Raw per-minute hypoxia flags for this window.
+  final List<int>? isHypoxias;
+
+  /// Raw correction/adjustment flags for this window.
+  final List<int>? corrects;
+
+  /// Blood glucose risk level, as reported by the device (enum name, e.g. "NONE").
+  final String? bloodGlucoseRiskLevel;
+
+  /// Stress/pressure level reading.
+  final int? pressure;
+
+  /// Metabolic equivalent (MET) value.
+  final double? met;
+
   const OriginHealthData({
     this.date,
     this.time,
@@ -58,9 +133,35 @@ class OriginHealthData extends Equatable {
     this.ldl,
     this.hrvValue,
     this.wear,
+    this.tempOne,
+    this.tempTwo,
+    this.calcType,
+    this.baseTemperature,
+    this.drinkPartOne,
+    this.drinkPartTwo,
+    this.gesture,
+    this.ppgValues,
+    this.ecgValues,
+    this.respirationRateValues,
+    this.oxygenValues,
+    this.sleepStates,
+    this.sleepStatusQuantity,
+    this.sleepSports,
+    this.resetTagContent,
+    this.apneaResults,
+    this.hypoxiaTimes,
+    this.cardiacLoads,
+    this.isHypoxias,
+    this.corrects,
+    this.bloodGlucoseRiskLevel,
+    this.pressure,
+    this.met,
   });
 
   factory OriginHealthData.fromMap(Map<String, dynamic> map) {
+    List<int>? intList(String key) =>
+        (map[key] as List<dynamic>?)?.map((e) => (e as num).toInt()).toList();
+
     return OriginHealthData(
       date: map['date'] as String?,
       time: map['time'] as String?,
@@ -83,6 +184,29 @@ class OriginHealthData extends Equatable {
       ldl: (map['ldl'] as num?)?.toDouble(),
       hrvValue: (map['hrvValue'] as num?)?.toInt(),
       wear: (map['wear'] as num?)?.toInt(),
+      tempOne: (map['tempOne'] as num?)?.toInt(),
+      tempTwo: (map['tempTwo'] as num?)?.toInt(),
+      calcType: (map['calcType'] as num?)?.toInt(),
+      baseTemperature: (map['baseTemperature'] as num?)?.toDouble(),
+      drinkPartOne: map['drinkPartOne'] as String?,
+      drinkPartTwo: map['drinkPartTwo'] as String?,
+      gesture: intList('gesture'),
+      ppgValues: intList('ppgValues'),
+      ecgValues: intList('ecgValues'),
+      respirationRateValues: intList('respirationRateValues'),
+      oxygenValues: intList('oxygenValues'),
+      sleepStates: intList('sleepStates'),
+      sleepStatusQuantity: intList('sleepStatusQuantity'),
+      sleepSports: intList('sleepSports'),
+      resetTagContent: intList('resetTagContent'),
+      apneaResults: intList('apneaResults'),
+      hypoxiaTimes: intList('hypoxiaTimes'),
+      cardiacLoads: intList('cardiacLoads'),
+      isHypoxias: intList('isHypoxias'),
+      corrects: intList('corrects'),
+      bloodGlucoseRiskLevel: map['bloodGlucoseRiskLevel'] as String?,
+      pressure: (map['pressure'] as num?)?.toInt(),
+      met: (map['met'] as num?)?.toDouble(),
     );
   }
 
@@ -109,6 +233,29 @@ class OriginHealthData extends Equatable {
       'ldl': ldl,
       'hrvValue': hrvValue,
       'wear': wear,
+      'tempOne': tempOne,
+      'tempTwo': tempTwo,
+      'calcType': calcType,
+      'baseTemperature': baseTemperature,
+      'drinkPartOne': drinkPartOne,
+      'drinkPartTwo': drinkPartTwo,
+      'gesture': gesture,
+      'ppgValues': ppgValues,
+      'ecgValues': ecgValues,
+      'respirationRateValues': respirationRateValues,
+      'oxygenValues': oxygenValues,
+      'sleepStates': sleepStates,
+      'sleepStatusQuantity': sleepStatusQuantity,
+      'sleepSports': sleepSports,
+      'resetTagContent': resetTagContent,
+      'apneaResults': apneaResults,
+      'hypoxiaTimes': hypoxiaTimes,
+      'cardiacLoads': cardiacLoads,
+      'isHypoxias': isHypoxias,
+      'corrects': corrects,
+      'bloodGlucoseRiskLevel': bloodGlucoseRiskLevel,
+      'pressure': pressure,
+      'met': met,
     };
   }
 
@@ -119,6 +266,11 @@ class OriginHealthData extends Equatable {
         bloodGlucose, respirationRate, ecgHeartRate,
         uricAcid, totalCholesterol, triglyceride, hdl, ldl,
         hrvValue, wear,
+        tempOne, tempTwo, calcType, baseTemperature, drinkPartOne, drinkPartTwo,
+        gesture, ppgValues, ecgValues, respirationRateValues, oxygenValues,
+        sleepStates, sleepStatusQuantity, sleepSports, resetTagContent,
+        apneaResults, hypoxiaTimes, cardiacLoads, isHypoxias, corrects,
+        bloodGlucoseRiskLevel, pressure, met,
       ];
 }
 

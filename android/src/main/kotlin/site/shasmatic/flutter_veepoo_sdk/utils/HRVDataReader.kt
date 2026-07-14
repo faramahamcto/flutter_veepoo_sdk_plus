@@ -110,9 +110,12 @@ class HRVDataReader(
             VPLogger.w("HRV data read timeout after ${READ_TIMEOUT_MS}ms")
             returnError(
                 "HRV_TIMEOUT",
-                "HRV data read timed out. HRV is generated as an end-of-day statistic, so " +
-                "the device may simply have nothing yet for today and never reply — try " +
-                "again with startDay: 1 (yesterday) or later."
+                "HRV data read timed out with zero response from the device (not even a " +
+                "write acknowledgment) — this looks like an internal SDK compatibility gate " +
+                "for this specific watch/firmware rather than a timing issue, since it " +
+                "doesn't depend on which day was requested. Consider using the origin/5-min " +
+                "data flow (readOriginData3Days/readOriginDataForDay) instead, which reaches " +
+                "this device successfully."
             )
         }
     }

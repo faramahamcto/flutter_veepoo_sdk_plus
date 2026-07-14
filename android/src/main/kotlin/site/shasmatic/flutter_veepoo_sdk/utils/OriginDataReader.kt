@@ -275,7 +275,17 @@ class OriginDataReader(
             "hrvValue" to hrvValue,
             // Raw device wear-detection code (vendor doesn't document the exact value
             // mapping, e.g. worn/not-worn/uncertain — exposed as-is for filtering).
-            "wear" to originData.wear
+            "wear" to originData.wear,
+            // Remaining raw OriginData fields, exposed as-is (undocumented by vendor beyond
+            // their names). tempOne/tempTwo are the raw dual-sensor temperature readings that
+            // "temperature" is calibrated/derived from; drinkPartOne/Two relate to hydration
+            // tracking on devices that support it.
+            "tempOne" to originData.tempOne.takeIf { it > 0 },
+            "tempTwo" to originData.tempTwo.takeIf { it > 0 },
+            "calcType" to originData.calcType,
+            "baseTemperature" to originData.baseTemperature.takeIf { it > 0 }?.toDouble(),
+            "drinkPartOne" to originData.drinkPartOne?.takeIf { it.isNotEmpty() },
+            "drinkPartTwo" to originData.drinkPartTwo?.takeIf { it.isNotEmpty() }
         )
 
         currentDayData.add(dataMap)
@@ -341,7 +351,36 @@ class OriginDataReader(
             "hrvValue" to hrvValue,
             // Raw device wear-detection code (vendor doesn't document the exact value
             // mapping, e.g. worn/not-worn/uncertain — exposed as-is for filtering).
-            "wear" to originData.wear
+            "wear" to originData.wear,
+            // Remaining raw OriginData fields (see addOriginData for details).
+            "tempOne" to originData.tempOne.takeIf { it > 0 },
+            "tempTwo" to originData.tempTwo.takeIf { it > 0 },
+            "calcType" to originData.calcType,
+            "baseTemperature" to originData.baseTemperature.takeIf { it > 0 }?.toDouble(),
+            "drinkPartOne" to originData.drinkPartOne?.takeIf { it.isNotEmpty() },
+            "drinkPartTwo" to originData.drinkPartTwo?.takeIf { it.isNotEmpty() },
+            // Remaining raw OriginData3-only fields, exposed as-is (undocumented by vendor
+            // beyond their names). These are per-record arrays (one value per minute within the
+            // 5-minute window) rather than the single reduced values above (bloodOxygen,
+            // respirationRate, ecgHeartRate, heartRate), so apps that need the full detail
+            // rather than "first valid reading in this window" can use these instead.
+            "gesture" to originData.gesture?.toList(),
+            "ppgValues" to originData.ppgs?.toList(),
+            "ecgValues" to originData.ecgs?.toList(),
+            "respirationRateValues" to originData.resRates?.toList(),
+            "oxygenValues" to originData.oxygens?.toList(),
+            "sleepStates" to originData.sleepStates?.toList(),
+            "sleepStatusQuantity" to originData.sleepStatusQuantity?.toList(),
+            "sleepSports" to originData.sleepSports?.toList(),
+            "resetTagContent" to originData.resetTagContent?.toList(),
+            "apneaResults" to originData.apneaResults?.toList(),
+            "hypoxiaTimes" to originData.hypoxiaTimes?.toList(),
+            "cardiacLoads" to originData.cardiacLoads?.toList(),
+            "isHypoxias" to originData.isHypoxias?.toList(),
+            "corrects" to originData.corrects?.toList(),
+            "bloodGlucoseRiskLevel" to originData.bloodGlucoseRiskLevel?.name,
+            "pressure" to originData.pressure.takeIf { it > 0 },
+            "met" to originData.met.takeIf { it > 0 }?.toDouble()
         )
 
         currentDayData.add(dataMap)
