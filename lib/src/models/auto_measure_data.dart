@@ -11,7 +11,10 @@ enum AutoMeasureType {
   bodyTemperature(5),
   lorenz(6),
   hrv(7),
-  bloodComposition(8);
+  bloodComposition(8),
+
+  /// Plugin-defined (not a vendor enum value): scientific sleep / PPG, only on older watches.
+  scientificSleep(9);
 
   final int value;
   const AutoMeasureType(this.value);

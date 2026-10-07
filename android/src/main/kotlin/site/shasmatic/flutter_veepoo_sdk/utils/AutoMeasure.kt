@@ -3,7 +3,13 @@ package site.shasmatic.flutter_veepoo_sdk.utils
 import com.veepoo.protocol.VPOperateManager
 import com.veepoo.protocol.listener.base.IBleWriteResponse
 import com.veepoo.protocol.listener.data.IAutoMeasureSettingDataListener
+import com.veepoo.protocol.model.datas.AllSetData
 import com.veepoo.protocol.model.datas.AutoMeasureData
+import com.veepoo.protocol.model.enums.EAllSetType
+import com.veepoo.protocol.model.enums.EFunctionStatus
+import com.veepoo.protocol.model.settings.AllSetSetting
+import com.veepoo.protocol.model.settings.CustomSetting
+import com.veepoo.protocol.model.settings.CustomSettingData
 import com.veepoo.protocol.shareprence.VpSpGetUtil
 import io.flutter.plugin.common.MethodChannel
 import kotlinx.coroutines.CoroutineScope
@@ -50,8 +56,71 @@ class AutoMeasure(
         }
     }
 
-    /** Switches on every type the device supports, one write at a time. Returns the per-type outcome. */
-    fun enableAll() = ifSupported {
+    /**
+     * Switches on every type the device supports. Newer firmware uses the 0xB3 auto-measure API;
+     * older watches (isSupportAutoMeasure == false) use personalization settings + SpO2 auto-detect.
+     */
+    fun enableAll() {
+        try {
+            if (vpSpGetUtil.isSupportAutoMeasure) enableAllNew() else enableAllLegacy()
+        } catch (e: Exception) {
+            fail("AUTO_MEASURE_ERROR", "Automatic measurement error: ${e.message}")
+        }
+    }
+
+    // Plugin-defined type ids beyond the vendor's EAutoMeasureType (0-8): 9 = scientific sleep (PPG).
+    private fun enableAllLegacy() {
+        once<CustomSettingData>({ f -> vpManager.readCustomSetting(writeResponse) { f(it) } }) { data ->
+            if (data == null) {
+                fail("AUTO_MEASURE_READ_FAILED", "Failed to read personalization settings")
+                return@once
+            }
+            val s = CustomSetting(data)
+            // (type, getter, setter) - only touch what the device reports as supported
+            val fns = listOf<Triple<Int, () -> EFunctionStatus?, (EFunctionStatus) -> Unit>>(
+                Triple(2, { s.getIsOpenBloodGlucoseDetect() }, { s.setIsOpenBloodGlucoseDetect(it) }),
+                Triple(3, { s.getStressDetect() }, { s.setStressDetect(it) }),
+                Triple(5, { s.getIsOpenAutoTemperatureDetect() }, { s.setIsOpenAutoTemperatureDetect(it) }),
+                Triple(7, { s.getIsOpenAutoHRV() }, { s.setIsOpenAutoHRV(it) }),
+                Triple(8, { s.getIsOpenBloodComponentDetect() }, { s.setIsOpenBloodComponentDetect(it) }),
+                Triple(9, { s.getIsOpenPPG() }, { s.setIsOpenPPG(it) }),
+            )
+            val types = mutableListOf(0, 1) // heart rate / blood pressure are plain booleans
+            s.setOpenAutoHeartDetect(true)
+            s.setOpenAutoBpDetect(true)
+            for ((type, get, set) in fns) {
+                if (get()?.isHaveFunction == true) {
+                    set(EFunctionStatus.SUPPORT_OPEN)
+                    types.add(type)
+                }
+            }
+            once<CustomSettingData>({ f -> vpManager.changeCustomSetting(writeResponse, { f(it) }, s) }) { written ->
+                val out = types.map { mapOf("type" to it, "isSwitchOpen" to (written != null), "success" to (written != null)) }.toMutableList()
+                // All-day SpO2 is a separate command (00:00-23:59)
+                val spo2 = AllSetSetting(EAllSetType.SPO2H_NIGHT_AUTO_DETECT, 0, 0, 23, 59, 0, 1)
+                once<AllSetData>({ f -> vpManager.settingSpo2hAutoDetect(writeResponse, { f(it) }, spo2) }) { r ->
+                    out.add(mapOf("type" to 4, "isSwitchOpen" to (r != null), "success" to (r != null)))
+                    result.success(out)
+                }
+            }
+        }
+    }
+
+    private fun <T> once(start: ((T?) -> Unit) -> Unit, done: (T?) -> Unit) {
+        var finished = false
+        var timeout: Job? = null
+        val finish: (T?) -> Unit = { v ->
+            if (!finished) {
+                finished = true
+                timeout?.cancel()
+                done(v)
+            }
+        }
+        timeout = scope.launch { delay(TIMEOUT_MS); VPLogger.w("auto measure legacy call timeout"); finish(null) }
+        start(finish)
+    }
+
+    private fun enableAllNew() {
         read { list ->
             if (list == null) {
                 fail("AUTO_MEASURE_READ_FAILED", "Failed to read automatic measurement settings")
