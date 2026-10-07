@@ -76,20 +76,23 @@ class AutoMeasure(
                 return@once
             }
             val s = CustomSetting(data)
-            // (type, getter, setter) - only touch what the device reports as supported
-            val fns = listOf<Triple<Int, () -> EFunctionStatus?, (EFunctionStatus) -> Unit>>(
-                Triple(2, { s.getIsOpenBloodGlucoseDetect() }, { s.setIsOpenBloodGlucoseDetect(it) }),
-                Triple(3, { s.getStressDetect() }, { s.setStressDetect(it) }),
-                Triple(5, { s.getIsOpenAutoTemperatureDetect() }, { s.setIsOpenAutoTemperatureDetect(it) }),
-                Triple(7, { s.getIsOpenAutoHRV() }, { s.setIsOpenAutoHRV(it) }),
-                Triple(8, { s.getIsOpenBloodComponentDetect() }, { s.setIsOpenBloodComponentDetect(it) }),
-                Triple(9, { s.getIsOpenPPG() }, { s.setIsOpenPPG(it) }),
+            // (type, getter, setter, extra support flag). The settings read can report UNSUPPORT for
+            // features the device does have (seen with temperature/glucose/blood components), so the
+            // SDK's own capability flags are accepted as well.
+            val fns = listOf<Quad>(
+                Quad(2, { s.getIsOpenBloodGlucoseDetect() }, { s.setIsOpenBloodGlucoseDetect(it) }, vpSpGetUtil.isSupportBloodGlucose),
+                Quad(3, { s.getStressDetect() }, { s.setStressDetect(it) }, false),
+                Quad(5, { s.getIsOpenAutoTemperatureDetect() }, { s.setIsOpenAutoTemperatureDetect(it) }, vpSpGetUtil.isSupportReadTempture),
+                Quad(7, { s.getIsOpenAutoHRV() }, { s.setIsOpenAutoHRV(it) }, false),
+                Quad(8, { s.getIsOpenBloodComponentDetect() }, { s.setIsOpenBloodComponentDetect(it) }, vpSpGetUtil.isSupportBloodComponent),
+                Quad(9, { s.getIsOpenPPG() }, { s.setIsOpenPPG(it) }, false),
             )
             val types = mutableListOf(0, 1) // heart rate / blood pressure are plain booleans
             s.setOpenAutoHeartDetect(true)
             s.setOpenAutoBpDetect(true)
-            for ((type, get, set) in fns) {
-                if (get()?.isHaveFunction == true) {
+            for ((type, get, set, flag) in fns) {
+                VPLogger.d("auto measure legacy type $type: status=${get()}, sdkFlag=$flag")
+                if (get()?.isHaveFunction == true || flag) {
                     set(EFunctionStatus.SUPPORT_OPEN)
                     types.add(type)
                 }
@@ -105,6 +108,8 @@ class AutoMeasure(
             }
         }
     }
+
+    private data class Quad(val type: Int, val get: () -> EFunctionStatus?, val set: (EFunctionStatus) -> Unit, val flag: Boolean)
 
     private fun <T> once(start: ((T?) -> Unit) -> Unit, done: (T?) -> Unit) {
         var finished = false
