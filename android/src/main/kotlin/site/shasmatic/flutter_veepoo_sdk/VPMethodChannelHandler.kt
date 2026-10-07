@@ -14,6 +14,7 @@ import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.PluginRegistry
+import site.shasmatic.flutter_veepoo_sdk.utils.AutoMeasure
 import site.shasmatic.flutter_veepoo_sdk.utils.Battery
 import site.shasmatic.flutter_veepoo_sdk.utils.BloodComponentDetection
 import site.shasmatic.flutter_veepoo_sdk.utils.BloodGlucose
@@ -118,6 +119,17 @@ class VPMethodChannelHandler(
             "readStepData" -> handleReadStepData()
             "readStepDataForDate" -> handleReadStepDataForDate(call.argument<Long>("timestamp"))
             "readHRVData" -> handleReadHRVData(call.argument<Int>("days") ?: 7, call.argument<Int>("startDay") ?: 0)
+            "readAutoMeasureSettings" -> AutoMeasure(result, vpManager, vpSpGetUtil).readSettings()
+            "enableAllAutoMeasurements" -> AutoMeasure(result, vpManager, vpSpGetUtil).enableAll()
+            "setAutoMeasureSetting" -> {
+                val type = call.argument<Int>("type")
+                val enabled = call.argument<Boolean>("enabled")
+                if (type == null || enabled == null) result.error("INVALID_ARGUMENT", "type and enabled are required", null)
+                else AutoMeasure(result, vpManager, vpSpGetUtil).setSetting(
+                    type, enabled, call.argument<Int>("measureInterval"),
+                    call.argument<Int>("startMinute"), call.argument<Int>("endMinute"),
+                )
+            }
             "setUserProfile" -> handleSetUserProfile(call)
             "readOriginData3Days" -> handleReadOriginData3Days()
             "readOriginDataForDay" -> handleReadOriginDataForDay(call.argument<Int>("day") ?: 0)

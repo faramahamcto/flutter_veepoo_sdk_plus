@@ -15,6 +15,7 @@ part 'src/enums/permission_statuses.dart';
 part 'src/enums/power_statuses.dart';
 part 'src/enums/spoh_statuses.dart';
 part 'src/exceptions/veepoo_exception.dart';
+part 'src/models/auto_measure_data.dart';
 part 'src/models/battery.dart';
 part 'src/models/blood_component.dart';
 part 'src/models/blood_glucose.dart';

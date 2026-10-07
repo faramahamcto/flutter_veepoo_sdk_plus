@@ -371,6 +371,29 @@ abstract class FlutterVeepooSdkPlatform extends PlatformInterface {
     throw UnimplementedError('readHRVData() has not been implemented.');
   }
 
+  // ==================== Automatic Measurement ====================
+
+  /// Reads the automatic measurement settings (one entry per type the device supports).
+  Future<List<AutoMeasureData>> readAutoMeasureSettings() {
+    throw UnimplementedError('readAutoMeasureSettings() has not been implemented.');
+  }
+
+  /// Enables/disables automatic measurement for one [type]. Null optionals keep the device value.
+  Future<AutoMeasureData> setAutoMeasureSetting(
+    AutoMeasureType type,
+    bool enabled, {
+    int? measureInterval,
+    int? startMinute,
+    int? endMinute,
+  }) {
+    throw UnimplementedError('setAutoMeasureSetting() has not been implemented.');
+  }
+
+  /// Turns on automatic measurement for every type the device supports.
+  Future<List<AutoMeasureData>> enableAllAutoMeasurements() {
+    throw UnimplementedError('enableAllAutoMeasurements() has not been implemented.');
+  }
+
   // ==================== Device Info ====================
 
   /// Get device information.

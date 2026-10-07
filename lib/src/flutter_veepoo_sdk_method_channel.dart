@@ -970,6 +970,67 @@ class MethodChannelFlutterVeepooSdk extends FlutterVeepooSdkPlatform {
     }
   }
 
+  // ==================== Automatic Measurement ====================
+
+  List<AutoMeasureData> _autoList(List<Object?>? raw) => (raw ?? [])
+      .map((e) => AutoMeasureData.fromMap(Map<String, dynamic>.from(e as Map)))
+      .toList();
+
+  @override
+  Future<List<AutoMeasureData>> readAutoMeasureSettings() async {
+    try {
+      return _autoList(await methodChannel
+          .invokeListMethod<Object?>('readAutoMeasureSettings'));
+    } on PlatformException catch (error, stackTrace) {
+      throw VeepooException(
+        message: 'Failed to read automatic measurement settings: ${error.message}',
+        details: error.details,
+        stacktrace: stackTrace,
+      );
+    }
+  }
+
+  @override
+  Future<AutoMeasureData> setAutoMeasureSetting(
+    AutoMeasureType type,
+    bool enabled, {
+    int? measureInterval,
+    int? startMinute,
+    int? endMinute,
+  }) async {
+    try {
+      final result = await methodChannel
+          .invokeMapMethod<String, dynamic>('setAutoMeasureSetting', {
+        'type': type.value,
+        'enabled': enabled,
+        'measureInterval': measureInterval,
+        'startMinute': startMinute,
+        'endMinute': endMinute,
+      });
+      return AutoMeasureData.fromMap(result ?? {});
+    } on PlatformException catch (error, stackTrace) {
+      throw VeepooException(
+        message: 'Failed to set automatic measurement: ${error.message}',
+        details: error.details,
+        stacktrace: stackTrace,
+      );
+    }
+  }
+
+  @override
+  Future<List<AutoMeasureData>> enableAllAutoMeasurements() async {
+    try {
+      return _autoList(await methodChannel
+          .invokeListMethod<Object?>('enableAllAutoMeasurements'));
+    } on PlatformException catch (error, stackTrace) {
+      throw VeepooException(
+        message: 'Failed to enable automatic measurements: ${error.message}',
+        details: error.details,
+        stacktrace: stackTrace,
+      );
+    }
+  }
+
   // ==================== Device Info ====================
 
   @override

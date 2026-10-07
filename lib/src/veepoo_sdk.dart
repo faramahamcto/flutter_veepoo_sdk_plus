@@ -453,6 +453,31 @@ class VeepooSDK {
   Future<List<HRVData>> readHRVData({int days = 7, int startDay = 0}) =>
       _platform.readHRVData(days: days, startDay: startDay);
 
+  // ==================== Automatic Measurement ====================
+
+  /// Reads the automatic measurement settings (one entry per type the device supports).
+  /// Throws if the device doesn't support automatic measurement.
+  Future<List<AutoMeasureData>> readAutoMeasureSettings() =>
+      _platform.readAutoMeasureSettings();
+
+  /// Enables/disables automatic measurement for one [type]. Null optionals keep the device value.
+  Future<AutoMeasureData> setAutoMeasureSetting(
+    AutoMeasureType type,
+    bool enabled, {
+    int? measureInterval,
+    int? startMinute,
+    int? endMinute,
+  }) =>
+      _platform.setAutoMeasureSetting(type, enabled,
+          measureInterval: measureInterval,
+          startMinute: startMinute,
+          endMinute: endMinute);
+
+  /// Turns on automatic measurement for every type the device supports.
+  /// Call after [bindDevice] succeeds. Check [AutoMeasureData.success] per type.
+  Future<List<AutoMeasureData>> enableAllAutoMeasurements() =>
+      _platform.enableAllAutoMeasurements();
+
   // ==================== Device Info ====================
 
   /// Get device information including model, version, battery, etc.
