@@ -85,7 +85,7 @@ class AutoMeasure(
                     // This watch reports glucose as UNSUPPORT until a unit is set (it then reports SUPPORT_CLOSE),
                     // so always attempt it; the confirmed state in the reply tells us whether it took.
                     true),
-                Quad(3, { s.getStressDetect() }, { s.setStressDetect(it) }, false),
+                Quad(3, { s.getStressDetect() }, { s.setStressDetect(it) }, true) // read says UNSUPPORT on some watches; attempt anyway, reply confirms,
                 Quad(5, { s.getIsOpenAutoTemperatureDetect() }, { s.setIsOpenAutoTemperatureDetect(it) }, vpSpGetUtil.isSupportReadTempture),
                 Quad(7, { s.getIsOpenAutoHRV() }, { s.setIsOpenAutoHRV(it) }, false),
                 Quad(8, { s.getIsOpenBloodComponentDetect() }, { s.setIsOpenBloodComponentDetect(it) }, vpSpGetUtil.isSupportBloodComponent),
