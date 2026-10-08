@@ -6,6 +6,7 @@ import com.veepoo.protocol.listener.data.IAutoMeasureSettingDataListener
 import com.veepoo.protocol.model.datas.AllSetData
 import com.veepoo.protocol.model.datas.AutoMeasureData
 import com.veepoo.protocol.model.enums.EAllSetType
+import com.veepoo.protocol.model.enums.EBloodGlucoseUnit
 import com.veepoo.protocol.model.enums.EFunctionStatus
 import com.veepoo.protocol.model.settings.AllSetSetting
 import com.veepoo.protocol.model.settings.CustomSetting
@@ -87,6 +88,9 @@ class AutoMeasure(
                 Quad(8, { s.getIsOpenBloodComponentDetect() }, { s.setIsOpenBloodComponentDetect(it) }, vpSpGetUtil.isSupportBloodComponent),
                 Quad(9, { s.getIsOpenPPG() }, { s.setIsOpenPPG(it) }, false),
             )
+            if (s.getBloodGlucoseUnit() == null || s.getBloodGlucoseUnit() == EBloodGlucoseUnit.NONE) {
+                s.setBloodGlucoseUnit(EBloodGlucoseUnit.mmol_L) // glucose switch is paired with a unit
+            }
             val types = mutableListOf(0, 1) // heart rate / blood pressure are plain booleans
             s.setOpenAutoHeartDetect(true)
             s.setOpenAutoBpDetect(true)
@@ -98,7 +102,19 @@ class AutoMeasure(
                 }
             }
             once<CustomSettingData>({ f -> vpManager.changeCustomSetting(writeResponse, { f(it) }, s) }) { written ->
-                val out = types.map { mapOf("type" to it, "isSwitchOpen" to (written != null), "success" to (written != null)) }.toMutableList()
+                VPLogger.d("auto measure legacy written settings: $written")
+                // Report the state the watch confirmed, not just that the write was acknowledged
+                val confirmed = written?.let {
+                    mapOf(
+                        0 to it.autoHeartDetect, 1 to it.autoBpDetect, 2 to it.bloodGlucoseDetection,
+                        3 to it.stressDetect, 5 to it.autoTemperatureDetect, 7 to it.autoHrv,
+                        8 to it.bloodComponentDetect, 9 to it.ppg,
+                    )
+                }
+                val out = types.map {
+                    val on = confirmed?.get(it)?.isOpen == true
+                    mapOf("type" to it, "isSwitchOpen" to on, "success" to on)
+                }.toMutableList()
                 // All-day SpO2 is a separate command (00:00-23:59)
                 val spo2 = AllSetSetting(EAllSetType.SPO2H_NIGHT_AUTO_DETECT, 0, 0, 23, 59, 0, 1)
                 once<AllSetData>({ f -> vpManager.settingSpo2hAutoDetect(writeResponse, { f(it) }, spo2) }) { r ->
