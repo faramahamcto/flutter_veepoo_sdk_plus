@@ -81,7 +81,10 @@ class AutoMeasure(
             // features the device does have (seen with temperature/glucose/blood components), so the
             // SDK's own capability flags are accepted as well.
             val fns = listOf<Quad>(
-                Quad(2, { s.getIsOpenBloodGlucoseDetect() }, { s.setIsOpenBloodGlucoseDetect(it) }, vpSpGetUtil.isSupportBloodGlucose),
+                Quad(2, { s.getIsOpenBloodGlucoseDetect() }, { s.setIsOpenBloodGlucoseDetect(it) },
+                    // This watch reports glucose as UNSUPPORT until a unit is set (it then reports SUPPORT_CLOSE),
+                    // so always attempt it; the confirmed state in the reply tells us whether it took.
+                    true),
                 Quad(3, { s.getStressDetect() }, { s.setStressDetect(it) }, false),
                 Quad(5, { s.getIsOpenAutoTemperatureDetect() }, { s.setIsOpenAutoTemperatureDetect(it) }, vpSpGetUtil.isSupportReadTempture),
                 Quad(7, { s.getIsOpenAutoHRV() }, { s.setIsOpenAutoHRV(it) }, false),
