@@ -34,6 +34,7 @@ part 'src/models/spoh.dart';
 part 'src/models/step_data.dart';
 part 'src/models/temperature.dart';
 part 'src/models/user_profile.dart';
+part 'src/models/watch_face.dart';
 part 'src/models/origin_health_data.dart';
 part 'src/flutter_veepoo_sdk_method_channel.dart';
 part 'src/flutter_veepoo_sdk_platform_interface.dart';

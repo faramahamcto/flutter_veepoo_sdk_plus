@@ -32,6 +32,7 @@ import site.shasmatic.flutter_veepoo_sdk.utils.StepDataReader
 import site.shasmatic.flutter_veepoo_sdk.utils.Temperature
 import site.shasmatic.flutter_veepoo_sdk.utils.OriginDataReader
 import site.shasmatic.flutter_veepoo_sdk.utils.VPBluetoothManager
+import site.shasmatic.flutter_veepoo_sdk.utils.WatchFace
 
 /**
  * Handles method calls from Flutter to perform various operations related to Bluetooth management,
@@ -61,6 +62,7 @@ class VPMethodChannelHandler(
     private var connectionStatusEventSink: EventChannel.EventSink? = null
     private var detectBodyComponentEventSink: EventChannel.EventSink? = null
     private var miniCheckupEventSink: EventChannel.EventSink? = null
+    private var watchFaceProgressEventSink: EventChannel.EventSink? = null
     private lateinit var result: MethodChannel.Result
 
     @RequiresApi(Build.VERSION_CODES.S)
@@ -133,6 +135,18 @@ class VPMethodChannelHandler(
             "setUserProfile" -> handleSetUserProfile(call)
             "readOriginData3Days" -> handleReadOriginData3Days()
             "readOriginDataForDay" -> handleReadOriginDataForDay(call.argument<Int>("day") ?: 0)
+            "readCustomWatchFace" -> getWatchFace().read(result)
+            "setCustomWatchFace" -> getWatchFace().set(
+                result,
+                call.argument<Int>("timePosition") ?: 0,
+                call.argument<Int>("upElement") ?: 0,
+                call.argument<Int>("downElement") ?: 0,
+                call.argument<Int>("color") ?: 0xFFFFFF,
+                call.argument<Boolean>("useDefaultBackground") ?: false,
+                call.argument<String>("imagePath"),
+            )
+            "readMarketWatchFaces" -> getWatchFace().readMarket(result)
+            "installMarketWatchFace" -> getWatchFace().installMarket(result, call.argument<String>("fileUrl") ?: "")
             else -> result.notImplemented()
         }
     }
@@ -515,6 +529,14 @@ class VPMethodChannelHandler(
 
     fun setMiniCheckupEventSink(eventSink: EventChannel.EventSink?) {
         this.miniCheckupEventSink = eventSink
+    }
+
+    fun setWatchFaceProgressEventSink(eventSink: EventChannel.EventSink?) {
+        this.watchFaceProgressEventSink = eventSink
+    }
+
+    private fun getWatchFace(): WatchFace {
+        return WatchFace(activity!!.applicationContext, vpManager, watchFaceProgressEventSink)
     }
 
     private fun getBluetoothManager(result: MethodChannel.Result): VPBluetoothManager {

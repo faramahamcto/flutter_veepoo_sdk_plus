@@ -21,6 +21,7 @@ public class FlutterVeepooSdkPlugin: NSObject, FlutterPlugin {
   let connectionEvents = EventStream()
   let bodyComponentEvents = EventStream()
   let miniCheckupEvents = EventStream()
+  let watchFaceProgressEvents = EventStream()
 
   private lazy var bluetooth = VPBluetooth(scanEvents: scanEvents, connectionEvents: connectionEvents)
   private lazy var detection = VPDetection(
@@ -29,6 +30,7 @@ public class FlutterVeepooSdkPlugin: NSObject, FlutterPlugin {
     bloodComponent: bloodComponentEvents, bodyComponent: bodyComponentEvents,
     miniCheckup: miniCheckupEvents)
   private lazy var data = VPDataReader(progressEvents: originProgressEvents)
+  private lazy var watchFace = VPWatchFace(progressEvents: watchFaceProgressEvents)
 
   public static func register(with registrar: FlutterPluginRegistrar) {
     let instance = FlutterVeepooSdkPlugin()
@@ -50,6 +52,7 @@ public class FlutterVeepooSdkPlugin: NSObject, FlutterPlugin {
       ("connection_status_event_channel", instance.connectionEvents),
       ("detect_body_component_event_channel", instance.bodyComponentEvents),
       ("mini_checkup_event_channel", instance.miniCheckupEvents),
+      ("watch_face_progress_event_channel", instance.watchFaceProgressEvents),
     ]
     for (name, stream) in streams {
       FlutterEventChannel(name: "\(channelName)/\(name)", binaryMessenger: messenger).setStreamHandler(stream)
@@ -134,6 +137,12 @@ public class FlutterVeepooSdkPlugin: NSObject, FlutterPlugin {
       }
       data.setAutoMeasureSetting(type: type, enabled: enabled, interval: args["measureInterval"] as? Int,
                                  startMinute: args["startMinute"] as? Int, endMinute: args["endMinute"] as? Int, reply)
+
+    // Photo watch face
+    case "readCustomWatchFace": watchFace.read(reply)
+    case "setCustomWatchFace": watchFace.set(args, reply)
+    case "readMarketWatchFaces": watchFace.readMarket(reply)
+    case "installMarketWatchFace": watchFace.installMarket(args["fileUrl"] as? String, reply)
     default: reply(FlutterMethodNotImplemented)
     }
   }
