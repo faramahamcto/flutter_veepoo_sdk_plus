@@ -34,6 +34,8 @@ class MethodChannelFlutterVeepooSdk extends FlutterVeepooSdkPlatform {
       const EventChannel('$_channelName/detect_body_component_event_channel');
   final EventChannel miniCheckupEventChannel =
       const EventChannel('$_channelName/mini_checkup_event_channel');
+  final EventChannel watchFaceProgressEventChannel =
+      const EventChannel('$_channelName/watch_face_progress_event_channel');
 
   // Cached streams
   Stream<List<BluetoothDevice>>? _bluetoothDevicesStream;
@@ -49,6 +51,7 @@ class MethodChannelFlutterVeepooSdk extends FlutterVeepooSdkPlatform {
   Stream<ConnectionStatus?>? _connectionStatusStream;
   Stream<BodyComponent?>? _bodyComponentStream;
   Stream<MiniCheckupEvent?>? _miniCheckupStream;
+  Stream<int>? _watchFaceProgressStream;
 
   /// Requests Bluetooth permissions.
   ///
@@ -1541,5 +1544,98 @@ class MethodChannelFlutterVeepooSdk extends FlutterVeepooSdkPlatform {
     }).asBroadcastStream();
 
     return _connectionStatusStream!;
+  }
+
+  @override
+  Future<CustomWatchFace?> readCustomWatchFace() async {
+    try {
+      if (!await _isCurrentlyConnected()) {
+        throw const VeepooException(message: 'Device is not connected');
+      }
+      final result = await methodChannel
+          .invokeMapMethod<String, dynamic>('readCustomWatchFace')
+          .timeout(const Duration(seconds: 20));
+      return result != null ? CustomWatchFace.fromMap(result) : null;
+    } on PlatformException catch (error, stackTrace) {
+      throw VeepooException(
+        message: 'Failed to read watch face: ${error.message}',
+        details: error.code,
+        stacktrace: stackTrace,
+      );
+    }
+  }
+
+  @override
+  Future<void> setCustomWatchFace({
+    required WatchFacePosition timePosition,
+    required WatchFaceElement upElement,
+    required WatchFaceElement downElement,
+    required int color,
+    bool useDefaultBackground = false,
+    String? imagePath,
+  }) async {
+    try {
+      if (!await _isCurrentlyConnected()) {
+        throw const VeepooException(message: 'Device is not connected');
+      }
+      await methodChannel.invokeMethod<void>('setCustomWatchFace', {
+        'timePosition': timePosition.index,
+        'upElement': upElement.index,
+        'downElement': downElement.index,
+        'color': color & 0xFFFFFF,
+        'useDefaultBackground': useDefaultBackground,
+        'imagePath': imagePath,
+      });
+    } on PlatformException catch (error, stackTrace) {
+      throw VeepooException(
+        message: 'Failed to set watch face: ${error.message}',
+        details: error.code,
+        stacktrace: stackTrace,
+      );
+    }
+  }
+
+  @override
+  Future<List<MarketWatchFace>?> readMarketWatchFaces() async {
+    try {
+      if (!await _isCurrentlyConnected()) {
+        throw const VeepooException(message: 'Device is not connected');
+      }
+      final result = await methodChannel
+          .invokeListMethod<Map<dynamic, dynamic>>('readMarketWatchFaces')
+          .timeout(const Duration(seconds: 40));
+      return result?.map(MarketWatchFace.fromMap).toList();
+    } on PlatformException catch (error, stackTrace) {
+      throw VeepooException(
+        message: 'Failed to read market watch faces: ${error.message}',
+        details: error.code,
+        stacktrace: stackTrace,
+      );
+    }
+  }
+
+  @override
+  Future<void> installMarketWatchFace(String fileUrl) async {
+    try {
+      if (!await _isCurrentlyConnected()) {
+        throw const VeepooException(message: 'Device is not connected');
+      }
+      await methodChannel.invokeMethod<void>('installMarketWatchFace', {'fileUrl': fileUrl});
+    } on PlatformException catch (error, stackTrace) {
+      throw VeepooException(
+        message: 'Failed to install market watch face: ${error.message}',
+        details: error.code,
+        stacktrace: stackTrace,
+      );
+    }
+  }
+
+  @override
+  Stream<int> get watchFaceProgress {
+    _watchFaceProgressStream ??= watchFaceProgressEventChannel
+        .receiveBroadcastStream()
+        .map((dynamic event) => (event as num).toInt())
+        .asBroadcastStream();
+    return _watchFaceProgressStream!;
   }
 }

@@ -591,4 +591,38 @@ abstract class FlutterVeepooSdkPlatform extends PlatformInterface {
   Stream<ConnectionStatus?> get connectionStatus {
     throw UnimplementedError('connectionStatusEventChannel has not been implemented.');
   }
+
+  // ==================== Watch Face ====================
+
+  /// Reads the photo watch face, or null when the watch has none.
+  Future<CustomWatchFace?> readCustomWatchFace() {
+    throw UnimplementedError('readCustomWatchFace() has not been implemented.');
+  }
+
+  /// Sets the photo watch face layout and, when [imagePath] is given, its background photo.
+  Future<void> setCustomWatchFace({
+    required WatchFacePosition timePosition,
+    required WatchFaceElement upElement,
+    required WatchFaceElement downElement,
+    required int color,
+    bool useDefaultBackground = false,
+    String? imagePath,
+  }) {
+    throw UnimplementedError('setCustomWatchFace() has not been implemented.');
+  }
+
+  /// Server watch faces for the connected watch, or null when it has no watch face market.
+  Future<List<MarketWatchFace>?> readMarketWatchFaces() {
+    throw UnimplementedError('readMarketWatchFaces() has not been implemented.');
+  }
+
+  /// Downloads a server watch face and transfers it to the watch.
+  Future<void> installMarketWatchFace(String fileUrl) {
+    throw UnimplementedError('installMarketWatchFace() has not been implemented.');
+  }
+
+  /// Photo transfer progress, 0-100.
+  Stream<int> get watchFaceProgress {
+    throw UnimplementedError('watchFaceProgressEventChannel has not been implemented.');
+  }
 }

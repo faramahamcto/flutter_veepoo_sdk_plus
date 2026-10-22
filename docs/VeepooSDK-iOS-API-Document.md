@@ -1,0 +1,8944 @@
+# VeepooSDK iOS API Document
+
+| Version | Modifications                                                | Modification Date |
+| ------- | ------------------------------------------------------------ | ----------------- |
+| 1.0.0   | SDK initial version                                          | 2023.05.15        |
+| 1.0.1   | Add language setting document                                | 2023.06.06        |
+| 1.0.2   | Add metric and imperial unit switching, 12/24 hour switching, and other personalized setting documents | 2023.06.26        |
+| 1.0.3   | Add some function status monitoring interfaces, add 127 sports enumeration, support obtaining original temperature (surface temperature) for body temperature, support self-scan connection, add device time setting interface, etc. | 2023.08.24        |
+| 1.0.4   | Add interface for obtaining device charging status and power | 2023.09.07        |
+| 1.0.5   | Description of watch face transmission and battery power limit added to OTA | 2023.09.11        |
+| 1.0.6   | Added documents related to body composition, blood composition, blood glucose multi-calibration, contact SOS settings, ECG offline storage, etc. | 2023.10.31        |
+| 1.0.7   | Added documents related to blood glucose risk level and body temperature integration into daily data interface | 2024.04.15        |
+| 1.0.8   | Add multi settings for skin colour, private mode support for manual blood glucose measurement | 2024.12.02        |
+| 1.0.9   | Compatibility with Z-series (Zhongke) platforms              | 2024.12.30        |
+| 1.1.0   | Added world clock, automatic measurement and detection time setting, manual measurement - air pump blood pressure related interfaces | 2025.06.11        |
+| 1.1.1   | Add ‘Text Transmission’ and ‘Image Transmission’，JH58 Customized Raw Data Reporting | 2025.10.27        |
+| 1.1.2   | Add Micro-test(custom) on/off，Obtain manual measurement data for microtests | 2025.11.03        |
+| 1.1.3   | Add Always off screen                                        | 2025.12.26        |
+| 1.1.4   | Add met function, stress function                            | 2025.12.27        |
+| 1.1.5   | Add Health Assistance，GSR and Health Glance functions       | 2025.12.30        |
+| 1.1.6   | Add 4G function and activate the ring's sports function through the app | 2026.01.05        |
+| 1.1.7   | Add AI function                                              | 2026.01.07        |
+| 1.1.8   | Add manual measurement data retrieval for heart rate, blood pressure, body temperature, blood oxygen, blood components, and blood glucose | 2026.04.02        |
+| 1.1.9   | Add Nordic OTA and confirm if the control device has a pop-up connection | 2026.04.16        |
+| 1.2.0   | Add JE136P customized TCM data distribution，Add HRV Measurement， Change Bluetooth name | 2026.04.23        |
+| 1.2.1   | QX17 customized function, real-time data acquisition (IMU, GPS, Heart rate), vibration mode modification | 2026.04.27        |
+| 1.2.2   | Zhongke series firmware upgrade, subsequent versions will integrate firmware upgrades from different platforms | 2026.05.20        |
+| 1.2.3   | QH15 Customized Health Data                                  | 2026.06.01        |
+| 1.2.4   | Event Reminder，Obtain motion status data                    | 2026.06.17        |
+| 1.2.5   | Met measurement， Emotion measurement， Health Light         | 2026.07.01        |
+| 1.2.6   | Add JH58 custom active measurement                           | 2026.07.23        |
+| 1.2.7   | AGPS (Ephemeris) Reading，AGPS (Ephemeris) Download and Transfer | 2026.08.28        |
+| 1.2.8   | Add SN Code Setting （JH76）                                 | 2026.09.23        |
+| 1.2.9   | Add YM23PRO customized wearing status reporting and testing status function | 2026.09.24        |
+| 1.3.0   | Add QH15 customized family care (security protection) interfaces | 2026.09.29        |
+
+# SDK initialization
+
+## [VPBleCentralManager sharedBleManager]
+
+* VPBleCentralManager: SDK main entry
+* sharedBleManager: Get singleton object, SDK interface exists in singleton form
+
+* Initialize VPBleCentralManage first, or initialize in the main controller. In short, initialize before using the Bluetooth function
+
+**Note⚠️, the SDK internal data interface does not support concurrent operations. For example, in the process of reading daily data, it does not support operating the switch state of the device. In the event of concurrency, the normal response of the command operation cannot be guaranteed. The application layer needs to consider the interactive logic processing in the concurrent scenario. **
+
+**Note⚠️, iOS allows multiple applications to connect to the same peripheral device at the same time due to system reasons. If your phone has H Band or SDK DEMO, please do not connect to the same device at the same time, which may trigger an infinite loop of reading data and cause exceptions. **
+
+The data generated by automatic measurement on the device side can be read to the APP side through the relevant interfaces of the SDK. The SDK provides two ways to read the data generated by these automatic measurements. One is DB persistence within the SDK. After the user calls **[Daily Data Reading Interface], etc.**, the persistent data object is obtained from the DB. The other is to read the data directly through the interface, and the persistence operation is performed by the SDK itself.
+
+It is recommended to use the SDK persistence method, which is less difficult to integrate and most customers choose this method.
+
+SDK persistence method:
+
+```swift
+// VPPeripheralManage
+VPBleCentralManage.sharedBleManager().peripheralManage = VPPeripheralManage.shareVPPeripheralManager()
+```
+
+Application layer self-persistence method:
+
+```swift
+// VPPeripheralAddManage
+VPBleCentralManage.sharedBleManager().peripheralManage = VPPeripheralAddManage.shareVPPeripheralManager()
+```
+
+
+
+## Get SDK version number
+
+`VPPublicDefine.h -> VeepooBleSDKVersion`
+
+
+
+# Scanning devices
+
+### Prerequisites
+
+When the Bluetooth of the mobile phone system is turned on, if you enter the scanning device scanning interface and call the following code, there will be a callback of the device model after scanning the device. A device may be scanned multiple times, so when displaying, it is necessary to perform repetitive filtering based on the device address attribute deviceAddress of the model VPPeripheralModel, and the user can be displayed based on the attribute value of the model
+
+### Class name
+
+  `VPBleCentralManager`
+
+### Interface
+
+```objective-c
+- (void)veepooSDKStartScanDeviceAndReceiveScanningDevice:(ReceiveScanningDevice)scanningDevice;
+```
+
+### Parameter explanation
+
+| Parameter      | Parameter type                               | Remarks      |
+| -------------- | -------------------------------------------- | ------------ |
+| scanningDevice | void(^）(VPPeripheralModel *peripheralModel) | Device model |
+
+### Custom scanning
+
+When multiple SDK scenarios need to be integrated, it cannot be used when internal scanning is used.
+
+The parameter `CBPeripheral` is obtained from the external `CBCentralManager` implementation of the scanning delegate method. For related codes, refer to the `VPCustomScanManage` class in the Demo
+
+The internal scan will be re-executed, and the connection will be initiated only when the `CBPeripheral` with the same UUID is scanned.
+
+```objective-c
+///Used when scanning and connecting devices by yourself, suitable for integrating multiple SDK scenarios, used in connection status：VPBleConnectStateChangeBlock
+///Cannot be used with {@link veepooSDKConnectDevice:deviceConnectBlock:}
+- (void)veepooSDKSelfScanConnectDevice:(CBPeripheral *)peripheral
+                    deviceConnectBlock:(DeviceConnectBlock)connectBlock;
+```
+
+
+
+# Stop scanning
+
+### Prerequisites
+
+* When the Bluetooth of the mobile phone system is turned on, if you leave the scanning interface, prepare to connect to a device, or need to stop scanning, be sure to call this interface
+
+ ### Class name
+
+  `VPBleCentralManager`
+
+### Interface
+
+```objective-c
+- (void)veepooSDKStopScanDevice;
+```
+
+### Usage Examples
+
+```swift
+VPBleCentralManage.sharedBleManager().veepooSDKStopScanDevice()
+```
+
+
+
+# Connect device
+
+### Prerequisites
+
+Make sure the Bluetooth of the mobile phone system is turned on
+
+### Class name
+
+`VPBleCentralManager`
+
+### Interface
+
+```objective-c
+- (void)veepooSDKConnectDevice:(VPPeripheralModel *)peripheralModel deviceConnectBlock:(DeviceConnectBlock)connectBlock;
+```
+
+### Parameter Explanation
+
+| Parameter       | Parameter Type                           | Remark                     |
+| --------------- | ---------------------------------------- | -------------------------- |
+| peripheralModel | VPPeripheralModel                        | Peripheral Model           |
+| connectBlock    | void(^)(DeviceConnectState connectState) | Callback connection status |
+
+```objc
+typedef NS_ENUM(NSInteger, DeviceConnectState) {
+		BlePoweredOff = 0, 						//Bluetooth is not turned on
+		BleConnecting = 1, 						//Bluetooth is connecting
+		BleConnectSuccess = 2, 				//Bluetooth connection is successful
+		BleConnectFailed = 3, 				//Bluetooth connection failed
+		BleVerifyPasswordSuccess = 4, //Password verification is successful
+		BleVerifyPasswordFailure = 5, //Password verification failed
+};
+```
+
+# Disconnect
+
+### Prerequisites
+
+* Disconnect, no longer automatically connect, SDK will no longer help automatically reconnect if manually disconnected
+
+### Class name
+
+  `VPBleCentralManager`
+
+### Interface
+
+```objective-c
+- (void)veepooSDKDisconnectDevice;
+```
+
+### Usage Examples
+
+```swift
+VPBleCentralManage.sharedBleManager().veepooSDKDisconnectDevice()
+```
+
+
+
+# Read device battery power
+
+Special note⚠️: The watch face transmission and OTA process will consume a lot of power, so it is necessary to increase the power limit. When the watch battery is very low, if you initiate a watch face transmission, the watch may shut down due to low power during the transmission process. After recharging, the watch face will turn black. It is recommended to read the current power of the watch before each transmission. If the power status is low, the transmission is prohibited.
+
+The OTA process is long, and it is recommended that the battery power is above 30% before the upgrade is allowed.
+
+### Prerequisites
+
+Device is connected
+
+### Class name
+
+`VPPeripheralBaseManage`
+
+How to get it：**VPBleCentralManage.sharedBleManager().peripheralManage**`
+
+### Interface
+
+```objc
+// Read the device's battery level
+- (void)veepooSDKReadDeviceBatteryInfo:(void(^)(BOOL isPercent, BOOL percenTypeIsLowBat, NSUInteger battery))deviceBatteryInfoBlock;
+
+// Interface with charging status
+- (void)veepooSDKReadDeviceBatteryAndChargeInfo:(void(^)(BOOL isPercent, VPDeviceChargeState chargeState, BOOL percenTypeIsLowBat, NSUInteger battery))deviceBatteryInfoBlock
+```
+
+### Parameter Explanation
+
+| Parameter          | Parameter Type | Remarks                                                      |
+| ------------------ | -------------- | ------------------------------------------------------------ |
+| isPercent          | BOOL           | Indicates whether the battery level is a percentage          |
+| percenTypeIsLowBat | BOOL           | Indicates whether the device is in low battery state when isPercent is true; |
+| battery            | NSUInteger     | Battery level. If it is a percentage, the range is [0, 100]; otherwise, it indicates the number of battery cells, [0, 4] |
+
+| Parameter   | Parameter Type      | Remarks                                                      |
+| ----------- | ------------------- | ------------------------------------------------------------ |
+| chargeState | VPDeviceChargeState | Device charging state. For details of the enumeration type, see below |
+
+```objective-c
+// Charging state of the device
+typedef NS_ENUM(NSUInteger, VPDeviceChargeState) {
+		VPDeviceChargeStateNormal = 0, 	// The device is in normal use, not charging
+		VPDeviceChargeStateCharging, 		// Charging
+		VPDeviceChargeStateLowPressure, // Low pressure state, has been abandoned
+		VPDeviceChargeStateFull 				// Full state, unreliable
+};
+```
+
+### Sample Code
+
+```swift
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDKReadDeviceBatteryInfo { isPercent, percenTypeIsLowBat, battery in
+            let str = isPercent ? "Power" : "Voltage"
+            let percentSign = isPercent ? "%" : ""
+            weakSelf.vpDeviceBatteryLevelLabel.text = "Battery" + str + ":" + String(battery) + percentSign
+        }
+```
+
+Example with charging status
+
+```swift
+veepooBleManager.peripheralManage.veepooSDKReadDeviceBatteryAndChargeInfo { [weak self]isPercent, chargeState, percenTypeIsLowBat, battery in
+            let str = isPercent ? "Power" : "Voltage"
+            var state = "Normal use"
+            if chargeState == .charging {
+                state = "Charging"
+            }
+            if chargeState == .full {
+                state = "Full"
+            }
+            print("Charging status：\(state)")
+            let percentSign = isPercent ? "%" : ""
+            self?.vpDeviceBatteryLevelLabel.text = "Battery" + str + ":" + String(battery) + percentSign
+        }
+```
+
+# Synchronize personal information to the device
+
+### Prerequisites
+
+* The device is connected
+
+### Class Name
+
+`VPPeripheralBaseManage`
+
+How to get it：**VPBleCentralManage.sharedBleManager().peripheralManage**
+
+###  Interface
+
+The settings of height and weight will affect the calorie calculation results
+
+```objective-c
+- (void)veepooSDKSynchronousPersonalInformation:(VPSyncPersonalInfo *)personalInfo result:(void(^)(NSUInteger settingResult))synchronousPersonalInformationBlock;
+```
+
+### Parameter Explanation
+
+|  Parameter   |          Parameter type           |                           Remarks                            |
+| :----------: | :-------------------------------: | :----------------------------------------------------------: |
+| personalInfo |        VPSyncPersonalInfo         | Model of personal information to be synchronized. The specific meaning is as follows. It is recommended to store a copy of user data locally and synchronize it to the device every time the information changes or the device is connected. |
+|    result    | void(^)(NSUInteger settingResult) | When settingResult = 1, it means the setting is successful. In other cases, it means the setting fails. |
+
+```objective-c
+@interface VPSyncPersonalInfo : NSObject
+
+//Height, unit cm
+@property(nonatomic, assign) int status;
+
+//Weight, unit kg
+@property(nonatomic, assign) int weight;
+
+//Age (current yeart - birth year) Current year - user's birth year
+@property(nonatomic, assign) int age;
+
+//Gender 0 represents female, 1 represents male
+@property(nonatomic, assign) int sex;
+
+//Target number of steps Unit step (step)
+@property(nonatomic, assign) int targetStep;
+
+//Target sleep duration Unit minute (minute) To confirm whether this function exists in the project, you can also set it if not
+@property(nonatomic, assign) int targetSleepDuration;
+
+@end
+```
+
+### Sample Code
+
+```swift
+public func synchoronusPersonlInfo(personalInfo: UserModel, result: ((Bool) -> Void)?) {
+    guard bleCentralM.isConnected else {
+        return
+    }
+    vpPeripheralManager.veepooSDKSynchronousPersonalInformation(personalInfo.vpSyncPersonalInfo) { settingResult in
+
+        result?(settingResult == 1 ? true : false)
+    }
+}
+```
+
+
+
+# Set device language
+
+Set the language. If the device does not have a language, English will be displayed by default.
+
+It is recommended to use the automatic SDK to follow the phone language settings.
+
+If you use this interface, be sure to set the value of `systemLanguage` in `VPBleCentralManage` to **NO**
+
+### Prerequisites
+
+* The device is connected
+
+### Class Name
+
+`VPPeripheralBaseManage`
+
+### Interface
+
+```objective-c
+- (void)veepooSDKSettingLanguage:(UInt8)languageType result:(void(^)(BOOL success))settingLangueResult;
+```
+
+### Parameter Explanation
+
+|      Parameter      |    Parameter Type     |                           Remarks                            |
+| :-----------------: | :-------------------: | :----------------------------------------------------------: |
+|    languageType     |         UInt8         | Chinese (1) English (2) Japanese (3) Korean (4) German (5) Russian (6) Spanish (7) Italian (8) French (9) Vietnamese (10) Portuguese (11) Traditional Chinese (12) Thai (13) Polish (14) Swedish (15) Turkish (16) Dutch (17) Czech (18) Arabic (19) Hungarian (20) Greek (21) Romanian (22) Slovak (23) Indonesian (24) Brazilian Portuguese (25) Croatian (26) Lithuanian (27) Ukrainian (28) Hindi (29) Hebrew (30) Danish(31) Persian(32) Finnish(33) Malay(34) |
+| settingLangueResult | void(^)(BOOL success) |                     Set callback result                      |
+
+# Switch and read device metric and imperial units
+
+### Prerequisites
+
+* The device is connected
+
+### Class Name
+
+`VPPeripheralBaseManage`
+
+How to get it：**VPBleCentralManage.sharedBleManager().peripheralManage**
+
+### Interface
+
+```objective-c
+- (void)veepooSDKSettingBaseFunctionType:(VPSettingBaseFunctionSwitchType)baseFunctionType settingState:(VPSettingFunctionState)settingState completeBlock:(void(^)(VPSettingFunctionCompleteState completeState))settingCompleteBlock;
+```
+
+### Parameter Explanation
+
+|      Parameter       |         Parameter Type          |                           Remarks                            |
+| :------------------: | :-----------------------------: | :----------------------------------------------------------: |
+|   baseFunctionType   | VPSettingBaseFunctionSwitchType |                   Pass in VPSettingMetric                    |
+|     settingState     |     VPSettingFunctionState      | Metric: Pass in VPSettingFunctionOpen Imperial: Pass in VPSettingFunctionClose Read: Pass in VPReadFunctionState |
+| settingCompleteBlock | VPSettingFunctionCompleteState  |     Set or read the state after a function is completed      |
+
+```objective-c
+typedef NS_ENUM(NSInteger, VPSettingFunctionCompleteState) {//Set the state after a function is completed
+		VPFunctionCompleteUnknown = 0,	 //The device does not have this function
+		VPFunctionCompleteOpen = 1, 		 //(Metric)
+		VPFunctionCompleteClose = 2, 		 //(Imperial)
+		VPFunctionCompleteFailure = 3, 	 //Setting or reading failed
+		VPFunctionCompleteComplete = 4,  //Setting completed, response to Data setting
+};
+```
+
+### Usage Examples
+
+```swift
+   peripheralM.baseFunctionType(type: .metric, settingState: .init(rawValue: (preferenceM.preference.metricImperialUnit.rawValue + 1)) ?? .settingFunctionOpen, completeBlock: nil)
+```
+
+
+
+# Device 12/24 hour switching and reading
+
+### Prerequisites
+
+* The device is connected
+
+### Class Name
+
+`VPPeripheralBaseManage`
+
+How to get it：**VPBleCentralManage.sharedBleManager().peripheralManage**
+
+### Interface
+
+```objective-c
+- (void)veepooSDKSettingBaseFunctionType:(VPSettingBaseFunctionSwitchType)baseFunctionType settingState:(VPSettingFunctionState)settingState completeBlock:(void(^)(VPSettingFunctionCompleteState completeState))settingCompleteBlock;
+```
+
+### Parameter Explanation
+
+|      Parameter       |         Parameter Type          |                           Remarks                            |
+| :------------------: | :-----------------------------: | :----------------------------------------------------------: |
+|   baseFunctionType   | VPSettingBaseFunctionSwitchType |                 Pass in VPSettingTimeFormat                  |
+|     settingState     |     VPSettingFunctionState      | 24 hours: pass in VPSettingFunctionOpen 12 hours: pass in VPSettingFunctionClose Read: pass in VPReadFunctionState |
+| settingCompleteBlock | VPSettingFunctionCompleteState  |         Set the state after a function is completed          |
+
+```objective-c
+typedef NS_ENUM(NSInteger, VPSettingFunctionCompleteState) {//Set the state after a function is completed
+		VPFunctionCompleteUnknown = 0, 	//The device does not have this function
+		VPFunctionCompleteOpen = 1, 		//(24 hours)
+		VPFunctionCompleteClose = 2, 		//(12 hours)
+		VPFunctionCompleteFailure = 3, 	//Setting or reading failed
+		VPFunctionCompleteComplete = 4, //Setting completed, response to Data setting
+};
+```
+
+### Usage Examples
+
+```swift
+ peripheralM.baseFunctionType(type: .timeFormat, settingState: .init(rawValue: sysHourFormat.rawValue) ?? .settingFunctionOpen, completeBlock: nil)
+```
+
+# Device time setting
+
+### Prerequisites
+
+* The device is already connected
+
+### Class Name
+
+`VPPeripheralBaseManage`
+
+### Interface
+
+```objective-c
+/// Synchronize time, used in special cases, the default connection will automatically synchronize time
+/// @param year year
+/// @param month month 1-12
+/// @param day day 1-31
+/// @param hour hour 0-23
+/// @param min minute 0-59
+/// @param sec second 0-59
+/// @param system 0 is not set 1 is 12 hours 2 is 24 hours If it is useless, you need to set it again through the standard in the switch setting
+/// @param result failure/success result callback, the internal will be empty
+- (void)veepooSDKSettingTimeWithYear:(int)year
+                               month:(int)month
+                                 day:(int)day
+                                hour:(int)hour
+                              minute:(int)min
+                              second:(int)sec
+                          timeSystem:(int)system
+                              result:(void(^)(BOOL success))result;
+```
+
+```objective-c
+/// Synchronize the current time of the phone to the device. The time parameters are obtained by the SDK from the current data of the phone.
+/// This Interface cannot be used with {@link veepooSDKSettingTimeWithYear:month:day:hour:minute:second:timeSystem:result:}
+/// The time format setting of this Interface is invalid. To set the time format, please call {@link veepooSDKSettingBaseFunctionType:settingState:completeBlock:}
+/// @param result Failure/success result callback, which will be set to null internally
+- (void)veepooSDKSettingTimeWithResult:(void(^)(BOOL success))result;
+```
+
+### Parameter Explanation
+
+None
+
+### Usage Examples
+
+```swift
+veepooBleManager.peripheralManage.veepooSDKSettingTime(withYear: 2023, month: 08, day: 15, hour: 18, minute: 00, second: 00, timeSystem: 0) { success in
+            print(success)
+        }
+```
+
+```swift
+veepooBleManager.peripheralManage.veepooSDKSettingTime { success in
+            print(success)
+        }
+```
+
+# Other personalized settings and reading of the device
+
+### Prerequisites
+
+* The device is connected
+
+### Class Name
+
+`VPPeripheralBaseManage`
+
+How to get it：**VPBleCentralManage.sharedBleManager().peripheralManage**
+
+### Interface
+
+```objective-c
+- (void)veepooSDKSettingBaseFunctionType:(VPSettingBaseFunctionSwitchType)baseFunctionType settingState:(VPSettingFunctionState)settingState completeBlock:(void(^)(VPSettingFunctionCompleteState completeState))settingCompleteBlock;
+```
+
+Device status change monitoring
+
+```objective-c
+/// Callback for active reporting of device switch status changes
+@property (nonatomic, copy) void(^deviceFunctionSwitchDidChangeBlock)(void);
+```
+
+### Parameter Explanation
+
+|      Parameter       |         Parameter type          |                           Remarks                            |
+| :------------------: | :-----------------------------: | :----------------------------------------------------------: |
+|   baseFunctionType   | VPSettingBaseFunctionSwitchType | Various personalized settings, enumeration values are as follows |
+|     settingState     |     VPSettingFunctionState      |  Set or read a function, enumeration values are as follows   |
+| settingCompleteBlock | VPSettingFunctionCompleteState  | Set the state after a function is completed, enumeration values are as follows |
+
+#### VPSettingBaseFunctionSwitchType
+
+For the "/" in the Remarks column, settingState is set to VPSettingFunctionOpen to open this function, and VPSettingFunctionClose to close this function. For other special cases, see the non-"/" Remarks
+
+|             Parameter              |                          Definition                          |                           Remarks                            |
+| :--------------------------------: | :----------------------------------------------------------: | :----------------------------------------------------------: |
+|         VPSettingRaiseHand         |       Set the screen to light up when raising the hand       |                              /                               |
+|        VPSettingDeviceLose         |                       Device anti-loss                       |                              /                               |
+|       VPSettingWearDetection       |                        Wear detection                        |                              /                               |
+|      VPSettingAutomaticHRTest      |              Set automatic heart rate detection              |                              /                               |
+|      VPSettingAutomaticBPTest      |            Set automatic blood pressure detection            |                              /                               |
+|         VPSettingExercise          | Set excessive exercise reminder, mainly used in headset projects |                              /                               |
+|    VPSettingVoiceAnnouncements     | Voice announcement of heart rate, blood pressure, blood oxygen, etc., mainly used in headset projects |                              /                               |
+|   VPSettingSearchPhoneInterFace    | Set whether the search phone interface is displayed on the bracelet |                              /                               |
+|    VPSettingStopwatchInterFace     | Set whether the stopwatch interface is displayed on the bracelet |                              /                               |
+|     VPSettingOxygenLowerRemind     |            Set the warning after low blood oxygen            |                              /                               |
+|         VPSettingLedGrade          | Set the level of the LED light, off is the black gear, on is the normal skin gear |                              /                               |
+|     VPSettingAutomaticHRVTest      | Set whether the HRV night automatic detection switch is turned on |                              /                               |
+|        VPSettingAutoAnswer         | Set the automatic answer switch for incoming calls, effective for headphones |                              /                               |
+|     VPSettingDisconnectRemind      |                Set the disconnection reminder                |                              /                               |
+|         VPSettingSOSRemind         |           SOS, similar to the find phone function            |                              /                               |
+|     VPSettingAutomaticPPGTest      | Pulse rate automatic detection switch, mainly used by ECG bracelets |                              /                               |
+|       VPSettingAccurateSleep       |                    Accurate sleep switch                     | Temporarily invalid, currently using the VPSettingAutomaticPPGTest control, when turned off, accurate sleep will also be turned off |
+|       VPSettingMusicControl        |                        Music control                         |                              /                               |
+|      VPSettingLongpressUnlock      |                     Long press to unlock                     |                              /                               |
+|    VPSettingMessageScreenLight     |                     Message screen light                     |                              /                               |
+| VPSettingAutomaticTemperatureTest  |            Automatic temperature detection switch            |                              /                               |
+|      VPSettingTemperatureUnit      |                   Temperature unit setting                   |              1 means Celsius 2 means Fahrenheit              |
+|      VPSettingECGNormallyOpen      |                  ECG normally open function                  |                              /                               |
+| VPSettingAutomaticBloodGlucoseTest |            Automatic blood sugar detection switch            |                              /                               |
+|            VPSettingMet            |                     Met function switch                      |                              /                               |
+|          VPSettingStress           |                    Stress function switch                    |                              /                               |
+|     VPSettingBloodGlucoseUnit      |                   Blood sugar unit setting                   |                 1 means mmol/L 2 means mg/dl                 |
+|    VPSettingAutomaticOxygenTest    |          Automatic blood oxygen detection at night           |                              /                               |
+
+#### VPSettingFunctionState
+
+```objective-c
+typedef NS_ENUM(NSInteger, VPSettingFunctionState) {//Set to get a function to read
+		VPReadFunctionState = 0, 			//Read the switch and existence of a function
+		VPSettingFunctionOpen = 1, 		//Open a function
+		VPSettingFunctionClose = 2, 	//Close a function
+		VPSettingFunctionCancel = 3, 	//Only dynamic blood pressure calibration is valid now
+		VPSettingFunction = 4, 				//Set a function
+};
+
+```
+
+#### VPSettingFunctionCompleteState
+
+```objective-c
+typedef NS_ENUM(NSInteger, VPSettingFunctionCompleteState) {//Set the state after a function is completed
+		VPFunctionCompleteUnknown = 0, 		//The device does not have this function
+		VPFunctionCompleteOpen = 1, 			//This function is already turned on
+		VPFunctionCompleteClose = 2, 			//This function is already closed
+		VPFunctionCompleteFailure = 3, 		//Setting or reading failed
+		VPFunctionCompleteComplete = 4, 	//Setting completed, response to Data setting
+};
+```
+
+### Usage Examples
+
+```swift
+ @objc func baseFunctionOpenOrCloseRemindAction(sender: UISwitch)  {//Start setting the message reminder switch function
+        if VPBleCentralManage.sharedBleManager().isConnected == false {
+            print();
+            _ = AppDelegate.showHUD(message: "Device not connected, setup failed", hudModel: MBProgressHUDModeText, showView: view)
+            self.perform(#selector(settingBaseFunctionRemindFarilure(sender:)), with: sender, afterDelay: 0.5)
+            return
+        }
+         VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDKSettingBaseFunctionType(VPSettingBaseFunctionSwitchType(rawValue: sender.tag)!, settingState: VPSettingFunctionState(rawValue: sender.isOn ? 1 : 2)!) {[weak self] (settingFunctionCompleteState) in
+            if self == nil {
+                return
+            }
+            switch settingFunctionCompleteState {
+            case .functionCompleteUnknown:
+                _ = AppDelegate.showHUD(message: "No such feature", hudModel: MBProgressHUDModeText, showView: (self?.view)!)
+                fallthrough
+            case .functionCompleteFailure:
+                self?.perform(#selector(self?.settingBaseFunctionRemindFarilure(sender:)), with: sender, afterDelay: 0.5)
+                _ = AppDelegate.showHUD(message: "Setup failed", hudModel: MBProgressHUDModeText, showView: (self?.view)!)
+            case .functionCompleteOpen:
+                _ = AppDelegate.showHUD(message: "Setup successful，opened", hudModel: MBProgressHUDModeText, showView: (self?.view)!)
+            case .functionCompleteClose:
+                _ = AppDelegate.showHUD(message: "Setup successful，closed", hudModel: MBProgressHUDModeText, showView: (self?.view)!)
+            case .functionCompleteComplete:
+                _ = AppDelegate.showHUD(message: "Setup complete", hudModel: MBProgressHUDModeText, showView: (self?.view)!)
+            }
+        }
+    }
+```
+
+**Multi LedGrade Setting(Skin Color)**
+
+```swift
+// let support = VPPeripheralModel.skinType == 2
+// rawValue is [1, 6], 1为最靠近白色肤色，6为最靠近黑色肤色，5和6都是原来的黑人模式，1-4佩戴有不同的阈值
+let state = VPSettingFunctionState(rawValue: 6) ?? .settingFunctionOpen
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDKSettingBaseFunctionType(.ledGrade, settingState: state) { state in
+    print(state)
+}
+```
+
+
+
+# Step data acquisition
+
+This refers to the device's step count, distance and calories. The data returned by this interface is real-time, which is different from the number of steps in daily data. The number of steps in daily data is a summary every 5 minutes and has a lag. If the application layer needs to synchronously obtain the number of steps on the device side, it needs to call this interface at a fixed frequency to obtain data.
+
+### Prerequisites
+
+* The device is connected
+
+### Class Name
+
+`VPPeripheralBaseManage`
+
+How to get it：**VPBleCentralManage.sharedBleManager().peripheralManage**
+
+### Interface
+
+SDK persistence method:
+
+```objective-c
+// 
++ (void)veepooSDKGetStepDataWithDate:(NSString *)queryDate andTableID:(NSString *)tableID changeUserStature:(NSUInteger)userStature result:(void(^)(NSDictionary *stepDict))resultBlock;
+```
+
+Application layer self-persistence method:
+
+```objc
+// If it is the data of the day, the device is always generating data, and the application layer needs to control the timing of reading. Data other than the day is idempotent, and each read will produce the same result. The application layer can persist it by itself, and the persisted data can avoid repeated acquisition.
+// dayNumber represents which day 0 represents today, 1 represents yesterday, and 2 represents the day before yesterday. It cannot be greater than the value of the attribute saveDays in VPPeripheralModel
+- (void)veepooSDK_readStepDataWithDayNumber:(NSInteger)dayNumber result:(void(^)(NSDictionary *stepDict))readStepBlock;
+```
+
+### Parameter Explanation
+
+|  Parameter  | Parameter type |                           Remarks                            |
+| :---------: | :------------: | :----------------------------------------------------------: |
+|  queryDate  |    NSString    |     The date to be queried, in the format of yyyy-MM-dd      |
+|   tableID   |    NSString    | The ID of the query data. Pass the MAC address of the device to obtain the data |
+| userStature |   NSUInteger   | The user's height. This parameter is used to convert the number of steps into distance and calories. The height must be consistent with the personal information sent to the device. The default height of the device is 175 |
+| resultBlock |  NSDictionary  | The returned format uses the specific name as the key and the specific value as the value. The format is as follows |
+
+```objective-c
+{
+Step = 5000; //Total number of steps per day
+Dis = 80.00; //Converted distance unit is km
+Cal = 1600.0; //Converted calories unit is kcal (kilocalories)
+}
+```
+
+### Sample Code
+
+```swift
+/// Get the current step count data of the bracelet and synchronize it with the step count data displayed on the device
+    @objc func startRealTimeStep() {
+        if veepooBleManager.isConnected == false {
+            return
+        }
+        if stepTimer == nil {
+            stepTimer = Timer.scheduledTimer(timeInterval: 5.0, target: self, selector: #selector(self.startRealTimeStep), userInfo: nil, repeats: true)
+        }
+        unowned let weakSelf = self
+        VPDataBaseOperation .veepooSDKGetStepData(withDate: 0.getOneDayDateString(), andTableID: veepooBleManager.peripheralModel.deviceAddress, changeUserStature: veepooBleManager.peripheralModel.deviceStature) { (stepDict) in
+            
+            guard  let deviceStepDict = stepDict  else {
+                return
+            }
+            if deviceStepDict["Step"] != nil && deviceStepDict["Dis"] != nil && deviceStepDict["Cal"] != nil {
+                weakSelf.vpDeviceCurrentStepLabel.text = "Real-time step count:" + (deviceStepDict["Step"] as! String) + "  " + (deviceStepDict["Dis"] as! String) + "km  " + (deviceStepDict["Cal"] as! String) + "kcal  "
+            }
+        }
+    }
+```
+
+
+
+# Daily data reading function
+
+### Prerequisites
+
+* The device is connected
+
+### Class Name
+
+`VPPeripheralBaseManage`
+
+How to get it：**VPBleCentralManage.sharedBleManager().peripheralManage**
+
+### Interface
+
+Simple reading method, suitable for stand-alone version. After reading, data can be directly extracted from the SDK database.
+
+```objective-c
+- (void)veepooSdkStartReadDeviceAllDataWithReadStateChangeBlock:(void(^)(VPReadDeviceBaseDataState readState, NSUInteger totalDay, NSUInteger currentReadDayNumber, NSUInteger readCurrentDayProgress))readStateChangeBlock;
+```
+
+### Parameter Explanation
+
+|       Parameter        |      Parameter type       |                           Remarks                            |
+| :--------------------: | :-----------------------: | :----------------------------------------------------------: |
+|       readState        | VPReadDeviceBaseDataState | Read the state change of the basic data of the device. All enumeration values are as follows |
+|        totalDay        |        NSUInteger         |         The number of days the device has saved data         |
+|  currentReadDayNumber  |        NSUInteger         |       The subscript of the current number of days read       |
+| readCurrentDayProgress |        NSUInteger         |           The progress of reading the current day            |
+
+```objective-c
+typedef NS_ENUM(NSInteger, VPReadDeviceBaseDataState) {//Changes in the state of reading basic device data
+		VPReadDeviceBaseDataIdle = 0, 		// Status of not starting to read
+		VPReadDeviceBaseDataStart = 1, 		// Start reading data
+		VPReadDeviceBaseDataReading = 2,  // Reading
+		VPReadDeviceBaseDataComplete, 		// Reading is complete
+		VPReadDeviceBaseDataInvalid, 		  // Not available in SDK
+};
+```
+
+### Sample Code
+
+```swift
+//After the password is successfully verified, the bracelet data will be read (sleep, step count, heart rate, blood pressure, blood oxygen level, blood sugar, blood composition and other basic data)
+//When the body temperature type is 5, the reading is also triggered in this Interface
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSdkStartReadDeviceAllData {[weak self] (readDeviceBaseDataState, totalDay, currentReadDayNumber, readCurrentDayProgress) in
+    switch readDeviceBaseDataState {
+    case .start: //Start reading data
+        hud.show(true)
+        hud.labelText = "Start reading data"
+    case .reading://Reading data
+        let progressString: String = String(currentReadDayNumber) + "/" + String(totalDay) + "  " + String(readCurrentDayProgress) + "%"
+        hud.labelText = progressString
+    case .complete://Read data completed
+        hud.labelText = "Read data completed"
+        hud.hide(true, afterDelay: 1.0)
+        self?.readOxygenData()
+    default:
+        break
+    }
+}
+```
+
+
+
+# Heart rate function
+
+## Determine whether the device has a heart rate function
+
+### Prerequisites
+
+* The device is connected
+
+### Class Name
+
+`VPPeripheralModel`
+
+How to get it：**VPBleCentralManage.sharedBleManager().peripheralManage.peripheralModel**
+
+### Interface
+
+```objective-c
+@property (nonatomic, strong) NSData *deviceFuctionData;
+```
+
+### Sample Code
+
+```swift
+  if let data = model?.deviceFuctionData {
+
+      if data[18] != 1 {
+
+        result.append(.heartRate)
+
+  }
+```
+
+
+
+## Heart rate measurement
+
+### Prerequisites
+
+* The device is connected and supports this function
+* Perform the measurement after all daily data has been read, otherwise the device will report an error callback that the device is busy
+* Turn on or off the heart rate test. If an abnormal end state is found during the test, it means that the test has ended. The heart rate test is a dynamic test process. There will be multiple result callbacks during the test. After the user completes the test, he must actively call this method to end the test
+
+### Class Name
+
+`VPPeripheralBaseManage` 
+
+How to get it：**[VPBleCentralManage sharedBleManager].peripheralManage**
+
+### Interface
+
+```objective-c
+- (void)veepooSDKTestHeartStart:(BOOL)start testResult:(void(^)(VPTestHeartState testHeartState, NSUInteger heartValue))testHeartResultBlock;
+```
+
+### Parameter Explanation
+
+| Parameter            | Parameter type                                               | Remarks                                                      |
+| -------------------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| start                | BOOL                                                         | Turn on or off the heart rate test. If an abnormal end state is found during the test, it means that the test has ended. The heart rate test is a dynamic test process. There will be multiple result callbacks during the test. After the test is completed, the user should actively call this method to end the test. |
+| testHeartResultBlock | void(^)(VPTestHeartState testHeartState, NSUInteger heartValue) | VPTestHeartState: state changes during the heart rate test, heartValue: measured instantaneous heart rate value |
+
+```objective-c
+typedef NS_ENUM(NSInteger,VPTestHeartState) {//State changes during heart rate test
+		VPTestHeartStateStart = 0,			//Starting to test heart rate, no result yet
+		VPTestHeartStateTesting = 1,	  //Testing heart rate, heart rate value has been measured
+		VPTestHeartStateNotWear = 2,    //Wearing test failed, test has ended
+		VPTestHeartStateDeviceBusy = 3, //The device is busy and cannot be tested, test has ended
+		VPTestHeartStateOver = 4,			  //Test ended normally, ended manually
+};
+```
+
+
+
+## Get raw heart rate data
+
+### Prerequisites
+
+* The device is connected and supports this function
+* After calling daily data reading, get heart rate data from the SDK database
+
+### Class Name
+
+ `VPDataBaseOperation`
+
+### Interface
+
+```objective-c
++ (NSDictionary *)veepooSDKGetOriginalDataWithDate:(NSString *)queryDate andTableID:(NSString *)tableID;
+```
+
+Get the raw data of a certain day. Usually it is every 5 minutes or 10 minutes. If the interval is long, it means that the device has not read the data. The raw data is mainly used for data analysis and saved to its own server. It is generally not displayed to users.
+
+### Parameter Explanation
+
+| Parameter | Parameter type | Remarks                                                      |
+| --------- | -------------- | ------------------------------------------------------------ |
+| queryDate | NSString       | The date to be queried. The format is 2017-02-09             |
+| tableID   | NSString       | The ID of the query data. Pass the MAC address of the device to obtain the data |
+
+### Return data
+
+```objc
+{
+	"10:40" = {
+  diastolic = 0; // high pressure value
+  systolic = 0; // low pressure value
+  heartValue = 0; // heart rate value
+  sportValue = 17; // amount of exercise
+  stepValue = 0; // number of steps
+  calValue = 0; // calories
+  disValue = 0; // distance
+  ppgs = [array]; // when using, if there is heartValue, use heartValue, if not, use ecgs first, if there is neither heartValue nor ecgs, use ppgs, ppgs and ecgs are the heart rate arrays of this time period
+  ecgs = [array];
+  met = 0.9;// met
+ 	stress = 1;// stress
+ };
+	"10:45" = {
+	diastolic = 0;
+	systolic = 0;
+  heartValue = 0;
+  sportValue = 25;
+  stepValue = 0;
+  calValue = 0;
+  disValue = 0;
+  ppgs = [array];
+  ecgs = [array];
+  met = 0.9;// met
+ 	stress = 1;// stress
+ };
+}
+```
+
+
+
+## Get half-hour heart rate average data
+
+### Prerequisites
+
+* The device is connected and supports this function
+
+* After calling daily data reading, get heart rate data from the SDK database
+
+### Class Name
+
+`VPDataBaseOperation`
+
+### Interface
+
+> Get half-hour heart rate. Note that different devices measure heart rate automatically at different frequencies, with the highest frequency being once a minute. This Interface returns a dictionary array of all heart rate data processed into the average heart rate every half hour.
+
+```objective-c
++ (NSDictionary *)veepooSDKGetOriginalChangeHalfHourDataWithDate:(NSString *)queryDate andTableID:(NSString *)tableID;
+```
+
+
+
+### Parameter Explanation
+
+| Parameter | Parameter type | Remarks                                                      |
+| --------- | -------------- | ------------------------------------------------------------ |
+| queryDate | NSString       | The date to be queried. The format is 2017-02-09             |
+| tableID   | NSString       | The ID of the query data. Pass the MAC address of the device to obtain the data |
+
+### Return data
+
+> Special note: Heart rate average: 10:30 is the average value of 10:30-11:00 11:00 is the average value of 11:00-11:30, exercise volume and steps are the accumulation of all values within half an hour
+
+```objc
+{
+"10:30" = {
+heartValue = 0; // half-hour heart rate average value
+sportValue = 108; // half-hour exercise accumulation value
+stepValue = 0; // half-hour step accumulation value
+calValue = 0; // half-hour calorie accumulation value
+disValue = 0; // half-hour distance accumulation value
+};
+"11:00" = {
+heartValue = 0;
+sportValue = 33;
+stepValue = 0;
+calValue = 0; // half-hour calorie accumulation value
+disValue = 0; // half-hour distance accumulation value
+};
+}
+```
+
+### Usage Examples
+
+none
+
+
+
+## Setting the heart rate automatic monitoring switch
+
+### Prerequisites
+
+The device is connected and supports this function
+
+### Class Name
+
+`VPPeripheralBaseManage`
+
+How to get it：**VPBleCentralManage.sharedBleManager().peripheralManage**
+
+### Interface
+
+```objective-c
+- (void)veepooSDKSettingBaseFunctionType:(VPSettingBaseFunctionSwitchType)baseFunctionType settingState:(VPSettingFunctionState)settingState completeBlock:(void(^)(VPSettingFunctionCompleteState completeState))settingCompleteBlock;
+```
+
+### Parameter Explanation
+
+| Parameter            | Parameter type                                        | Remarks                                     |
+| -------------------- | ----------------------------------------------------- | ------------------------------------------- |
+| baseFunctionType     | VPSettingBaseFunctionSwitchType                       | Type of information to set and read         |
+| settingState         | VPSettingFunctionState                                | Set or read                                 |
+| settingCompleteBlock | void(^)(VPSettingFunctionCompleteState completeState) | Set the state after a function is completed |
+
+### Sample Code
+
+```swift
+ VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDKSettingBaseFunctionType(.automaticHRTest, settingState: .readFunctionState) { [weak self] state in
+        if state == .functionCompleteUnknown || state == .functionCompleteFailure {
+            monitorHeight = 0
+        } else {
+            self?.monitorSW.isOn = state == .functionCompleteOpen
+        }
+
+    }
+```
+
+
+
+## Set and read heart rate alarm data
+
+### Prerequisites
+
+The device is connected and supports this function
+
+### Class Name
+
+`VPPeripheralBaseManage`
+
+How to get it：**VPBleCentralManage.sharedBleManager().peripheralManage**
+
+### Interface
+
+```objective-c
+- (void)veepooSDKSettingDeviceHeartAlarmWithHeartAlarmModel:(VPDeviceHeartAlarmModel *)heartAlarmModel settingMode:(NSUInteger)settingMode successResult:(void(^)(VPDeviceHeartAlarmModel *heartAlarmModel))settingHeartAlarmResultBlock failureResult:(void(^)(void))settingHeartAlarmFailureBlock;
+```
+
+### Parameter Explanation
+
+| Parameter                     | Parameter type                                    | Remarks                                                      |
+| ----------------------------- | ------------------------------------------------- | ------------------------------------------------------------ |
+| heartAlarmModel               | VPDeviceHeartAlarmModel                           | Heart rate alarm model (ps: when settingMode is 2, pass VPDeviceHeartAlarmModel()) |
+| settingMode                   | NSUInteger                                        | Set the heart rate alarm mode. 0 means **off** 1 means **on** 2 means **read** device heart rate alarm information |
+| settingHeartAlarmResultBlock  | void(^)(VPDeviceHeartAlarmModel *heartAlarmModel) | Callback after successful reading and setting                |
+| settingHeartAlarmFailureBlock | void(^)(void)                                     | Callback after failed reading and setting                    |
+
+### Sample Code
+
+```swift
+    
+    // MARK: - Heart rate reminder
+    /// Read device heart rate reminder data
+    public func getHeartRate(successResult: @escaping ((VPDeviceHeartAlarmModel?) -> Void), failureResult: @escaping (() -> Void)) {
+        vpPeripheralManager.veepooSDKSettingDeviceHeartAlarm(with: VPDeviceHeartAlarmModel(), settingMode: 2, successResult: successResult, failureResult: failureResult)
+    }
+    
+    /// Set device heart rate reminder data
+    /// - Parameters:
+    ///   - model: Heart rate reminder model
+    public func setHearRate(model: VPDeviceHeartAlarmModel, successResult: @escaping ((VPDeviceHeartAlarmModel?) -> Void), failureResult: @escaping (() -> Void)) {
+        vpPeripheralManager.veepooSDKSettingDeviceHeartAlarm(with: model, settingMode: model.isOpen ? 1 : 0, successResult: successResult, failureResult: failureResult)
+    }
+    
+```
+
+
+
+# Body temperature function
+
+## Determine whether the device has a body temperature function
+
+### Prerequisites
+
+* The device is connected
+
+### Class Name
+
+`VPPeripheralModel`
+
+How to get it：**VPBleCentralManage.sharedBleManager().peripheralManage.peripheralModel**
+
+### Interface
+
+> Body temperature function 0: No 1: Body temperature but no automatic measurement 2/4/5: Body temperature and automatic measurement
+>
+> The automatic measurement data reading of body temperature type 5 has been integrated into the daily data reading, and there is no need to call a separate interface to trigger the reading.
+
+```objective-c
+@property (nonatomic, assign) NSUInteger temperatureType;
+```
+
+
+
+
+
+## Manual temperature measurement function
+
+### Prerequisites
+
+* The device is connected and supports this function
+
+### Class Name
+
+`VPPeripheralBaseManage`
+
+How to get it：**VPBleCentralManage.sharedBleManager().peripheralManage**
+
+### Interface
+
+```objective-c
+- (void)veepooSDK_temperatureTestStart:(BOOL)start result:(void (^)(VPTemperatureTestState state, BOOL enable, NSInteger progress, NSInteger tempValue, NSInteger originalTempValue))result;
+```
+
+### Parameter Explanation
+
+| Parameter | Parameter type                                               | Remarks             |
+| --------- | ------------------------------------------------------------ | ------------------- |
+| start     | Bool                                                         | YES start/ NO close |
+| result    | void (^)(VPTemperatureTestState state, BOOL enable, NSInteger progress, NSInteger tempValue, NSInteger originalTempValue) | Result callback     |
+
+### Parameter Explanation
+
+| Parameter         | Parameter Type         | Remarks                                                      |
+| ----------------- | ---------------------- | ------------------------------------------------------------ |
+| state             | VPTemperatureTestState | YES Enable / NO Disable                                      |
+| enable            | BOOL                   | Parameter indicates whether the device is busy               |
+| progress          | NSInteger              | Indicates the measurement progress (0~100)                   |
+| tempValue         | NSInteger              | Indicates 10 times the body temperature value (in degrees Celsius) |
+| originalTempValue | NSInteger              | Indicates 10 times the original temperature value (in degrees Celsius), corresponding to the body surface temperature in the H Band |
+
+```objective-c
+//Body temperature manual test/automatic monitoring switch status
+typedef NS_ENUM(NSUInteger, VPTemperatureTestState) {
+		VPTemperatureTestStateUnsupported, //Body temperature monitoring function is not supported
+		VPTemperatureTestStateOpen, //Body temperature monitoring is turned on
+		VPTemperatureTestStateClose, //Body temperature monitoring is turned off
+};
+```
+
+
+
+## Read device temperature data
+
+### Prerequisites
+
+* After reading the data, store it in the database and get the data directly from the database
+* Note⚠️ Do not read concurrently with hrv/blood oxygen/daily data, etc.
+* When the temperature type (temperatureType) is 5, this interface is not supported
+
+### Class Name
+
+`VPPeripheralBaseManage`
+
+How to get it：**VPBleCentralManage.sharedBleManager().peripheralManage**
+
+### Interface
+
+```objective-c
+- (void)veepooSdkStartReadDeviceTemperatureData:(void(^)(VPReadDeviceBaseDataState readState, NSUInteger totalDay, NSUInteger currentReadDayNumber, NSUInteger readCurrentDayProgress))readStateChangeBlock{}
+```
+
+### Parameter Explanation
+
+| Parameter              | Parameter type            | Remarks                                           |
+| ---------------------- | ------------------------- | ------------------------------------------------- |
+| readState              | VPReadDeviceBaseDataState | Enumeration definition as follows                 |
+| totalDay               | NSUInteger                | Number of days the device stores body temperature |
+| currentReadDayNumber   | NSUInteger                | Number of days currently read                     |
+| readCurrentDayProgress | NSUInteger                | Read progress for the day (0~100)                 |
+
+```objective-c
+typedef NS_ENUM(NSInteger, VPReadDeviceBaseDataState) {//Changes in the state of reading basic device data
+		VPReadDeviceBaseDataIdle = 0, 		// Status of not starting to read
+		VPReadDeviceBaseDataStart = 1, 		// Start reading data
+		VPReadDeviceBaseDataReading = 2,  // Reading
+		VPReadDeviceBaseDataComplete, 		// Reading is complete
+		VPReadDeviceBaseDataInvalid,		  // Not available in SDK
+};
+```
+
+
+
+## Get the device's automatic temperature measurement data for a certain day
+
+### Prerequisites
+
+* The device is connected and supports the temperature function
+
+* After the temperature reading data is completed, it is stored in the database, and the data is directly taken from the database
+
+### Class Name
+
+`VPDataBaseOperation`
+
+### Interface
+
+```objective-c
++ (NSArray *)veepooSDKGetDeviceTemperatureDataWithDate:(NSString *)queryDate andTableID:(NSString *)tableID;
+```
+
+### Parameter Explanation
+
+| Parameter | Parameter type | Remarks                                                      |
+| --------- | -------------- | ------------------------------------------------------------ |
+| queryDate | NSString       | The date format to be queried is 2021-06-07                  |
+| tableID   | NSString       | The mac address of the device, which device's data to obtain |
+
+### Return data
+
+```objective-c
+/* Get the array of automatic temperature measurement data for one day. The array contains dictionaries every 5 minutes. The format is as follows
+NSDictionary *dataDic = {
+VPDeviceTemperatrueDataMonthKey: month, month
+VPDeviceTemperatrueDataDayKey: day, day
+VPDeviceTemperatrueDataHourKey: hour, hour
+VPDeviceTemperatrueDataMinuteKey: minute, minute
+VPDeviceTemperatrueDataValueKey: value, temperature value (Celsius)
+VPDeviceTemperatrueDataOriginalValueKey: riginalValue, skin temperature value (Celsius)
+}
+*/
+```
+
+
+
+## Temperature unit switching
+
+### Prerequisites
+
+* The device is connected and supports this function
+
+### Class Name
+
+`VPPeripheralBaseManage`
+
+How to get it：**VPBleCentralManage.sharedBleManager().peripheralManage**
+
+### Interface
+
+```objective-c
+- (void)veepooSDKSettingBaseFunctionType:(VPSettingBaseFunctionSwitchType)baseFunctionType settingState:(VPSettingFunctionState)settingState completeBlock:(void(^)(VPSettingFunctionCompleteState completeState))settingCompleteBlock;
+```
+
+### Parameter Explanation
+
+| Parameter            | Parameter type                                        | Remarks                                                      |
+| -------------------- | ----------------------------------------------------- | ------------------------------------------------------------ |
+| baseFunctionType     | VPSettingBaseFunctionSwitchType                       | Function type, pass in this enumeration value VPSettingTemperatureUnit |
+| settingState         | VPSettingFunctionState                                | Set or read a function, all enumeration values are as follows |
+| settingCompleteBlock | void(^)(VPSettingFunctionCompleteState completeState) | The state enumeration values in the callback are as follows  |
+
+```objective-c
+typedef NS_ENUM(NSInteger, VPSettingFunctionState) {//Set to get a function to read
+		VPReadFunctionState = 0, 			//Read the switch and existence of a function
+		VPSettingFunctionOpen = 1, 		//Open a function
+		VPSettingFunctionClose = 2, 	//Close a function
+		VPSettingFunctionCancel = 3, 	//Only dynamic blood pressure calibration is valid now
+		VPSettingFunction = 4, 				//Set a function
+};
+
+typedef NS_ENUM(NSInteger, VPSettingFunctionCompleteState) {//Set the state after a function is completed
+		VPFunctionCompleteUnknown = 0, 		//The device does not have this function
+		VPFunctionCompleteOpen = 1, 		  //This function has been turned on
+		VPFunctionCompleteClose = 2, 			//This function has been turned off
+		VPFunctionCompleteFailure = 3, 		//Setting or reading failed
+		VPFunctionCompleteComplete = 4, 	//Setting completed, reply to Data setting
+};
+```
+
+
+
+## Automatic temperature monitoring switch
+
+### Prerequisites
+
+* The device is connected and supports this function
+
+### Class Name
+
+`VPPeripheralBaseManage`
+
+How to get it：**VPBleCentralManage.sharedBleManager().peripheralManage**
+
+### Interface
+
+```objective-c
+- (void)veepooSDKSettingBaseFunctionType:(VPSettingBaseFunctionSwitchType)baseFunctionType settingState:(VPSettingFunctionState)settingState completeBlock:(void(^)(VPSettingFunctionCompleteState completeState))settingCompleteBlock;
+```
+
+### Parameter Explanation
+
+| Parameter            | Parameter type                                        | Remarks                                                      |
+| -------------------- | ----------------------------------------------------- | ------------------------------------------------------------ |
+| baseFunctionType     | VPSettingBaseFunctionSwitchType                       | Function type, pass in this enumeration value VPSettingAutomaticTemperatureTest |
+| settingState         | VPSettingFunctionState                                | Set to get a function to read, all enumeration values are as follows |
+| settingCompleteBlock | void(^)(VPSettingFunctionCompleteState completeState) | The state enumeration values in the callback are as follows  |
+
+```objective-c
+typedef NS_ENUM(NSInteger, VPSettingFunctionState) {//Set to get a function to read
+		VPReadFunctionState = 0, 			//Read the switch and existence of a function
+		VPSettingFunctionOpen = 1, 		//Open a function
+		VPSettingFunctionClose = 2, 	//Close a function
+		VPSettingFunctionCancel = 3, 	//Only dynamic blood pressure calibration is valid now
+		VPSettingFunction = 4, 				//Set a function
+};
+
+typedef NS_ENUM(NSInteger, VPSettingFunctionCompleteState) {//Set the state after a function is completed
+		VPFunctionCompleteUnknown = 0, 		//The device does not have this function
+		VPFunctionCompleteOpen = 1, 			//This function has been turned on
+		VPFunctionCompleteClose = 2, 			//This function has been turned off
+		VPFunctionCompleteFailure = 3, 		//Setting or reading failed
+		VPFunctionCompleteComplete = 4, 	//Setting completed, reply to Data setting
+};
+```
+
+
+
+
+
+# ECG function
+
+## Determine whether the device supports ECG
+
+### Prerequisites
+
+* The device is connected
+
+### Class Name
+
+`VPPeripheralModel`
+
+How to get it：**VPBleCentralManage.sharedBleManager().peripheralManage.peripheralModel**
+
+### Interface
+
+`0`: This function is not available in the generation
+
+`1`: This represents the **E** series
+
+`2`: This represents the **G** series
+
+```objective-c
+@property (nonatomic, assign) NSInteger ecgType;
+```
+
+
+
+## ECG PTT (Chest Mode) Function
+
+### PTT Status Change Monitoring
+
+#### Prerequisites
+
+* The device is connected and supports this function
+
+#### Class Name
+
+`VPPeripheralBaseManage`
+
+How to get it：**VPBleCentralManage.sharedBleManager().peripheralManage**
+
+#### Interface
+
+```objective-c
+- (void)veepooSDKAddPTTStateListener:(void(^)(NSInteger pttState))pttListener;
+```
+
+#### Parameter Explanation
+
+| Parameter | Parameter Type | Notes                                                        |
+| --------- | -------------- | ------------------------------------------------------------ |
+| pttState  | NSInteger      | 0 means the device is not in PTT mode, 1 means the device is in PTT mode |
+
+#### Sample Code
+
+```swift
+ //Whether the monitoring device is in PTT mode
+  VPBleCentralManage.sharedBleManager()?
+      .peripheralManage.veepooSDKAddPTTStateListener({[weak self] (state) in
+      self?.pttStateLabel.text = state == 1 ? "The device has entered PTT mode" : "The device is not in PTT mode"
+  })
+```
+
+
+
+### PTT data monitoring
+
+#### Prerequisites
+
+* The device is connected and supports this function
+
+#### Class Name
+
+`VPPeripheralBaseManage`
+
+How to get it：**VPBleCentralManage.sharedBleManager().peripheralManage**
+
+#### Interface
+
+```objective-c
+- (void)veepooSDKPTTTest:(BOOL)start valueBlock:(void(^)(VPPttValueModel *valueModel))valueBlock signalBlock:(void(^)(NSArray <NSNumber *>*signals))signalBlock;
+```
+
+#### Parameter Explanation
+
+| Parameter | Parameter type | Remarks                |
+| --------- | -------------- | ---------------------- |
+| start     | BOOL           | Start or stop PTT test |
+
+#### Return data
+
+| Parameter  | Parameter type  | Remarks            |
+| ---------- | --------------- | ------------------ |
+| valueModel | VPPttValueModel | PPT data           |
+| signals    | <NSNumber *>    | PPT signal changes |
+
+#### Sample Code
+
+```swift
+VPBleCentralManage.sharedBleManager()?
+    .peripheralManage.veepooSDKPTTTest(sender.isSelected, valueBlock: {[weak self] (valueModel) in
+        self?.handleValue(valueModel)
+    }, signal: {[weak self] (signals) in
+        self?.handleSignals(signals)
+    })
+
+ func handleValue(_ model: VPPttValueModel?) {
+        switch model!.testState {
+        case .normal:
+            valueLabel.text = "Heart rate:\(model!.heart)    HRV:\(model!.hrv)    QT:\(model!.qt)"
+        case .busy:
+            valueLabel.text = "The device is processing other things"
+        case .leadFail:
+            valueLabel.text = "Device leads fall off"
+        default:
+            valueLabel.text = ""
+        }
+    }
+    
+    func handleSignals(_ signals: [NSNumber]?) {
+        guard let deviceSignals = signals else {
+            return;
+        }
+        signalLabel.text = ""
+        for signal in deviceSignals {
+            signalLabel.text = (signalLabel.text)! + "    " +  "\(signal)"
+        }
+    }
+```
+
+
+
+
+
+## ECG measurement
+
+### Prerequisites
+
+* The device is connected and supports this function
+
+### Class Name
+
+`VPPeripheralBaseManage`
+
+How to get it：**VPBleCentralManage.sharedBleManager().peripheralManage**
+
+### Interface
+
+Enable or disable ECG test. If an abnormal end state is found during the test, it means that the test has ended. ECG test is a dynamic test process. There will be multiple result callbacks during the test. After the test is completed, the user should actively call this method to end the test.
+
+```objective-c
+- (void)veepooSDKTestECGStart:(BOOL)start testResult:(void(^)(VPTestECGState testECGState, NSUInteger testProgress, VPECGTestDataModel *testModel))testECGResultBlock;
+```
+
+### Parameter Explanation
+
+| Parameter            | Parameter type                                               | Remarks                                                      |
+| -------------------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| start                | Bool                                                         | Turn ECG test on or off                                      |
+| testECGResultBlock   | VPSettingFunctionState                                       | Set to get a function to read, all enumeration values are as follows |
+| settingCompleteBlock | void(^)(VPTestECGState testECGState, NSUInteger testProgress, VPECGTestDataModel *testModel) | Parameter Explanation in callback is as follows              |
+
+### Parameter Explanation
+
+| Parameter    | Parameter type     | Remarks                                                      |
+| ------------ | ------------------ | ------------------------------------------------------------ |
+| testECGState | VPTestECGState     | State changes during the test, enumeration values are as follows |
+| testProgress | NSUInteger         | Test progress (0-100)                                        |
+| testModel    | VPECGTestDataModel | Data returned during the test, note that the full amount of data is returned |
+
+```objective-c
+typedef NS_ENUM(NSInteger,VPTestECGState) {//State changes during ECG test
+		VPTestECGStateStart = 0,			//Start testing ECG, no results yet
+		VPTestECGStateTesting = 1,		//Testing ECG, heart rate value has been measured
+		VPTestECGStateNotLead = 2,		//Lead off
+		VPTestECGStateDeviceBusy = 3,	//The device is busy and cannot be tested, the test has ended
+		VPTestECGStateOver = 4,				//Test ended normally, ended manually
+		VPTestECGStateFailure,				//Test failed
+		VPTestECGStateComplete,				//Test completed
+		VPTestECGStateNoFunction,			//The device does not have this function
+};
+```
+
+## ECG device-side offline storage data acquisition
+
+Device-side offline storage data reading is interspersed with daily data reading Interface
+
+In the connected state, the SDK has an Interface for monitoring the completion of device offline measurements. You can subscribe to this Interface and trigger the daily data reading Interface while triggering the callback
+
+### Prerequisites
+
+The device supports ECG offline storage function
+
+### Class Name
+
+`VPDataBaseOperation` && `VPPeripheralBaseManage`
+
+### Interface
+
+```objective-c
+/// Get ECG data stored offline on all devices on a certain day
+/// @param queryDate The date format to be queried is 2021-06-07
+/// @param tableID The mac address of the device, which device's data is to be obtained
++ (NSArray<VPECGTestDataModel *> *)veepooSDKGetDeviceOffStoreECGWithDate:(NSString *)queryDate andTableID:(NSString *)tableID;
+```
+
+Device measurement offline storage completion callback interface
+
+```objective-c
+/// The device side measures the offline storage ECG function and completes the callback
+@property (nonatomic, copy) void(^deviceTestOffStoreECGDidFinishBlock)(void);
+```
+
+### Parameter Explanation
+
+none
+
+### Sample Code
+
+```swift
+private func subscribe() {
+        // Subscribe to the device-side ECG offline measurement completion event
+        VPBleCentralManage.sharedBleManager().peripheralManage.deviceTestOffStoreECGDidFinishBlock = {[weak self] in
+            // Here we can call to read all daily data
+            self?.reReadAllData()
+        }
+    }
+    
+private func reReadAllData() {
+        VPBleCentralManage.sharedBleManager().peripheralManage.veepooSdkStartReadDeviceAllData {
+            [weak self] (readDeviceBaseDataState, totalDay, currentReadDayNumber, readCurrentDayProgress) in
+            if readDeviceBaseDataState == .complete {
+                print("Read Success")
+            }
+        }
+    }
+```
+
+
+
+# HRV function
+
+## Determine whether the device has HRV function
+
+### Prerequisites
+
+* The device is connected
+
+### Class Name
+
+`VPPeripheralModel`
+
+How to get it：**VPBleCentralManage.sharedBleManager().peripheralManage.peripheralModel**
+
+### Interface
+
+> Non-zero means HRV function is enabled
+
+```objective-c
+@property (nonatomic, assign) NSInteger hrvType;
+```
+
+
+
+## Get HRV data for a certain day
+
+### Prerequisites
+
+* The device has HRV function
+
+### Class Name
+
+`VPDataBaseOperation`
+
+### Interface
+
+ ```objective-c
+ + (NSArray *)veepooSDKGetDeviceHrvDataWithDate:(NSString *)queryDate andTableID:(NSString *)tableID;
+ ```
+
+### Parameter Explanation
+
+| Parameter | Parameter type | Remarks                                                      |
+| --------- | -------------- | ------------------------------------------------------------ |
+| queryDate | NSString       | The date to be queried. The format is 2017-02-09             |
+| tableID   | NSString       | The ID of the query data. Pass the MAC address of the device to obtain the data |
+
+### Return data
+
+```objective-c
+// Get an array of hrv data for one day. The array contains a dictionary for each minute in the following format
+NSDictionary *riginalDic = @{
+	VPHRVTimeKey:hrvTime, time
+	VPHRVValueKey:hrvValue, hrv value
+	VPHRVTempKey:hrvTemp1, reserved parameters
+	VPHRVHeartsKey:@[This is a string array representing all rr interval values within one minute. Each number multiplied by 10 represents a rr interval value. The Lorenz scatter plot is drawn based on this. All the rr interval values of the minutes should be combined together]
+};
+```
+
+### Sample Code
+
+```swift
+public func getHRVDataFromDB(date: Date) -> [[String : Any]] {
+        guard record.deviceAddress.isNotEmpty else {
+            return []
+        }
+        
+        guard let dicArray = VPDataBaseOperation.veepooSDKGetDeviceHrvData(withDate: date.hf.toString(formatter: .yyyy_MM_dd_v), andTableID: record.deviceAddress) as? [[String : Any]] else {
+            return []
+        }
+        return dicArray
+    }
+```
+
+
+
+
+
+# Sleep function
+
+## Determine the type of sleep function supported by the device
+
+### Prerequisites
+
+* The device is connected
+
+### Class Name
+
+`VPPeripheralModel`
+
+How to get it：**VPBleCentralManage.sharedBleManager().peripheralManage.peripheralModel**
+
+### Interface
+
+`0` represents normal sleep
+
+`1、3` represents precise sleep
+
+```objective-c
+@property (nonatomic, assign) NSInteger sleepType;
+```
+
+
+
+## Get normal sleep data for a certain day
+
+### Prerequisites
+
+* The device supports normal
+* sleep function
+
+### Class Name
+
+`VPDataBaseOperation`
+
+### Interface
+
+Get the sleep data of a certain day. There may be multiple sleep periods in a day, such as sleeping at night and sleeping during the day. And each sleep period may have multiple awakenings at night.
+
+```objective-c
++ (NSArray *)veepooSDKGetSleepDataWithDate:(NSString *)queryDate andTableID:(NSString *)tableID;
+```
+
+### Parameter Explanation
+
+| Parameter | Parameter type | Remarks                                                      |
+| --------- | -------------- | ------------------------------------------------------------ |
+| queryDate | NSString       | The date to be queried. The format is 2017-02-09             |
+| tableID   | NSString       | The ID of the query data. Pass the MAC address of the device to obtain the data |
+
+### Return data
+
+```objective-c
+(
+{
+"DEEP_HOUR" = "2.833"; //Deep sleep time, unit hours
+HeartBasic = 1; //Temporarily unused
+"LIGHT_HOUR" = "3.667"; //Light sleep time, unit hours
+"SLEEP_LEVEL" = 3; //Sleep level interval 1-5 levels: poor, average, good, very good, perfect, you can also customize the language
+"SLEEP_TIME" = "2017/02/09 01:15"; //Sleep start time
+"SLE_HOUR" = 6; //Total sleep hours, unit hours
+"SLE_MINUTE" = 30; //Total sleep minutes, unit minutes SLE_HOUR + SLE_MINUTE or DEEP_HOUR + LIGHT_HOUR is the total sleep time or use WAKE_TIME - SLEEP_TIME to choose which one to use to calculate the total sleep time
+"SLE_LINE" = 010000011111111011111111000001110020000001100200000000000001111111111100001100; //Deep and shallow sleep curve, 0 represents light sleep, 1 represents deep sleep, 2 represents waking up at night. Each value represents 5 minutes of sleep time. For example, the first 0 is the first 5 minutes of sleep, the second 1 is the first 5-10 minutes of sleep, the third 0 is 10-15 minutes of sleep, and so on. Customize the deep and shallow sleep curve or graph based on this string
+"WAKE_TIME" = "2017/02/09 03:45"; //Sleep end time
+WakeUpTime = 0; //Number of wake-ups in each sleep period
+}
+{
+"DEEP_HOUR" = "2.833";
+HeartBasic = 1;
+"LIGHT_HOUR" = "3.667"; "SLEEP_LEVEL" = 3; "SLEEP_TIME" = "2017/02/09 04:15"; "SLE_HOUR" = 6; "SLE_MINUTE" = 30; "SLE_LINE" = 000000011111110111111110000011100 00000001100000000000000001111111111100001100; "WAKE_TIME" = "2017/02/09 07:45"; WakeUpTime = 0; } )
+```
+
+
+
+
+
+## Get accurate sleep data for a certain day
+
+### Prerequisites
+
+* The device supports the accurate sleep function
+
+### Class Name
+
+`VPDataBaseOperation`
+
+### Interface
+
+Get the sleep data of a certain day. There may be multiple sleep periods in a day, such as sleeping at night and sleeping during the day. And each sleep period may have multiple awakenings at night.
+
+```
++ (NSArray <VPAccurateSleepModel *>*)veepooSDKGetAccurateSleepDataWithDate:(NSString *)queryDate andTableID:(NSString *)tableID
+```
+
+### Parameter Explanation
+
+| Parameter | Parameter type | Remarks                                                      |
+| --------- | -------------- | ------------------------------------------------------------ |
+| queryDate | NSString       | The date to be queried. The format is 2017-02-09             |
+| tableID   | NSString       | The ID of the query data. Pass the MAC address of the device to obtain the data |
+
+### Return data
+
+```objective-c
+@interface VPAccurateSleepModel : NSObject
+//Type of sleep, upload A7 command sleep flag (sleep type, upload A7 command sleep flag)
+@property (nonatomic, strong) NSString *sleepType;
+//Sleep time sleep time
+@property (nonatomic, strong) NSString *sleepTime;
+//Wake up time wake up time
+@property (nonatomic, strong) NSString *wakeTime;
+//Sleep sign sleep sign
+@property (nonatomic, strong) NSString *sleepTag;
+//get up score wake up score
+@property (nonatomic, strong) NSString *getUpScore;
+//Deep sleep score deep sleep score
+@property (nonatomic, strong) NSString *deepScore;
+//Sleep efficiency score, efficiency score from night to deep sleep Sleeping efficiency score, efficiency score from getting up at night to deep sleep
+@property (nonatomic, strong) NSString *sleepEfficiencyScore;
+//Sleeping efficiency score, from the start of sleep to the first time into the deep sleep Sleeping efficiency score, from the start of sleep to the first time into the deep sleep efficiency
+@property (nonatomic, strong) NSString *fallAsleepScore;
+
+//Sleep duration score
+@property (nonatomic, strong) NSString *sleepTimeScore;
+//Exit sleep mode
+@property (nonatomic, strong) NSString *exitSleepMode;
+//Sleep quality 0 to 4, representing 1 to 5 stars respectively
+@property (nonatomic, strong) NSString *sleepQuality;
+//Number of getting up at night
+@property (nonatomic, strong) NSString *getUpTimes;
+//Deep and light sleep mode
+@property (nonatomic, strong) NSString *deepAndLightMode;
+//Total sleep time, in minutes
+@property (nonatomic, strong) NSString *sleepDuration;
+//Deep sleep time, in minutes
+@property (nonatomic, strong) NSString *deepDuration;
+//Light sleep time, in minutes
+@property (nonatomic, strong) NSString *lightDuration;
+//Time to wake up at night, in minutes, wake-up time
+@property (nonatomic, strong) NSString *getUpDuration;
+//Other sleep time, in minutes, REM period
+@property (nonatomic, strong) NSString *otherDuration;
+//Time to enter deep sleep for the first time, sleep efficiency
+@property (nonatomic, strong) NSString *firstDeepDuration;
+//Average value of time from waking up at night to deep sleep, sleep efficiency
+@property (nonatomic, strong) NSString *getUpToDeepAve;
+//Time represented by a point on the curve, in seconds, now 60s
+@property (nonatomic, strong) NSString *onePointDuration;
+//Accurate sleep type, 1 is accurate sleep, 0 is normal sleep
+@property (nonatomic, strong) NSString *accurateType;
+//Insomnia flag
+@property (nonatomic, strong) NSString *insomniaTag;
+//Insomnia score
+@property (nonatomic, strong) NSString *insomniaScore;
+//Number of insomnias
+@property (nonatomic, strong) NSString *insomniaTimes;
+//beginTime start time, how many minutes to start sleeping, endTime end time, how many minutes to start sleeping
+@property (nonatomic, strong) NSArray *insomniaRecord;
+//Sleep curve, hexadecimal string, converted into data stream when parsed by the client, each two bytes represent a point (one minute), the high bit is in front, the low bit is in the back, the high 3 bits represent the state of sleep, deep sleep (0), light sleep (1), rapid eye movement (2), insomnia (3), awake (4) For example, for the number 0x1000, take the high 3 bits 0x1000>>13, the value obtained depends on which one is between 0 and 4.
+@property (nonatomic, strong) NSString *sleepLine;
+
+//Insomnia duration converted according to the curve
+@property (nonatomic, strong) NSString *insomniaDuration;
+
+//These two fields, if lastType == 1, it means to be spliced with the previous sleep segment, if nextType==1, it means to be spliced with the next sleep segment, after splicing, except for falling asleep and waking up, which need to be modified, and the curve needs to be spliced, the rest use the last segment
+@property (nonatomic, strong) NSString *lastType;
+@property (nonatomic, strong) NSString *nextType;
+@property (nonatomic, strong) NSString *mac;
+@end
+```
+
+Sleep curve analysis method:
+
+`VPAccurateSleepModel`
+
+```objective-c
+/*
+sleepLine sleep curve analysis method, processed into a dictionary object, the data structure is
+@{
+		@"index": 0, //NSNumber type index, corresponding to the number of minutes of data
+		@"type": 0 //NSNumber type current index of sleep state, deep sleep (0), light sleep (1), rapid eye movement (2), insomnia (3), awake (4)
+}
+Note: KH series does not have [rapid eye movement (2), insomnia (3)] two states
+*/
+- (NSArray<NSDictionary *> *)parseSleepLine;
+```
+
+
+
+# Watch face function
+
+## Get the number of watch faces of various types on the device
+
+### Prerequisites
+
+* The device is connected
+
+### Class Name
+
+`VPPeripheralModel`
+
+How to get it：**VPBleCentralManage.sharedBleManager().peripheralManage.peripheralModel**
+
+### Interface
+
+```objective-c
+//Number of normal dials
+@property (nonatomic, assign) NSUInteger dialCount;
+
+//Number of market dials
+@property (nonatomic, assign) NSUInteger marketDialCount;
+
+//Number of photo dials
+@property (nonatomic, assign) NSUInteger photoDialCount;
+```
+
+>A value of 0 means that this function is not supported.
+>
+>For example, marketDialCount = 0. This means that the device does not have the dial market function.
+
+
+
+
+
+## Watch face settings and interface reading
+
+### Prerequisites
+
+* The device is connected
+* The device is not in the state of synchronizing daily data
+* If the main control is on the JL (Jieli) platform, refer to the "Veepoo_iOS_2.2.XX集成文档.png" to import the libraries required by the manufacturer
+* ⚠️ Note that if it is the Zhongke platform, the ABParTool.framework needs to be imported
+
+### Class Name
+
+`VPPeripheralBaseManage`
+
+How to get it：**VPBleCentralManage.sharedBleManager().peripheralManage**
+
+### Interface
+
+```objective-c
+- (void)veepooSDK_dialChannelWithChannelModel:(VPDialChannelModel)model
+                                     dialType:(VPDeviceDialType)dialType
+                               photoDialModel:(VPPhotoDialModel *)photoDialModel
+                                       result:(void (^)(VPPhotoDialModel *photoDialModel, VPDeviceMarketDialModel *deviceMarketDialModel, NSError *error))result
+                            transformProgress:(void (^)(double progress))transformProgress;
+```
+
+
+
+### Parameter Explanation
+
+| Parameter         | Parameter type                                               | Remarks                                                      |
+| ----------------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| model             | VPDialChannelModel                                           | Mode, enumeration definition as follows                      |
+| dialType          | VPDeviceDialType                                             | Dial type, enumeration definition as follows                 |
+| photoDialModel    | VPPhotoDialModel                                             | Photo dial model. Only required in VPDialChannelModelSetupPhotoDial mode |
+| result            | void (^)(VPPhotoDialModel *photoDialModel, VPDeviceMarketDialModel *deviceMarketDialModel, NSError *error) | Callback function, invalid in VPDialChannelModelSetupPhotoDial mode. Different modes use different models |
+| transformProgress | void (^)(double progress)                                    | Transmission progress callback function, only valid in VPDialChannelModelSetupPhotoDial |
+
+```objective-c
+typedef NS_ENUM(NSUInteger, VPDialChannelModel) {
+		VPDialChannelModelSetup = 1,			  // Setting mode for internal use
+		VPDialChannelModelRead, 						// Reading mode
+		VPDialChannelModelSetupPhotoDial,   // Photo dial setting element mode
+};
+
+typedef NS_ENUM(NSUInteger, VPDeviceDialType) {
+		VPDeviceDialTypeDefault = 0, // Default burn-in dial
+		VPDeviceDialTypeMarket,      // Market dial
+		VPDeviceDialTypePhoto,       // Photo dial
+};
+```
+
+### Parameter Explanation
+
+| Parameter             | Parameter type          | Remarks                     |
+| --------------------- | ----------------------- | --------------------------- |
+| photoDialModel        | VPPhotoDialModel        | Device photo dial data      |
+| deviceMarketDialModel | VPDeviceMarketDialModel | Device market dial data     |
+| progress              | double                  | Photo dial setting progress |
+| error                 | NSError                 | Failure result callback     |
+
+### Sample Code
+
+```swift
+  @IBAction func readPhotoDialDetailInfo(_ sender: UIButton) {
+        VPBleCentralManage.sharedBleManager()?.peripheralManage.veepooSDK_dialChannel(with: .read, dialType: .photo, photoDialModel: nil, result: { [weak self](photoDialModel, deviceMarketDialModel, error) in
+            self?.photoDialModel = photoDialModel! as VPPhotoDialModel
+        }, transformProgress: nil);
+    }
+```
+
+
+
+
+
+## Get the market dial in the Veepoo server
+
+### Prerequisites
+
+* Need to get the device market dial data VPDeviceMarketDialModel in advance
+* If the main control is on the JL (Jieli) platform, refer to the "Veepoo_iOS_2.2.XX集成文档.png" to import the libraries required by the manufacturer
+* ⚠️ Note that if it is the Zhongke platform, the ABParTool.framework needs to be imported
+
+### Class Name
+
+`VPMarketDialManager`
+
+### Interface
+
+```objective-c
+- (void)getVeepooServerAllMarketDialsWithDeviceInfo:(VPDeviceMarketDialModel *)model
+                                            success:(void(^)(NSArray<VPServerMarketDialModel *> * _Nullable response))success
+                                            failure:(void(^)(NSError * _Nullable error, NSInteger errorcode))fairlure
+```
+
+### Parameter Explanation
+
+| Parameter | Parameter type                                               | Remarks                 |
+| --------- | ------------------------------------------------------------ | ----------------------- |
+| model     | VPDeviceMarketDialModel                                      | Device market dial data |
+| success   | void(^)(NSArray<VPServerMarketDialModel *> * _Nullable response) | Success callback        |
+| fairlure  | void(^)(NSError * _Nullable error, NSInteger errorcode)      | Failure callback        |
+
+### Sample Code
+
+```swift
+VPMarketDialManager.share().marketDialManager.getVeepooServerAllMarketDials(withDeviceInfo: deviceMarketDialModel) { [weak self](marketDialArray) in
+    guard  let marketDialArray = marketDialArray  else {
+        return
+    }
+    self?.marketDialArray = marketDialArray
+    if marketDialArray.count > 0 {
+        var str = ""
+        for item in marketDialArray {
+            str = str.appending("\(item.fileUrl) \n")
+        }
+        self?.textView.text = str
+    }
+} failure: { (error, code) in      
+```
+
+
+
+## Download the bin file of the market dial
+
+### Prerequisites
+
+* You need to obtain the specified `market dial model` and `market dial information read from the device` in advance
+
+### Class Name
+
+`VPMarketDialManager`
+
+### Interface
+
+```objective-c
+- (void)downloadMarketDialBinFileWithModel:(VPServerMarketDialModel *)model
+                     deviceMarketDialModel:(VPDeviceMarketDialModel *)deviceMarketDialModel
+                                   success:(void(^)(NSURL * _Nullable filePath))success
+                                   failure:(void(^)(NSError * _Nullable error, NSInteger errorcode))fairlure;
+```
+
+
+
+### Parameter Explanation
+
+| Parameter             | Parameter type                                          | Remarks                                                      |
+| --------------------- | ------------------------------------------------------- | ------------------------------------------------------------ |
+| model                 | VPServerMarketDialModel                                 | Specified market dial model                                  |
+| deviceMarketDialModel | VPDeviceMarketDialModel                                 | The information read from the device is used for verification |
+| success               | void(^)(NSURL * _Nullable filePath)                     | Success callback, returns filePath                           |
+| fairlure              | void(^)(NSError * _Nullable error, NSInteger errorcode) | Failure callback                                             |
+
+### Sample Code
+
+```swift
+ VPMarketDialManager.share().downloadMarketDialBinFile(with: marketDialArray.first!, deviceMarketDialModel: deviceMarketDialModel) { [weak self](filePath) in
+            self?.filePath = filePath!
+            print("Download successful!")
+        } failure: { (error, code) in
+            
+      }
+```
+
+
+
+
+
+## Start transferring the bin file of the market dial to the device
+
+### Prerequisites
+
+* The path of the bin file must be obtained in advance
+
+* The bin file path is obtained from the success callback in downloadMarketDialBinFileWithModel:success:failure: (download the market dial bin file)
+
+* Note⚠️The file name of the dial file cannot be modified, and the watch bottom layer will perform a check
+* The watch has sufficient power. Note⚠️ The dial transmission needs to add an abnormal protection scenario: when the watch power is very low, if the dial transmission is initiated, the watch may shut down due to low power during the transmission process. After recharging, the dial will turn black. We recommend that you read the current power of the watch before each transmission. If the power status is low, the transmission is prohibited.
+
+### Class Name
+
+`VPMarketDialManager`
+
+### Interface
+
+```objective-c
+- (void)startTransferWithFilePath:(NSURL *)filePath transformProgress:(void(^)(double progress))transformProgress failure:(void(^)(NSError * _Nullable error))fairlure;
+```
+
+### Parameter Explanation
+
+| Parameter         | Parameter type                     | Remarks                                                      |
+| ----------------- | ---------------------------------- | ------------------------------------------------------------ |
+| filePath          | NSURL                              | The path of the bin file. Obtained from the success callback in downloadMarketDialBinFileWithModel:success:failure: |
+| transformProgress | void(^)(double progress)           | Transfer progress callback                                   |
+| fairlure          | void(^)(NSError * _Nullable error) | Error callback                                               |
+
+### Sample Code
+
+```swift
+   VPMarketDialManager.share().startTransfer(withFilePath: filePath) { (progress) in
+        print("Progress: \(progress * 100) %")
+    } failure: { (error) in
+        if error != nil{
+            print(error! as NSError)
+        }
+    }
+```
+
+
+
+## Screen style setting and reading
+
+### Prerequisites
+
+* First, get the screen style setting interval according to screenTypes in VPPeripheralModel. If it is 3, it means that 1-3 can be set. If it is 0, it means that this function is not available.
+
+### Class Name
+
+`VPPeripheralBaseManage`
+
+How to get it：**VPBleCentralManage.sharedBleManager().peripheralManage**
+
+### Interface
+
+```objective-c
+/// Monitoring of changes in device dial information
+@property (nonatomic, copy) void(^deviceDialDidChangeBlock)(VPDeviceDialType, int);
+```
+
+
+
+```
+- (void)veepooSDKSettingDeviceScreenStyle:(int)screenStyle
+                              settingMode:(NSUInteger)settingMode
+                                 dialType:(VPDeviceDialType)dialType
+                                   result:(void(^)(VPDeviceDialType dialType,int screenStyle, BOOL settingSuccess))settingScreenStyleWithDialTypeBlock;
+```
+
+
+
+### Parameter Explanation
+
+| Parameter                           | Parameter type                                               | Remarks                                                      |
+| ----------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| screenStyle                         | int                                                          | Market dial/photo dial starts from 1, default dial starts from 0; pass 0 when reading |
+| settingMode                         | NSUInteger                                                   | 1 for setting, 2 for reading                                 |
+| dialType                            | VPDeviceDialType                                             | Dial type: 0 Default dial 1 Market dial 2 Photo dial         |
+| settingScreenStyleWithDialTypeBlock | void(^)(VPDeviceDialType dialType,int screenStyle, BOOL settingSuccess) | Callback after setting, including setting success or failure and the style of the bracelet after setting |
+
+### Sample Code
+
+```swift
+ VPBleCentralManage.sharedBleManager()?.peripheralManage.veepooSDKSettingDeviceScreenStyle(0, settingMode: 2, dialType: .market, result: { [weak self](dialType, screenStyle, settingSuccess) in
+//            print("Readed>> screenStyle: \(screenStyle), settingSuccess:\(settingSuccess)")
+            self?.dialTypeLabel.text = "\(dialType.rawValue) - \(screenStyle)"
+        })
+```
+
+
+
+## Open Jerry's file system
+
+### Prerequisites
+
+* Used for K (Jerry) series devices, open Jerry's file system, CPUType==1 in the peripheral model indicates K (Jerry) series
+
+### Class Name
+
+`VPMarketDialManager`
+
+### Interface
+
+```objective-c
+- (void)openJLDialFileSystemWithAction:(void(^)(BOOL success))action;
+```
+
+### Parameter Explanation
+
+| Parameter | Parameter type        | Remarks            |
+| --------- | --------------------- | ------------------ |
+| action    | void(^)(BOOL success) | Success or failure |
+
+### Sample Code
+
+```swift
+  func openJLDialFileSystem(result: @escaping ((Bool) -> Void)) {
+        VPMarketDialManager.share().openJLDialFileSystem { isOpen in
+            result(isOpen)
+        }
+    }
+```
+
+
+
+## Get the file list in Jerry File System
+
+### Prerequisites
+
+* Used by K (Jerry) series devices, CPUType==1 in the peripheral model indicates K (Jerry) series
+* Note⚠️ Please call {@link openJLDialFileSystemWithAction:} to open the file system first
+
+### Class Name
+
+`VPMarketDialManager`
+
+### Interface
+
+```objective-c
+- (void)getJLWatchNamesWithAction:(void(^)(NSArray<NSString *> * _Nullable array))action
+```
+
+### Parameter Explanation
+
+| Parameter | Parameter type                                 | Remarks        |
+| --------- | ---------------------------------------------- | -------------- |
+| action    | void(^)(NSArray<NSString *> * _Nullable array) | File name list |
+
+## Get the current photo dial and market dial name of the Jerry chip device
+
+### Prerequisites
+
+* Used for K (Jerry) series devices, CPUType==1 in the peripheral model indicates K (Jerry) series
+
+### Class Name
+
+`VPMarketDialManager`
+
+### Interface
+
+```objective-c
+- (void)getJLCurrentPhotoAndMarketWatchNameWithArray:(NSArray<NSString *> *)array
+                                              result:(void(^)(NSString *_Nullable photoWatchName, NSString * _Nullable marketWatchName))result;
+```
+
+### Parameter Explanation
+
+| Parameter | Parameter type                                               | Remarks                                                      |
+| --------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| array     | NSArray<NSString *> *                                        | File list, please make sure the array to be transferred is not empty and contains WATCH elements |
+| result    | void(^)(NSString *_Nullable photoWatchName, NSString * _Nullable marketWatchName) | Result callback of photo watch face and market watch face. If the photo watch face is empty, it means that there is no photo watch face in the project. If the market watch face is empty, it means that the device has not transferred the photo watch face at present |
+
+
+
+# Contact function
+
+## Determine whether the device supports adding contacts
+
+### Prerequisites
+
+* The device is connected
+* Supports BT function
+
+### Class Name
+
+`VPPeripheralModel`
+
+How to get it：**VPBleCentralManage.sharedBleManager().peripheralManage.peripheralModel**
+
+### Interface
+
+```objective-c
+// Address book type， 1 means yes 0 means no
+@property (nonatomic, assign) NSUInteger contactType;
+```
+
+
+
+## Operate device contacts
+
+### Prerequisites
+
+* The device is connected
+* BT is connected
+* The device supports the contact function
+
+### Class Name
+
+`VPPeripheralBaseManage`
+
+How to get it：**VPBleCentralManage.sharedBleManager().peripheralManage**
+
+### Interface
+
+```objective-c
+- (void)veepooSDKSettingDeviceContactsWithOpCode:(VPDeviceContactsOpCode)opCode
+                                         opModel:(VPDeviceContactsModel *)opModel
+                                            toID:(int)toID
+                                     resultBlock:(void(^)(VPDeviceContactsOpState state, NSArray<VPDeviceContactsModel *> *contactModels))resultBlock;
+```
+
+### Parameter Explanation
+
+| Parameter   | Parameter type                                               | Remarks                                               |
+| ----------- | ------------------------------------------------------------ | ----------------------------------------------------- |
+| opCode      | VPDeviceContactsOpCode                                       | Operation type, all enumeration values are as follows |
+| opModel     | VPDeviceContactsModel                                        | Invalid when opCode is read                           |
+| toID        | Int                                                          | Target ID is valid only for move operation            |
+| resultBlock | void(^)(VPDeviceContactsOpState state, NSArray<VPDeviceContactsModel *> *contactModels) | Result callback                                       |
+
+```objective-c
+// Device address book operation type
+typedef NS_ENUM(NSUInteger, VPDeviceContactsOpCode) {
+		VPDeviceContactsOpCodeRead = 0,   // Read
+		VPDeviceContactsOpCodeAdd,        // Add
+		VPDeviceContactsOpCodeDelete,     // Delete
+		VPDeviceContactsOpCodeMove        // Move
+};
+```
+
+
+
+### Parameter Explanation
+
+| Parameter     | Parameter type                   | Remarks                                                      |
+| ------------- | -------------------------------- | ------------------------------------------------------------ |
+| state         | VPDeviceContactsOpState          | Address book operation state                                 |
+| contactModels | NSArray<VPDeviceContactsModel *> | Array of contact models after operation returned by the device |
+
+```objective-c
+// Contacts operation status
+typedef NS_ENUM(NSUInteger, VPDeviceContactsOpState) {
+		VPDeviceContactsOpStateNoFunction = 0,   // This function is not supported
+		VPDeviceContactsOpStateReading,          // Reading
+		VPDeviceContactsOpStateComplete,         // Operation successful
+		VPDeviceContactsOpStateFailure           // Operation failed
+};
+```
+
+## SOS contact function
+
+This function is attached to the contact. Setting the contact as an SOS contact can trigger an SOS call on the device
+
+### Prerequisite
+
+The contact function is available and the SOS function is supported. This can be determined by `VPBleCentralManage.sharedBleManager().peripheralModel.contactType == 2`
+
+### Class Name
+
+`VPPeripheralBaseManage`
+
+### Interface
+
+```objective-c
+/// Number of SOS calls made in the address book
+/// @param opCode Operation type Read/Set
+/// @param times Number, please limit it to [timesMin, timesMax] returned by resultBlock, only valid when setting
+/// @param resultBlock result callback, when setting operation, timesMin and timesMax returned are 0
+- (void)veepooSDKSettingDeviceContactsSOSInfoWithOpCode:(VPSOSOperationType)opCode
+                                                  times:(int)times
+                                            resultBlock:(void(^)(VPDeviceContactsOpState state, int times, int timesMin, int timesMax))resultBlock;
+```
+
+### Parameter Explanation
+
+| Parameter   | Parameter type     | Remarks                    |
+| ----------- | ------------------ | -------------------------- |
+| opCode      | VPSOSOperationType | Operation type             |
+| times       | int                | Times, valid only when set |
+| resultBlock | Block              | Result callback            |
+
+```objective-c
+// SOS operation type
+typedef NS_ENUM(NSUInteger, VPSOSOperationType) {
+    VPSOSOperationTypeSetting,     // Set up
+    VPSOSOperationTypeRead         // Read
+};
+```
+
+### Usage Examples
+
+Read
+
+```swift
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDKSettingDeviceContactsSOSInfo(withOpCode: .read, times: 0) { (state, curTime, timesMin, timesMax) in
+            if state == .complete {
+                print("curTime:\(curTime), timesMin:\(timesMin), timesMax:\(timesMax)")
+            }
+        }
+```
+
+Set up
+
+```swift
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDKSettingDeviceContactsSOSInfo(withOpCode: .setting, times: 2) { (state, curTime, timesMin, timesMax) in
+            if state == .complete {
+                print("curTime:\(curTime), timesMin:\(timesMin), timesMax:\(timesMax)")
+            }
+        }
+```
+
+
+
+# Bracelet find phone function
+
+### Prerequisite
+
+The device is connected and supports this function. After the device clicks the find phone button, the interface below will trigger an event and the application layer will play an audio clip.
+
+The event is triggered every 4 seconds, and the audio clip played should not exceed 3 seconds each time. **Some devices will trigger once per second**.
+
+### Class Name
+
+`VPPeripheralBaseManage`
+
+### Interface
+
+```objective-c
+//Receive the callback of the bracelet searching for the phone. You can set this property to monitor. The device will call back every 4 seconds during the process of searching for the phone. The user can play a 3-second audio after receiving the callback.
+@property (nonatomic, copy) void(^ReceiveDeviceSearchIphoneCommand)(void);
+```
+
+### Parameter Explanation
+
+none
+
+### Return data
+
+none
+
+### Usage Examples
+
+```swift
+// swift
+VPBleCentralManage.sharedBleManager().peripheralManage.receiveDeviceSearchIphoneCommand = {
+   print("Play a 3-second piece of music")
+}
+```
+
+
+
+# Mobile phone search device function
+
+## Determine whether the device supports the mobile phone search device function
+
+### Prerequisites
+
+* The device is connected
+
+### Class Name
+
+`VPPeripheralModel`
+
+How to get it：**VPBleCentralManage.sharedBleManager().peripheralManage.peripheralModel**
+
+### Interface
+
+Mobile phone search bracelet function `0` represents no, `1` represents yes
+
+```objective-c
+@property (nonatomic, assign) NSUInteger searchDeviceFunction;
+```
+
+
+
+## Mobile phone search function
+
+### Prerequisites
+
+* The device is connected
+* The device supports the mobile phone search function
+
+### Class Name
+
+`VPPeripheralBaseManage`
+
+How to get it：**VPBleCentralManage.sharedBleManager().peripheralManage**
+
+### Interface
+
+```objective-c
+- (void)veepooSDK_searchDeviceFuntionWithState:(BOOL)open result:(void (^)(BOOL open, VPSearchDeviceFunctionState state))result;
+```
+
+### Parameter Explanation
+
+| Parameter | Parameter type                                         | Remarks                                                      |
+| --------- | ------------------------------------------------------ | ------------------------------------------------------------ |
+| open      | BOOL                                                   | Turn on or off the phone's device search function            |
+| result    | void (^)(BOOL open, VPSearchDeviceFunctionState state) | open: whether to enable state: the phone's search status for the bracelet, the enumeration value list is as follows |
+
+```objective-c
+//Mobile phone searches for bracelet status
+typedef NS_ENUM(NSUInteger, VPSearchDeviceFunctionState) {
+		VPSearchDeviceFunctionStateUnsupported,   //Function not supported
+		VPSearchDeviceFunctionStateEnter, 		    //Device enters search state
+		VPSearchDeviceFunctionStateExit,			    //Device exits search state
+		VPSearchDeviceFunctionStateTimeout,       //Device search timeout
+};
+```
+
+### Sample Code
+
+ ```swift
+  VPBleCentralManage.sharedBleManager()?.peripheralManage.veepooSDK_searchDeviceFuntion(withState: !sender.isSelected, result: { [weak self](start, state) in
+             print("state: \(state.rawValue)")
+             if state.rawValue == 2 || state.rawValue == 3 {//The device exits automatically or the search times out.
+                 self?.searchDeviceBtn.isSelected = false
+             }
+         })
+ 
+ ```
+
+
+
+
+
+# Message notification function
+
+### Prerequisites
+
+* The device is connected
+
+### Class Name
+
+`VPPeripheralBaseManage`
+
+How to get it：**VPBleCentralManage.sharedBleManager().peripheralManage**
+
+### Interface
+
+```objective-c
+- (void)veepooSDKSettingMessageType:(VPSettingMessageSwitchType)messageType settingState:(VPSettingFunctionState)settingState completeBlock:(void(^)(VPSettingFunctionCompleteState completeState))settingCompleteBlock;
+```
+
+### 批处理Interface
+
+```objective-c
+/// Message push (information reminder) batch processing interface, the push types that the device does not support will be automatically ignored
+/// @param models array of push types to be processed
+/// @param settingCompleteBlock setting status Block will be empty inside
+- (void)veepooSDKBatchSettingWithMessageTypeModels:(NSArray<VPDeviceMessageTypeModel *> *)models
+                                     completeBlock:(void(^)(VPSettingFunctionCompleteState completeState))settingCompleteBlock;
+```
+
+### Parameter Explanation
+
+| Parameter            | Parameter type                                        | Remarks                                                      |
+| -------------------- | ----------------------------------------------------- | ------------------------------------------------------------ |
+| messageType          | VPSettingMessageSwitchType                            | Type of information to be set and read. All values are as follows |
+| settingState         | VPSettingFunctionState                                | Set or read                                                  |
+| settingCompleteBlock | void(^)(VPSettingFunctionCompleteState completeState) | Callback for setting and reading completion, VPSettingFunctionCompleteState values are as follows |
+
+```objc
+typedef NS_ENUM(NSInteger, VPSettingMessageSwitchType) {//About the type of call reminder
+    VPSettingUnkonw = 1, //Unknown Type
+    VPSettingCall = 2, //Incoming call settings
+    VPSettingSMS,//SMS settings
+    VPSettingWechat,
+    VPSettingQQ,
+    VPSettingSina,
+    VPSettingFaceBook,
+    VPSettingTwitter,
+    VPSettingFlickr,
+    VPSettingLinkedln,
+    VPSettingwhatsapp,
+    VPSettingLine,
+    VPSettingInstagram,
+    VPSettingSnapchat,
+    VPSettingSkype,
+    VPSettingGMail,
+    VPSettingDingTalk,
+    VPSettingWeChatWork,
+    VPSettingOtherPlatform = 19,
+    // Second Package
+    VPSettingOtherTikTok = 20,
+    VPSettingOtherTelegram = 21,
+    VPSettingOtherConnected2 = 22,
+    VPSettingKakaoTalk = 23,
+    VPSettingJingYou = 24, // JingYou APP
+    VPSettingMessenger = 25,
+    VPSettingAll = 100,//Set all, read usage cannot use this
+}
+
+typedef NS_ENUM(NSInteger, VPSettingFunctionState) {//Set to get a function to read
+		VPReadFunctionState = 0, //Read the switch and existence of a function
+		VPSettingFunctionOpen = 1, //Open a function
+		VPSettingFunctionClose = 2, //Close a function
+		VPSettingFunctionCancel = 3, //Only dynamic blood pressure calibration is valid now
+		VPSettingFunction = 4, //Set a function
+};
+
+typedef NS_ENUM(NSInteger, VPSettingFunctionCompleteState) {//Set the state after a function is completed
+		VPFunctionCompleteUnknown = 0, //The device does not have this function
+		VPFunctionCompleteOpen = 1, //This function has been turned on
+		VPFunctionCompleteClose = 2, //This function has been turned off
+		VPFunctionCompleteFailure = 3, //Setting or reading failed
+		VPFunctionCompleteComplete = 4, //Setting completed, reply to Data setting
+};
+```
+
+### Sample Code
+
+```swift
+unowned let weakSelf = self
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDKSettingMessageType(VPSettingMessageSwitchType.settingAll, settingState: VPSettingFunctionState(rawValue: sender.tag)!) { (settingFunctionCompleteState) in
+    switch settingFunctionCompleteState {
+    case .functionCompleteUnknown:
+        _ = AppDelegate.showHUD(message: "No such feature", hudModel: MBProgressHUDModeText, showView: weakSelf.view)
+    case .functionCompleteFailure:
+        _ = AppDelegate.showHUD(message: "Setup failed", hudModel: MBProgressHUDModeText, showView: weakSelf.view)
+    case .functionCompleteOpen:
+        _ = AppDelegate.showHUD(message: "Setup successful, opened", hudModel: MBProgressHUDModeText, showView: weakSelf.view)
+        weakSelf.messageRemindTableView?.reloadData()
+    case .functionCompleteClose:
+        _ = AppDelegate.showHUD(message: "Setup successful, closed", hudModel: MBProgressHUDModeText, showView: weakSelf.view)
+        weakSelf.messageRemindTableView?.reloadData()
+    case .functionCompleteComplete:
+        _ = AppDelegate.showHUD(message: "Setup complete", hudModel: MBProgressHUDModeText, showView: weakSelf.view)
+        weakSelf.messageRemindTableView?.reloadData()
+    }
+}
+```
+
+
+
+
+
+# Bluetooth call function
+
+## Determine whether the device supports Bluetooth calls
+
+### Prerequisites
+
+* The device is connected
+
+### Class Name
+
+`VPPeripheralModel`
+
+How to get it：**VPBleCentralManage.sharedBleManager().peripheralManage.peripheralModel**
+
+### Interface
+
+> The chip type of the device. Starting from the Jerry series, 1 indicates the Jerry series
+>
+> CPUType = `1` means Bluetooth communication is supported, and the rest means it is not supported
+
+```objective-c
+@property (nonatomic, assign) NSUInteger CPUType;
+```
+
+
+
+
+
+## Turn on the device BT switch
+
+### Prerequisites
+
+* The device is connected and supports this function
+
+### Class Name
+
+`VPPeripheralBaseManage`
+
+How to get it：**VPBleCentralManage.sharedBleManager().peripheralManage**
+
+### Interface
+
+Turn on the BT switch of the device. If the device is not paired with the mobile phone system, a pairing request will be triggered.
+
+The connection status of BT is uniformly judged using {@link VPBTConnectStateChangeBlock}
+
+```objective-c
+- (void)veepooSDK_openDeviceBTSwitch;
+```
+
+
+
+## Callback for device BT connection status change
+
+### Prerequisites
+
+* The device is connected and supports this function
+
+### Class Name
+
+`VPPeripheralBaseManage`
+
+How to get it：**VPBleCentralManage.sharedBleManager().peripheralManage**
+
+### Interface
+
+Callback when the device BT connection status changes
+
+```objective-c
+@property (nonatomic, copy) void(^VPBTConnectStateChangeBlock)(VPDeviceBTState btState, BOOL btSwitchOpen, BOOL mediaSwitchOpen);
+```
+
+### Parameter Explanation
+
+| Parameter       | Parameter Type  | Remarks                                               |
+| --------------- | --------------- | ----------------------------------------------------- |
+| btState         | VPDeviceBTState | BT connection status                                  |
+| btSwitchOpen    | BOOL            | Whether the BT switch of the device is turned on      |
+| mediaSwitchOpen | BOOL            | Whether to play mobile media audio through the device |
+
+```objective-c
+typedef NS_ENUM(NSInteger, VPDeviceBTState) {
+		VPDeviceBTStateDisConnect = 0, 	//Disconnected
+		VPDeviceBTStateConnected,       //Connected
+		VPDeviceBTStateAdvertising,     //Advertising
+};
+```
+
+
+
+
+
+# OTA upgrade
+
+Note⚠️:
+
+* SDK users need to integrate the manufacturer's DFU library of the product
+
+* The OTA process is long. If the battery is low, the transmission process may shut down due to low power. It is recommended that the battery power is above 30% before the upgrade is allowed;
+
+## Get the current firmware version number
+
+### Prerequisites
+
+* The device is connected
+
+### Class Name
+
+`VPPeripheralModel`
+
+How to get it：**VPBleCentralManage.sharedBleManager().peripheralModel**
+
+### Interface
+
+```objective-c
+//The device's display version tells the user what the current version is
+@property (nonatomic, strong, readonly) NSString *deviceVersion;
+```
+
+### Sample Code
+
+```swift
+currentVersionLabel.text = "Current version: " + VPBleCentralManage.sharedBleManager().peripheralModel.deviceVersion
+```
+
+
+
+## Get the new firmware version number and upgrade description
+
+### Prerequisites
+
+* The device is connected
+
+### Class Name
+
+`VPPeripheralModel`
+
+How to get it：**VPBleCentralManage.sharedBleManager().peripheralModel**
+
+### Interface
+
+```objective-c
+//Device network upgrade version. When the user receives a new firmware version, the user will be informed of the upgraded version.
+@property (nonatomic, strong, readonly) NSString *deviceNetVersion;
+
+//Device upgrade update version description, multiple descriptions are separated by the $ symbol, and multiple descriptions can be split by $
+@property (nonatomic, strong) NSString *deviceNetVersionDes;
+```
+
+
+
+### Sample Code
+
+```swift
+if VPBleCentralManage.sharedBleManager().peripheralModel.deviceNetVersion == nil {
+    updateVersionLabel.text = "Upgraded version: " + "No new version"
+}else {
+    // Upgrade version and upgrade new firmware description
+    updateVersionLabel.text = "Upgraded version: " + VPBleCentralManage.sharedBleManager().peripheralModel.deviceNetVersion
+    updateDesTextView.text = VPBleCentralManage.sharedBleManager().peripheralModel.deviceNetVersionDes.replacingOccurrences(of: "$", with: "\n")
+}
+```
+
+
+
+## Remote firmware OTA upgrade
+
+### Prerequisites
+
+* The device is connected
+* There is new firmware available for upgrade
+
+### Class Name
+
+`VPDFUOperation`
+
+### Interface
+
+```objective-c
+/// Check whether the current device has a new firmware version. Please use this interface in production environment. For testing, you can use {@link checkDeviceOTAInfoWithDebug:downloadProgress:completionHandler:}
+/// @param downloadProgressBlock firmware download progress
+/// @param completionHandler request completion handler. If newVersion is not empty, it means there is a new firmware.
+- (void)checkDeviceOTAInfoWithDownloadProgress:(void (^)(NSProgress *downloadProgress))downloadProgressBlock
+                             completionHandler:(void (^)(NSString *newVersion, NSString *des, NSError *error))completionHandler;
+
+/// Check if the current device has a new firmware version
+/// @param debug is the test environment, ⚠️ note that the production environment cannot use yes
+/// @param downloadProgressBlock firmware download progress
+/// @param completionHandler request completion handler, newVersion is not empty to indicate new firmware
+- (void)checkDeviceOTAInfoWithDebug:(BOOL)debug
+                   downloadProgress:(void (^)(NSProgress *downloadProgress))downloadProgressBlock
+                  completionHandler:(void (^)(NSString *newVersion, NSString *des, NSError *error))completionHandler;
+```
+
+
+
+```objective-c
+/**
+Interface for upgrading. SDK can automatically obtain firmware from our server and upgrade directly.
+
+@param dfuBlock returns the status and progress of the block
+ */
+- (void)veepooSDKStartDfu:(DeviceDFUBlock)dfuBlock;
+```
+
+### Parameter Explanation
+
+```objective-c
+typedef void(^DeviceDFUBlock)(double progress, DeviceDFUState deviceDFUState);
+```
+
+| Parameter      | Parameter type | Remarks                                               |
+| -------------- | -------------- | ----------------------------------------------------- |
+| progress       | double         | Upgrade progress                                      |
+| deviceDFUState | DeviceDFUState | Upgrade status, all enumeration values are as follows |
+
+```objective-c
+typedef NS_ENUM(NSInteger, DeviceDFUState) {
+		DeviceDFUFileNotExist = 0, //Upgrade file does not exist
+		DeviceDFUStart, 					 //Start upgrading
+		DeviceDFUUpdating, 				 //Upgrading
+		DeviceDFUSuccess,				   //Upgrade successful
+		DeviceDFUFailure, 				 //Upgrade failed
+		DeviceDFUPrepared, 				 //Data verification of K series devices completed
+		DeviceDFUReboot 				   //K series device restart
+};
+```
+
+
+
+### Sample Code
+
+```swift
+VPDFUOperation.dfuOperationShare().veepooSDKStartDfu { (dfuProgress, deviceDFUState) in
+          switch deviceDFUState {
+          case .fileNotExist:
+              sender.isSelected = false
+              _ = AppDelegate.showHUD(message: "The upgrade file does not exist and cannot be upgraded.", hudModel: MBProgressHUDModeText, showView: weakSelf.view)
+          case .start:
+              _ = AppDelegate.showHUD(message: "Start Upgrading", hudModel: MBProgressHUDModeText, showView: weakSelf.view)
+          case .updating:
+              weakSelf.dfuProgressLabel.text = "Upgrade Progress: " + String(dfuProgress) + "%"
+          case .success:
+              sender.isSelected = false
+              _ = AppDelegate.showHUD(message: "Upgrade Successfully", hudModel: MBProgressHUDModeText, showView: weakSelf.view)
+          case .failure:
+              sender.isSelected = false
+              _ = AppDelegate.showHUD(message: "Upgrade Failed", hudModel: MBProgressHUDModeText, showView: weakSelf.view)
+          }
+      }
+```
+
+
+
+
+
+## Local firmware OTA
+
+### Prerequisites
+
+* The device is connected
+
+### Class Name
+
+`VPDFUOperation`
+
+### Interface
+
+```objective-c
+/// Developers pass in the upgrade file path to upgrade
+/// @param dfuBlock upgrade callback, if the file path does not exist or the file format is incorrect, the file path does not exist will be returned
+- (void)veepooSDKStartDfuWithFilePath:(NSString *)filePath result:(DeviceDFUBlock)dfuBlock;
+```
+
+### Parameter Explanation
+
+| Parameter | Parameter Type                                               | Remarks                                                      |
+| --------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| filePath  | NSString                                                     | Upgrade file path                                            |
+| dfuBlock  | void(^DeviceDFUBlock)(double progress, DeviceDFUState deviceDFUState) | Specific explanation is the same as the callback Parameter Explanation in remote OTAInterface |
+
+### Sample Code
+
+```swift
+VPDFUOperation.dfuOperationShare().veepooSDKStartDfu(withFilePath: filePath) { (dfuProgress, deviceDFUState) in
+    switch deviceDFUState {
+    case .fileNotExist:
+        sender.isSelected = false
+        _ = AppDelegate.showHUD(message: "The upgrade file does not exist and cannot be upgraded.", hudModel: MBProgressHUDModeText, showView: weakSelf.view)
+    case .start:
+        _ = AppDelegate.showHUD(message: "Start Upgrading", hudModel: MBProgressHUDModeText, showView: weakSelf.view)
+    case .updating:
+        weakSelf.dfuProgressLabel.text = "Upgrade Progress: " + String(dfuProgress) + "%"
+    case .success:
+        sender.isSelected = false
+        _ = AppDelegate.showHUD(message: "Upgrade Successfully", hudModel: MBProgressHUDModeText, showView: weakSelf.view)
+    case .failure:
+        sender.isSelected = false
+        _ = AppDelegate.showHUD(message: "Upgrade Failed", hudModel: MBProgressHUDModeText, showView: weakSelf.view)
+    }
+}
+```
+
+
+
+# Sedentary function
+
+### Prerequisite
+
+The device is connected and supports this function.
+
+Note that this interface does not have a flag to determine whether the device supports sedentary. To determine whether the device supports sedentary, you can use the interface to read the information. If the callback fails, it means that the device does not support this interface.
+
+### Class Name
+
+`VPPeripheralBaseManage`
+
+### Interface
+
+```objective-c
+- (void)veepooSDKSettingDeviceLongSeatWithLongSeatModel:(VPDeviceLongSeatModel *)longSeatModel
+                                            settingMode:(NSUInteger)settingMode
+                                          successResult:(void(^)(VPDeviceLongSeatModel *longSeatModel))settingLongSeatResultBlock
+                                          failureResult:(void(^)(void))settingLongSeatFailureBlock;
+```
+
+### Parameter Explanation
+
+| Parameter name              | Type                  | Remarks                                          |
+| --------------------------- | --------------------- | ------------------------------------------------ |
+| longSeatModel               | VPDeviceLongSeatModel | Long-sitting model instance, see the table below |
+| settingMode                 | NSUInteger            | Setting mode, 0 for off, 1 for on, 2 for reading |
+| settingLongSeatResultBlock  | Block                 | Success result callback                          |
+| settingLongSeatFailureBlock | Block                 | Failure callback                                 |
+
+`VPDeviceLongSeatModel`
+
+| Parameter name      | Type       | Remarks                                                      |
+| ------------------- | ---------- | ------------------------------------------------------------ |
+| longSeatStartHour   | NSUInteger | The hour when the sedentary reminder starts. The range is 0-23 |
+| longSeatStartMinute | NSUInteger | The minute when the sedentary reminder starts. The range is 0-59 |
+| longSeatEndHour     | NSUInteger | The hour when the sedentary reminder ends. The range is 0-23 |
+| longSeatEndMinute   | NSUInteger | The minute when the sedentary reminder ends. The range is 0-59 |
+| longSeatGateValue   | NSUInteger | The gate value of the sedentary reminder in minutes. The range is [30 240] |
+| longSeatState       | NSUInteger | This is the state of the sedentary reminder, 0 means off and 1 means on |
+
+### Return data
+
+Success will trigger`settingLongSeatResultBlock`
+
+Failure will trigger`settingLongSeatFailureBlock`
+
+### Usage Examples
+
+```swift
+// swift
+//Initialize the longSeatModel
+let longSeatModel = VPDeviceLongSeatModel(longSeatStartHour: 2, longSeatStartMinute: 30, longSeatEndHour: 18, longSeatEndMinute: 50, longSeatGateValue: 30, longSeatState: 1)
+
+//Setup
+unowned let weakSelf = self;
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDKSettingDeviceLongSeat(with: longSeatModel, settingMode: 1, successResult: { (longSeatModel) in
+    _ = AppDelegate.showHUD(message: "longSeat settings success", hudModel: MBProgressHUDModeText, showView: weakSelf.view)
+}) {
+    _ = AppDelegate.showHUD(message: "longSeat settings failed", hudModel: MBProgressHUDModeText, showView: weakSelf.view)
+}
+```
+
+
+
+# Alarm function
+
+Note that there are multiple versions of the alarm function of the device, and different versions of alarms will not exist at the same time. For example, if the device supports scene alarms, it does not support text alarms
+
+## Text alarm
+
+The text alarm allows the device to operate the switch, time setting, etc., but text cannot be entered.
+
+### Prerequisites
+
+The device is connected and supports this function
+
+### Class Name
+
+`VPPeripheralBaseManage`，可以参考SDK DEMO的 `VPTextAlarmClockSettingController` 类实现
+
+### Interface
+
+The device supports up to 10 sets of alarms. The application layer adds logic to limit the number of alarms that can be added. Otherwise, the device may malfunction.
+
+If settingTextAlarmResultBlock is not empty, operating the alarm status on the device side will trigger a callback and synchronize the data to the application layer
+
+```objective-c
+- (void)veepooSDKSettingDeviceTextAlarmWithTextAlarmModel:(VPDeviceTextAlarmModel *)alarmModel
+                                              settingMode:(VPDeviceTextAlarmSettingModel)settingMode
+                                            successResult:(void(^)(NSArray *alarmArray))settingTextAlarmResultBlock
+                                            failureResult:(void(^)(void))settingTextAlarmFailureBlock;
+```
+
+### Parameter Explanation
+
+| Parameter name               | Type                          | Remarks                                                      |
+| ---------------------------- | ----------------------------- | ------------------------------------------------------------ |
+| alarmModel                   | VPDeviceTextAlarmModel        | Text alarm object, cannot be empty, the default object initialized when reading |
+| settingMode                  | VPDeviceTextAlarmSettingModel | 1 means deleting this alarm group, 2 means setting (adding or modifying), 3 means reading |
+| settingTextAlarmResultBlock  | Block                         | Setting or reading successfully, returns the current number of all alarms |
+| settingTextAlarmFailureBlock | Block                         | Setting or reading alarm failed                              |
+
+```objective-c
+// Text alarm setting mode
+typedef NS_ENUM(NSUInteger, VPDeviceTextAlarmSettingModel) {
+    VPDeviceTextAlarmSettingModelDelete = 1,
+    VPDeviceTextAlarmSettingModelAddOrChange,
+    VPDeviceTextAlarmSettingModelRead
+};
+```
+
+### Return data
+
+Array of text alarm objects
+
+| Parameter name | Type     | Remarks                                                      |
+| -------------- | -------- | ------------------------------------------------------------ |
+| alarmHour      | NSString | Alarm hour                                                   |
+| alarmMinute    | NSString | Alarm minute                                                 |
+| alarmState     | NSString | Alarm state, 0 for off, 1 for on                             |
+| alarmID        | NSString | Alarm ID, this is needed for adding, deleting, modifying, and checking |
+| repeatState    | NSString | Alarm repeat state, see the explanation below the table for details |
+| alarmText      | NSString | Alarm reminder text, up to 60 bytes                          |
+| alarmDate      | NSString | Alarm reminder date, invalid field                           |
+
+> Alarm repeat state, 0 means no repeat. The date to set an alarm reminder. In other cases, it is a string converted from 8-bit binary to decimal, such as: 00000011, which means the repeating days are Monday and Tuesday, and repeatState is 3; binary is pushed forward from the back, the first digit at the beginning is always 0, the others represent Monday to Sunday, the second digit is Sunday, and the last digit is Monday. 1 means repeat, and 0 means no repeat this week
+
+### Usage Examples
+
+```swift
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDKSettingDeviceTextAlarm(with: VPDeviceTextAlarmModel(), settingMode: .read) { arr in
+    // success
+} failureResult: {
+    // fail
+}
+```
+
+## Scene alarm (new alarm)
+
+The new alarm is a design relative to the old alarm, not the latest version. It is equivalent to scene alarm and label alarm.
+
+### Class Name
+
+`VPPeripheralBaseManage` Refer to SDK Demo `VPEditNewAlarmController` implementation
+
+### Interface
+
+```objective-c
+- (void)veepooSDKSettingDeviceNewAlarmWithNewAlarmModel:(VPDeviceNewAlarmModel *)alarmModel
+                                            settingMode:(NSUInteger)settingMode
+                                          successResult:(void(^)(NSArray *alarmArray))settingNewAlarmResultBlock
+                                          failureResult:(void(^)(void))settingNewAlarmFailureBlock;
+```
+
+### Parameter Explanation
+
+| Parameter name              | Type                  | Remarks                                                      |
+| --------------------------- | --------------------- | ------------------------------------------------------------ |
+| alarmModel                  | VPDeviceNewAlarmModel | Model of the new alarm, cannot be empty, pass the default value when reading |
+| settingMode                 | NSUInteger            | 0 means deleting this alarm group, 1 means setting (adding or modifying), 2 means reading |
+| settingNewAlarmResultBlock  | Block                 | Setting or reading successfully, returns the number of all current alarms |
+| settingNewAlarmFailureBlock | Block                 | Setting or reading alarms failed                             |
+
+### Return data
+
+Scene alarm object array
+
+| Parameter name | Type     | Remarks                                                      |
+| -------------- | -------- | ------------------------------------------------------------ |
+| alarmHour      | NSString | Alarm hour                                                   |
+| alarmMinute    | NSString | Alarm minute                                                 |
+| alarmState     | NSString | Alarm state, 0 for off, 1 for on                             |
+| alarmID        | NSString | Alarm ID, this is needed for adding, deleting, modifying, and checking |
+| repeatState    | NSString | Alarm repeat state, see the explanation below the table for details |
+| alarmScene     | NSString | Alarm reminder scene, 1-20, scene alarm icons are obtained from Demo, do not mix, the bracelet end is based on this one-to-one correspondence |
+| alarmDate      | NSString | Alarm reminder date, valid for single reminder, repeat weekly reminder defaults to 0000-00-00, all formats are like this |
+
+> Alarm repeat state, 0 means no repeat. The date to set an alarm reminder. In other cases, it is a string converted from 8-bit binary to decimal, such as: 00000011, which means the repeating days are Monday and Tuesday, and repeatState is 3; binary is pushed forward from the back, the first digit at the beginning is always 0, the others represent Monday to Sunday, the second digit is Sunday, and the last digit is Monday. 1 means repeat, and 0 means no repeat this week
+
+### Usage Examples
+
+```swift
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDKSettingDeviceNewAlarm(with: VPDeviceNewAlarmModel(), settingMode: 1) { arr in
+    // success
+} failureResult: {
+    // fail
+}
+```
+
+
+
+# Female Function
+
+### Prerequisites
+
+The device is connected and supports this function. The female function is a restricted function of the SDK. You need to contact our business first for business connection.
+
+If the permission is not enabled, the function of the corresponding interface cannot take effect.
+
+### Class Name
+
+`VPPeripheralBaseManage`, refer to SDK Demo `VPSettingFemaleRelatedController` class implementation
+
+### Interface
+
+```objective-c
+- (void)veepooSDKSettingDeviceFemaleWithFemaleModel:(VPDeviceFemaleModel *)femaleModel
+                                        settingMode:(NSUInteger)settingMode
+                                      successResult:(void(^)(VPDeviceFemaleModel *deviceFemaleModel))settingFemaleResultBlock
+                                      failureResult:(void(^)(void))settingFemaleFailureBlock;
+```
+
+### Parameter Explanation
+
+| Parameter name            | Type                | Remarks                                                      |
+| ------------------------- | ------------------- | ------------------------------------------------------------ |
+| femaleModel               | VPDeviceFemaleModel | Female function object instantiation, see the table below    |
+| settingMode               | NSUInteger          | Setting mode 0 means off 1 means on 2 means read device female information |
+| settingFemaleResultBlock  | Block               | Setting or reading success                                   |
+| settingFemaleFailureBlock | Block               | Setting or reading failure                                   |
+
+`VPDeviceFemaleModel`
+
+| Parameter name           | Type                | Remarks                                                      |
+| ------------------------ | ------------------- | ------------------------------------------------------------ |
+| femaleState              | VPDeviceFemaleState | Which menstrual period is it in                              |
+| lastMenstrualDate        | NSString            | Last menstrual date format yyyy-MM-dd                        |
+| menstrualCircle          | NSInteger           | Menstrual cycle                                              |
+| menstrualDays            | NSInteger           | Menstrual days                                               |
+| currentMenstrualDays     | NSInteger           | Current menstrual days. MenstrualDays is the number of days in a person's regular menstrual period, such as 5 days, but this month may have one day less or one day more, so this attribute is added. This attribute is valid on color screen projects |
+| expectedDateOfChildbirth | NSString            | Expected date of birth                                       |
+| babyBirthday             | NSString            | Baby's birthday format yyyy-MM-dd                            |
+| isGirl                   | BOOL                | Is the baby a girl?                                          |
+
+```objective-c
+typedef NS_ENUM(NSInteger,VPDeviceFemaleState) {//Which physiological period does the female project belong to
+		VPDeviceFemaleStateNone = 0,		  //No physiological period is set
+		VPDeviceFemaleStateMenstrual,     //Menstrual period
+		VPDeviceFemaleStatePregnancy,     //Pregnancy period
+		VPDeviceFemaleStateGestation,     //Pregnancy period
+		VPDeviceFemaleStateBaoma,	        //Hot mom period
+};
+```
+
+### Return data
+
+Success triggers the `settingFemaleResultBlock` callback, and failure triggers the `settingFemaleFailureBlock` callback
+
+### Usage Examples
+
+```swift
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDKSettingDeviceFemale(with: femaleModel, settingMode: 2, successResult: { (deviceFemaleModel) in
+    guard let deviceFemaleModel = deviceFemaleModel else {
+        return
+    }
+    weakSelf.femaleModel = deviceFemaleModel
+    weakSelf.femaleRelatedTableView?.reloadData()
+    _ = AppDelegate.showHUD(message: "Read Success", hudModel: MBProgressHUDModeText, showView: weakSelf.view)
+}) {
+    _ = AppDelegate.showHUD(message: "Read failed", hudModel: MBProgressHUDModeText, showView: weakSelf.view)
+}
+```
+
+
+
+# Photo function
+
+### Prerequisite
+
+The device is connected and supports this function. This function requires the customer to design and implement the in-app photo function. The main function of the bracelet is to control the photo moment. After entering the photo mode, click the photo button on the bracelet or shake it. The SDK will receive a photo trigger event, and the application layer can trigger the photo.
+
+### Class Name
+
+`VPPeripheralBaseManage`
+
+### Interface
+
+```objective-c
+- (void)veepooSDKSettingCameraType:(VPCameraType)settingType settingAndMonitorResult:(void(^)(VPCameraType cameraType))cameraBlock;
+```
+
+### Parameter Explanation
+
+| Parameter name | Type         | Remarks                  |
+| -------------- | ------------ | ------------------------ |
+| settingType    | VPCameraType | VPCameraType enumeration |
+| cameraBlock    | Block        | Result callback          |
+
+```objective-c
+typedef NS_ENUM(NSInteger,VPCameraType) {
+  	VPCameraTypeExit = 0,  //Exit photo taking
+		VPCameraTypeEnter = 1, //Enter photo taking
+		VPCameraTypePhoto = 2  //Start photo taking
+};
+```
+
+### Return data
+
+If the device supports taking photos, the cameraBlock callback will be triggered
+
+### Usage Examples
+
+```swift
+// swift
+VPPeripheralManage.shareVPPeripheralManager().veepooSDKSettingCameraType(.enter) { type in
+	  print(type.rawValue)
+}
+```
+
+
+
+
+
+# Bracelet sports function
+
+## Bracelet sports historical data acquisition
+
+### Prerequisites
+
+The device is connected and supports this function
+
+### Class Name
+
+`VPDataBaseOperation` 、`VPPeripheralBaseManage`
+
+### Interface
+
+```objc
+// First call this Interface to synchronize data from the device to the SDK
+- (void)veepooSDKStartReadDeviceRunningData:(void(^)(VPReadDeviceBaseDataState readState, NSUInteger totalTimes, NSUInteger currentReadTimes, NSUInteger readCurrentTimesProgress))readDeviceRunningBlock;
+// Read data from the SDK database
++ (NSArray *)veepooSDKGetDeviceRunningDataWithDate:(NSString *)queryDate andTableID:(NSString *)tableID;
+```
+
+### Parameter Explanation
+
+| Parameter name | Type     | Remarks                                           |
+| -------------- | -------- | ------------------------------------------------- |
+| queryDate      | NSString | The date to be queried, in the format: yyyy-MM-dd |
+| tableID        | NSString | The mac address of the device                     |
+
+### Return data
+
+```objc
+[{
+    aerobTime = 1260;
+    averHeart = 81;
+    averPace = 0;
+    beginTime = "2023-05-17 20:16:25";
+    crcValue = 47136;
+    endTime = "2023-05-17 20:37:33";
+    isHide = 0;
+    oneMinuteData =     (
+                {
+            calValue = 0;
+            disValue = 0;
+            heartValue = 86;
+            isPause = 0;
+            packageCount = 00001;
+            sportValue = 5;
+            stepValue = 0;
+        }
+    );
+    pauseCount = 0;
+    pauseTotalTime = 0;
+    recordCount = 5376;
+    totalCal = 0;
+    totalDis = 0;
+    totalSport = 124;
+    totalStep = 0;
+    totalTime = 1268;
+    type = 1;
+}]
+```
+
+| Parameter name | Type               | Remarks                               |
+| -------------- | ------------------ | ------------------------------------- |
+| beginTime      | NSString           | Start time                            |
+| endTime        | NSString           | End time                              |
+| averHeart      | NSString           | Average heart rate                    |
+| averPace       | NSString           | Average pace                          |
+| pauseCount     | NSString           | Number of pauses                      |
+| pauseTotalTime | NSString           | Pause duration                        |
+| recordCount    | NSString           | Record                                |
+| totalCal       | NSString           | Total calories, unit cal              |
+| totalDis       | NSString           | Total distance, unit m                |
+| totalSport     | NSString           | Total amount of exercise              |
+| totalStep      | NSString           | Total number of steps                 |
+| totalTime      | NSString           | Total exercise time                   |
+| type           | VPDeviceRuningMode | Exercise type                         |
+| oneMinuteData  | NSArray            | Array, data structure for each minute |
+| crcValue       | NSString           | crc value of the movement             |
+
+Data structure for each minute
+
+| Parameter name | Type     | Remarks                                        |
+| -------------- | -------- | ---------------------------------------------- |
+| heartValue     | NSString | Heart rate                                     |
+| disValue       | NSString | Mileage                                        |
+| calValue       | NSString | Calories                                       |
+| isPause        | NSString | Pause or not                                   |
+| packageCount   | NSString | Current package number, no processing required |
+| sportValue     | NSString | Amount of exercise                             |
+| stepValue      | NSString | Number of steps                                |
+
+### Usage Examples
+
+```swift
+// Read running data
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDK_readDeviceRunningData(withBlockNumber: 0) { (deviceRunningDict, totalPackage, currentPackage) in
+            if currentPackage >= totalPackage {
+                print(deviceRunningDict ?? "No Running Data")
+            }else {
+                print("totalPackage:\(totalPackage) currentPackage:\(currentPackage)")
+            }
+        }
+```
+
+```objc
+// Get a single day's Running Data from the database
+let arr = VPDataBaseOperation.veepooSDKGetDeviceRunningData(withDate: 0.getOneDayDateString(), andTableID: VPBleCentralManage.sharedBleManager().peripheralModel.deviceAddress)
+```
+
+## Open and read the wristband sports mode
+
+### Prerequisites
+
+The device is connected and supports this function
+
+### Class Name
+
+`VPPeripheralBaseManage`
+
+### Interface
+
+Please note that the equipment does not contain all types of sports. Different items have different types of sports. And the sports modes need to correspond one to one.
+
+```objc
+- (void)veepooSDKSettingDeviceRunning:(int)settingType
+                              runMode:(VPDeviceRuningMode)runningMode
+                               result:(void(^)(int runningType, BOOL settingSuccess))runningResultBlock;
+```
+
+Monitor the end of the wristband exercise event on the device, block triggers the callback, and can call the data reading interface
+
+```objective-c
+/// Callback when the device ends a set of motion and generates valid data
+@property (nonatomic, copy) void(^deviceSportDidFinishBlock)(BOOL success);
+```
+
+### Parameter Explanation
+
+| Parameter name     | Type               | Remarks                                                      |
+| ------------------ | ------------------ | ------------------------------------------------------------ |
+| settingType        | int                | 0 is to turn off the motion mode, 1 is to turn on the motion mode, 2 is to read the current device motion mode |
+| runningMode        | VPDeviceRuningMode | Refer to the enumeration for details. If it is not multi-sport, give 0. For the method of judging multi-sport, see the runningType property description under VPPeripheralModel |
+| runningResultBlock | Block              | Setting and reading results                                  |
+
+```objc
+typedef NS_ENUM(NSInteger,VPDeviceRuningMode) {//Sport mode type
+    VPDeviceRuningModeCommon = 0, //Normal single sports mode
+    VPDeviceRuningModeOutdoorRun, //Outdoor running
+    VPDeviceRuningModeOutdoorWalk, //Outdoor walking
+    VPDeviceRuningModeIutdoorRun, //Indoor running
+    VPDeviceRuningModeIutdoorWalk, //Indoor walking
+    VPDeviceRuningModeHiking, //Hiking
+    VPDeviceRuningModeStairStepper, //Stepper
+    VPDeviceRuningModeOutdoorCycle, //Outdoor cycling
+    VPDeviceRuningModeStationaryBike, //Indoor cycling
+    VPDeviceRuningModeElliptical, //Elliptical machine
+    VPDeviceRuningModeRowingMachine, //Rowing machine
+    VPDeviceRuningModeMountaineering, //Mountaineering
+    VPDeviceRuningModeSwim, //Swimming
+    VPDeviceRuningModeSitUps, //Sit-ups
+    VPDeviceRuningModeSki, //Skiing
+    VPDeviceRuningModeJumpRope, //Rope skipping
+    VPDeviceRuningModeYoga, //Yoga
+    VPDeviceRuningModePingpong, //Table tennis
+    VPDeviceRuningModeBasketball, //Basketball
+    VPDeviceRuningModeVolleyball, //Volleyball
+    VPDeviceRuningModeFootball, //Football
+    VPDeviceRuningModeBadminton, //Badminton
+    VPDeviceRuningModeTennis, //Tennis
+    VPDeviceRuningModeClimbStairs, //Climbing stairs
+    VPDeviceRuningModeFitness, //Fitness
+    VPDeviceRuningModeWeightlifting, //Weightlifting
+    VPDeviceRuningModeDiving, //Diving
+    VPDeviceRuningModeBoxing, //Boxing
+    VPDeviceRuningModeGymBall, //Fitness ball
+    VPDeviceRuningModeSquatTraining, //Squat training
+    VPDeviceRuningModeTriathlon, //Triathlon
+    VPDeviceRuningModeDance, //Dance
+    VPDeviceRuningModeHIIT, //HIIT
+    VPDeviceRuningModeRockClimbing, //Rock climbing
+    VPDeviceRuningModeSports, //Athletics
+    VPDeviceRuningModeBalls, //Ball games
+    VPDeviceRuningModeFitnessGame, //Fitness games
+    VPDeviceRuningModeFreeTime, //Free time
+    VPDeviceRuningModeAerobics, //Aerobics
+    VPDeviceRuningModeGymnastics, //Gymnastics
+    VPDeviceRuningModeFloorExercise, //Floor exercises
+    VPDeviceRuningModeHorizontalBar, //Horizontal bar
+    VPDeviceRuningModeParallelBars, //Parallel bars
+    VPDeviceRuningModeTrampoline, //Trampoline
+    VPDeviceRuningModeTrackAndField, //Athletics
+    VPDeviceRuningModeMarathon, //Marathon
+    VPDeviceRuningModePushUps, //Pushups
+    VPDeviceRuningModeDumbbel, //Dumbbell
+    VPDeviceRuningModeRugbyFootball, //Rugby
+    VPDeviceRuningModeHandball, //Handball
+    VPDeviceRuningModeBaseballSoftball, //Baseball
+    VPDeviceRuningModeBaseball, //Baseball
+    VPDeviceRuningModeHockey, //Hockey
+    VPDeviceRuningModeGolf, //Golf
+    VPDeviceRuningModeBowling, //Bowling
+    VPDeviceRuningModeBilliards, //Billiards
+    VPDeviceRuningModeRowing, //Rowing
+    VPDeviceRuningModeSailboat, //Sailing
+    VPDeviceRuningModeSkate, //Ice skating
+    VPDeviceRuningModeCurling, //Curling
+    VPDeviceRuningModePuck, //Ice hockey
+    VPDeviceRuningModeSled, //Sled
+    VPDeviceRuningModeStrongWalk, //Strong walking
+    VPDeviceRuningModeTreadmill, //Treadmill
+    VPDeviceRuningModeTrailRunning, //Cross-country running
+    VPDeviceRuningModeRaceWalking, //Race walking
+    VPDeviceRuningModeMountainBiking, //Mountain biking
+    VPDeviceRuningModeBmx, //BMX
+    VPDeviceRuningModeOrienteering, //Orienteering
+    VPDeviceRuningModeFishing, //Fishing
+    VPDeviceRuningModeHunt, //hunting
+    VPDeviceRuningModeSkateboard, //skateboard
+    VPDeviceRuningModeRollerSkating, //roller skating
+    VPDeviceRuningModeParkour, //parkour
+    VPDeviceRuningModeAtv, //beach buggy
+    VPDeviceRuningModeMotocross, //off-road motorcycle
+    VPDeviceRuningModeClimbingMachine, //stair climbing machine
+    VPDeviceRuningModeSpinningBike, //spinning bike
+    VPDeviceRuningModeIndoorFitness, //indoor fitness
+    VPDeviceRuningModeMixedAerobic, //mixed aerobic
+    VPDeviceRuningModeCrossTraining, //cross training
+    VPDeviceRuningModeBodybuildingExercise, //fitness exercise
+    VPDeviceRuningModeGroupGymnastics, //group exercise
+    VPDeviceRuningModeKickboxing, //kickboxing exercise
+    VPDeviceRuningModeStrengthTraining, //Strength training
+    VPDeviceRuningModeSteppingTraining, //Stepping training
+    VPDeviceRuningModeCoreTraining, //Core training
+    VPDeviceRuningModeFlexibilityTraining, //Flexibility training
+    VPDeviceRuningModeFreeTraining, //Free training
+    VPDeviceRuningModePilates, //Pilates
+    VPDeviceRuningModeBattleRope, //Battle rope
+    VPDeviceRuningModeStretch, //Stretching
+    VPDeviceRuningModeSquareDance, //Square dance
+    VPDeviceRuningModeBallroomDancing, //Ballroom dance
+    VPDeviceRuningModeBellyDance, //Belly dance
+    VPDeviceRuningModeBallet, //Ballet
+    VPDeviceRuningModeHipHop, //Street dance
+    VPDeviceRuningModeZumba, //Zumba
+    VPDeviceRuningModeLatinDance, //Latin dance
+    VPDeviceRuningModeJazz, //Jazz dance
+    VPDeviceRuningModeHipHopDance, //Hip-hop dance
+    VPDeviceRuningModePoleDancing, //Pole dance
+    VPDeviceRuningModeBreakDance, //Break dance
+    VPDeviceRuningModeNationalDance, //National dance
+    VPDeviceRuningModeModernDance, //Modern dance
+    VPDeviceRuningModeDisco, //Disco
+    VPDeviceRuningModeTapDance, //Tap dance
+    VPDeviceRuningModeWrestling, //Wrestling
+    VPDeviceRuningModeMartialArts, //Martial Arts
+    VPDeviceRuningModeTaiChi, //Taichi
+    VPDeviceRuningModeMuayThai, //Muay Thai
+    VPDeviceRuningModeJudo, //Judo
+    VPDeviceRuningModeTaekwondo, //Taekwondo
+    VPDeviceRuningModeKarate, //Karate
+    VPDeviceRuningModeFreeSparring, //Free Sparring
+    VPDeviceRuningModeSwordsmanship, //Swordsmanship
+    VPDeviceRuningModeJujitsu, //Jujitsu
+    VPDeviceRuningModeFencing, //Fencing
+    VPDeviceRuningModeBeachSoccer, //Beach Soccer
+    VPDeviceRuningModeBeachVolleyball, //Beach Volleyball
+    VPDeviceRuningModeSoftball, //Softball
+    VPDeviceRuningModeSquash, //Squash
+    VPDeviceRuningModeCroquet, //Croquet
+    VPDeviceRuningModeCricket, //Cricket
+    VPDeviceRuningModePolo, //Polo
+    VPDeviceRuningModeWallball, //Wallball
+    VPDeviceRuningModeTakrawBall, //Sepakraw
+    VPDeviceRuningModeDodgeball, //Dodgeball
+    VPDeviceRuningModeWaterPolo, //Water Polo
+    VPDeviceRuningModeShuttlecock, //Shuttlecock
+    VPDeviceRuningModeIndoorSoccer, //Indoor Soccer
+    VPDeviceRuningModeSandbagBall, //Sandbag
+    VPDeviceRuningModeBocceBall, //Bocce
+    VPDeviceRuningModeJaileyball, //Plait
+    VPDeviceRuningModeFloorball, //Floorball
+    VPDeviceRuningModeOutdoorBoating, //Outdoor Boating
+    VPDeviceRuningModeKayak, //Kayaking
+    VPDeviceRuningModeDragonBoat, //Dragon Boat
+    VPDeviceRuningModePaddleBoard, //Paddle board surfing
+    VPDeviceRuningModeIndoorFillingWaves, //Indoor filling waves
+    VPDeviceRuningModeDrifting, //Rafting
+    VPDeviceRuningModeWaterSkiing, //Water skiing
+    VPDeviceRuningModeSnowboarding, //Snowboarding
+    VPDeviceRuningModeSnowboard, //Snowboarding
+    VPDeviceRuningModeAlpineSkiing, //Alpine skiing
+    VPDeviceRuningModeCrossCountrySkiing, //Cross-country skiing
+    VPDeviceRuningModeOrienteeringSki, //Orienteering skiing
+    VPDeviceRuningModeBathlon, //Biathlon
+    VPDeviceRuningModeOutdoorSkating, //Outdoor skating
+    VPDeviceRuningModeIndoorSkating, //Indoor skating
+    VPDeviceRuningModeSnowCar, //Snowmobile
+    VPDeviceRuningModeSnowmobile, //Snowmobile
+    VPDeviceRuningModeSnowshoeing, //Snowshoeing
+    VPDeviceRuningModeHulaHoop, //Hula Hoop
+    VPDeviceRuningModeFrisbee, //Frisbee
+    VPDeviceRuningModeDart, //Darts
+    VPDeviceRuningModeFlyAKite, //Kite Flying
+    VPDeviceRuningModeTugOfWar, //Tug of War
+    VPDeviceRuningModeShuttlecockKicking, //Shuttlecock Kicking
+    VPDeviceRuningModeESports, //Esports
+    VPDeviceRuningModeWanderingMachine, //Wandering Machine
+    VPDeviceRuningModeSwing, //Swing
+    VPDeviceRuningModeShuffleboard, //Shuffleboard
+    VPDeviceRuningModeTableSoccer, //Table Football
+    VPDeviceRuningModeSomatosensoryGame, //Sensory Game
+    VPDeviceRuningModeInternationalChess, //International Chess
+    VPDeviceRuningModeDraughts, //Draughts
+    VPDeviceRuningModeGo, //Go
+    VPDeviceRuningModeBridge, //Bridge
+    VPDeviceRuningModeBoardGame, //Board Games
+    VPDeviceRuningModeArchery, //Archery
+    VPDeviceRuningModeEquestrianSports, //Equestrian Sports
+    VPDeviceRuningModeClimbingTheStairs, //Stairs Climbing
+    VPDeviceRuningModeDrive, //Driving
+    VPDeviceRuningModeSeatedPush, //Seated Press
+    VPDeviceRuningModeSeatedChestPress, //Seated Chest Press
+    VPDeviceRuningModeBarbell, //Barbell
+    VPDeviceRuningModeLongDistanceRunning, //Long Distance Running
+    VPDeviceRuningModeFullSpeedRun, //Full Speed Running
+    VPDeviceRuningModeVariableSpeedRun, //Variable Speed Running
+    VPDeviceRunningModeRaceRiding, //Cycling on the track
+    VPDeviceRuningModeMilitaryChess, //Military chess
+    VPDeviceRuningModeMahjong, //Mahjong
+    VPDeviceRuningModePoker, //Poker
+    VPDeviceRuningModeGobang, //Gobang
+    VPDeviceRuningModeChineseChess, //Chinese chess
+    VPDeviceRuningModeHighJump, //High jump
+    VPDeviceRuningModeLongJump, //Long jump
+    VPDeviceRuningModeSpinningTop, //Spinning top
+};
+```
+
+### Return data
+
+`runningResultBlock`
+
+| Parameter name | Type | Remarks                                                      |
+| -------------- | ---- | ------------------------------------------------------------ |
+| runningType    | int  | runningType is 0 for not in exercise mode, 1 for exercise mode, 2 for other busy states, and 3 for the end of exercise mode and the App is notified when the connection is active. This parameter is only used as a reference when reading or setting fails, or when the exercise is actively reported. |
+| settingSuccess | BOOL | Whether the setting or reading is successful. If it fails, you can refer to the runningType type to see the reason. For example, if the exercise mode is already turned on, it will fail if it is turned on again, or the device is doing other operations |
+
+### Usage Examples
+
+```swift
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDKSettingDeviceRunning(1, run: VPDeviceRuningMode.outdoorRun ) { type, success in
+            // to do ...
+        }
+```
+
+# Weather function
+
+### Prerequisites
+
+The device is connected and supports this function. The application layer needs to access the third-party weather data source by itself. The SDK is only responsible for data transmission.
+
+The third-party weather data source used by our company is Hefeng Weather https://www.qweather.com/
+
+### Class Name
+
+`VPWeatherHandle`
+
+### Interface
+
+The application layer first reads the device's weather switch and other information, and then requests a third-party weather data source
+
+```objective-c
+typedef void(^VPSyncWeatherResult)(VPWeatherSettingState state);
+typedef void(^VPSettingWeatherResult)(VPWeatherSettingState state);
+typedef void(^VPReadWeatherResult)(VPWeatherSettingState state, VPWeatherConfigModel * _Nullable cofigModel);
+
+//SDK users mainly call the following three methods, and the Model configures and sends it
+//Synchronize the App's weather data to the device
+- (void)syncWeatherDataToDeviceWithWeatherServerModel:(VPWeatherServerModel *)serverModel result:(VPSyncWeatherResult)result;
+//Read weather switches and units
+- (void)readWeatherInfo:(VPReadWeatherResult)result;
+//Set weather switches and units
+- (void)settingWeatherInfo:(VPWeatherConfigModel *)settingModel result:(VPSettingWeatherResult)result;
+```
+
+### Parameter Explanation
+
+| Parameter name | Type                 | Remarks                                                      |
+| -------------- | -------------------- | ------------------------------------------------------------ |
+| serverModel    | VPWeatherServerModel | Instantiated object of weather data to be transmitted to the device |
+| result         | VPSyncWeatherResult  | Weather synchronization result                               |
+| settingModel   | VPWeatherConfigModel | Instantiated object of weather-related configuration         |
+
+* VPWeatherServerModel
+
+| Parameter name | Type                                    | Remarks                                     |
+| -------------- | --------------------------------------- | ------------------------------------------- |
+| lon            | double                                  | Longitude                                   |
+| lat            | double                                  | Latitude                                    |
+| city           | NSString                                | City or region of temperature               |
+| update         | NSString                                | Last updated 2020-05-09 09:08:34            |
+| hourly         | NSArray<VPWeatherServerHourlyModel *>   | Array of weather forecasts for 3 hours      |
+| forecast       | NSArray<VPWeatherServerForecastModel *> | Array of weather forecasts for the next day |
+
+* VPWeatherServerHourlyModel
+
+| Parameter name | Type     | Remarks                                                      |
+| -------------- | -------- | ------------------------------------------------------------ |
+| time           | NSString | Time, format 2020-02-28 05:00                                |
+| temp           | double   | Temperature in degrees Fahrenheit                            |
+| uvi            | NSNumber | Ultraviolet intensity index                                  |
+| code           | Int      | Weather status code The following notes have detailed corresponding weather status relationships |
+| wind_sc        | NSString | Wind direction level 1-2                                     |
+| vis            | NSNumber | Visibility                                                   |
+
+* VPWeatherServerForecastModel
+
+| Parameter name | Type     | Remarks                                   |
+| -------------- | -------- | ----------------------------------------- |
+| date           | NSString | Date, format 2020-02-28                   |
+| maxTemp        | double   | Maximum temperature in degrees Fahrenheit |
+| minTemp        | double   | Minimum temperature in degrees Fahrenheit |
+| uvi            | NSNumber | Ultraviolet intensity index               |
+| dayCode        | NSNumber | Daytime weather status code               |
+| nightCode      | NSNumber | Nighttime weather status code             |
+| wind_sc        | NSString | Wind direction level 1-2                  |
+| vis            | NSNumber | Visibility                                |
+
+```objc
+/** VPWeatherServerHourlyModel
+The weather status code corresponds to the weather status relationship. The hourly status is consistent with this relationship
+"()" means not included
+"[]" means included
+
+[0, 4] means - sunny
+(4, 12] means - sunny to cloudy
+(12, 16] means - cloudy
+(16, 20] means - showers
+(20, 24] means - thunderstorms
+(24, 32] means - hail
+(32, 40] means - light rain
+(40, 48] means - moderate rain
+(48, 56] means - heavy rain
+(56, 72] means - heavy rain
+(72, 84] means - light snow
+(84, 100] means - heavy snow
+(100, 155] means - cloudy
+Others - Unknown
+*/
+```
+
+### Return data
+
+* VPWeatherConfigModel
+
+| Parameter name | Type     | Remarks                                                      |
+| -------------- | -------- | ------------------------------------------------------------ |
+| switchState    | int      | 0 is off, 1 is on                                            |
+| weatherUnit    | int      | 0 is Celsius, 1 is Fahrenheit                                |
+| crc            | uint16_t | CRC of the current weather of the device, used to compare whether the weather data stored in the application layer is expired |
+
+```objc
+typedef NS_ENUM(NSInteger, VPWeatherSettingState) {
+    VPWeatherSettingStateNone = 0, //No such feature
+    VPWeatherSettingStateSuccess,  //success
+    VPWeatherSettingStateFailure,  //fail
+};
+```
+
+### Usage Examples
+
+```objc
+[[VPWeatherHandle share] readWeatherInfo:^(VPWeatherSettingState state, VPWeatherConfigModel * _Nullable cofigModel) {
+        if (state == 1) {//Read Success
+            // todo...
+        }
+    }];
+```
+
+
+
+# Blood sugar function
+
+## Obtain blood sugar automatic measurement history data
+
+Blood sugar value range: **[3.00, 15.00]**
+
+Blood sugar risk level requires the device's blood sugar type value to be 5 to support; `bloodGlucoseType == 5`
+
+### Prerequisites
+
+The device is connected and supports this function. After calling the daily data reading, obtain blood sugar history data from the SDK database
+
+###  Class Name
+
+`VPDataBaseOperation`
+
+### Interface
+
+This interface returns blood sugar historical data every 5 minutes. The application layer can process the returned data on its own to display it.
+
+For the day, data is continuously generated, and the amount of data returned each time is uncertain.
+
+```objective-c
++ (NSArray *)veepooSDKGetDeviceBloodGlucoseDataWithDate:(NSString *)queryDate andTableID:(NSString *)tableID;
+```
+
+### Parameter Explanation
+
+| Parameter name | Type     | Remarks                                           |
+| -------------- | -------- | ------------------------------------------------- |
+| queryDate      | NSString | The date to be queried, in the format: yyyy-MM-dd |
+| tableID        | NSString | The mac address of the device                     |
+
+### Return data
+
+Dictionary Array
+
+```objective-c
+NSDictionary *dataDic = {
+		"time" = "16:30";
+		"bloodGlucoses" = [@"0.00"]; // Blood glucose value array every 5 minutes, with at least 1 element and at most 5 elements in the array.
+		"bloodGlucoseLevels" = [@"0"]; // Risk level corresponding to blood glucose value, 1-3 are low, medium, and high respectively. The device blood glucose type (bloodGlucoseType) is only supported when it is 5. If it is, it corresponds to the blood glucose value one by one. Note that this key needs to be checked for non-emptiness before use
+}
+```
+
+| Parameter name     | Type     | Remarks                                                      |
+| ------------------ | -------- | ------------------------------------------------------------ |
+| time               | NSString | Time, format: HH:mm                                          |
+| bloodGlucoses      | NSArray  | Blood glucose value array                                    |
+| bloodGlucoseLevels | NSArray  | Blood glucose risk level array, one-to-one correspondence with blood glucose value |
+
+### Usage Examples
+
+```swift
+@IBAction func readDataBtnAction(_ sender: UIButton) {
+    let tableID = VPBleCentralManage.sharedBleManager()?.peripheralModel.deviceAddress;
+    let dateFormatter = DateFormatter.init()
+    dateFormatter.dateFormat = "yyyy-MM-dd"
+    dateFormatter.timeZone = TimeZone.init(identifier: "Asia/Shanghai")
+    let dateStr = dateFormatter.string(from: Date.init())
+    
+    let arr = VPDataBaseOperation.veepooSDKGetDeviceBloodGlucoseData(withDate: dateStr, andTableID: tableID)
+    print(arr as Any)
+}
+```
+
+## Single measurement
+
+### Class Name
+
+`VPPeripheralBaseManage`
+
+### Interface
+
+The returned blood sugar value structure is: 0.00, the reported value is 100 times, and it is processed automatically when displayed. The blood sugar value unit conversion is as follows: `mmol/L => mg/dL`
+
+Formula：`floor((X mmol/L ) * 18 +0.5f) = Y mg/dL`
+
+**The level risk level is only valid when bloodGlucoseType is 5**
+
+```objective-c
+- (void)veepooSDKTestBloodGlucoseStart:(BOOL)start
+                       isPersonalModel:(BOOL)isPersonalModel
+                            testResult:(void(^)(VPDeviceBloodGlucoseTestState testState, NSUInteger testProgress, NSUInteger value, NSUInteger level))testResult;
+```
+
+### Parameter Explanation
+
+| Parameter name  | Type  | Remarks                     |
+| --------------- | ----- | --------------------------- |
+| start           | BOOL  | Start or end measurement    |
+| isPersonalModel | BOOL  | Private mode or not         |
+| testResult      | Block | Measurement result callback |
+
+```objective-c
+// Blood glucose function command test state
+typedef NS_ENUM(NSUInteger, VPDeviceBloodGlucoseTestState) {
+		VPDeviceBloodGlucoseTestStateUnsupported, // Device not supported
+		VPDeviceBloodGlucoseTestStateOpen, 			  // Open measurement
+		VPDeviceBloodGlucoseTestStateClose, 			// Close measurement
+		VPDeviceBloodGlucoseTestStateLowPower, 	  // Low power of device
+		VPDeviceBloodGlucoseTestStateDeviceBusy,  // Device busy
+		VPDeviceBloodGlucoseTestStateNotWear 	   	// Device wearing test failed
+};
+```
+
+### Usage Examples
+
+```swift
+@IBAction func manualTestDataBtnAction(_ sender: UIButton) {
+sender.isSelected = !sender.isSelected
+VPBleCentralManage.sharedBleManager()?.peripheralManage.veepooSDKTestBloodGlucoseStart(sender.isSelected, isPersonalModel:false, testResult: { [weak self](state, progress, value, level) in
+				var txt = ""
+				if state == .unsupported{
+					 txt = "The device does not support this function"
+				}
+				if state == .close {
+					 txt = "Measurement ends"
+				}
+				if state == .lowPower {
+				 	 txt = "Device low power"
+				}
+				if state == .deviceBusy {
+					 txt = "Device busy"
+				}
+				if state == .notWear {
+					 txt = "Device wear detection failed"
+				}
+				if state == .open {
+					 txt = "Progress: \(progress) % Value: \(value) Level: \(level)" 
+        }
+        _ = AppDelegate.showHUD(message: txt, hudModel: MBProgressHUDModeText, showView: self!.view) 
+                                                                                                                     }); 
+}
+```
+
+## Blood sugar private mode
+
+### Prerequisites
+
+The device is connected and supports this function
+
+The blood sugar private mode requires the user to set a baseline blood sugar value first, which involves reading and setting the blood sugar baseline value
+
+After the blood sugar private mode is turned on, the blood sugar automatic measurement data is measured in private mode
+
+### Class Name
+
+`VPPeripheralBaseManage`
+
+### Interface
+
+```objective-c
+- (void)veepooSDKBloodGlucosePersonalWithOpCode:(NSInteger)opCode
+                                          value:(CGFloat)value
+                                           open:(BOOL)open
+                                         result:(void(^)(BOOL success, CGFloat privateValue, NSInteger model))result;
+```
+
+### Parameter Explanation
+
+| Parameter name | Type      | Remarks                                                      |
+| -------------- | --------- | ------------------------------------------------------------ |
+| opCode         | NSInteger | 1 for setting 2 for reading                                  |
+| value          | CGFloat   | Blood sugar value range [3.00, 15.00]. If it is not within this range, it will be forced to change to 4.00 (invalid when reading) |
+| open           | BOOL      | Whether to enable calibration mode 0 off 1 on (invalid when reading) |
+| result         | Block     | Callback                                                     |
+
+### Return data
+
+| Parameter name | Type      | Remarks                                               |
+| -------------- | --------- | ----------------------------------------------------- |
+| success        | BOOL      | Success/failure                                       |
+| privateValue   | CGFloat   | Blood sugar baseline value                            |
+| model          | NSInteger | Whether it is enabled, 0 is not enabled, 1 is enabled |
+
+### Usage Examples
+
+```swift
+VPBleCentralManage.sharedBleManager()?.peripheralManage
+            .veepooSDKBloodGlucosePersonal(withOpCode: 2, value: 0, open: true, result: {  [weak self](success, value, isOpen) in
+        _ = AppDelegate.showHUD(message: "Read \(success), \(value), \(isOpen)", hudModel: MBProgressHUDModeText, showView: self!.view)
+        })
+```
+
+## Blood glucose multi-calibration function
+
+Single calibration and multi-calibration are mutually exclusive, and both will not appear in the same project
+
+### Prerequisites
+
+The types of blood glucose functions are 4/5/7 (different types may be added later, depending on the functions included in the specific project)
+
+### Class Name
+
+`VPPeripheralBaseManage`
+
+### Interface
+
+```objective-c
+/// Setting/reading blood glucose multi-calibration, mutually exclusive with {@link: veepooSDKBloodGlucosePersonalWithOpCode:value:open:result:}
+/// Determine whether multi-calibration is supported by bloodGlucoseType, which has blood glucose reference values for 6 time periods
+/// @param opCode 1 for setting 2 for reading
+/// @param model Model for blood glucose multi-calibration
+/// @param result callback function
+- (void)veepooSDKBloodGlucoseMultiPersonalWithOpCode:(NSInteger)opCode
+                                               model:(VPMultiBloodGlucoseModel *)model
+                                              result:(void(^)(BOOL success, VPMultiBloodGlucoseModel * model))result;
+```
+
+### Parameter Explanation
+
+| Parameter name | Type                     | Remarks                                                      |
+| -------------- | ------------------------ | ------------------------------------------------------------ |
+| opCode         | NSInteger                | 1 for setting, 2 for reading                                 |
+| model          | VPMultiBloodGlucoseModel | Multi-calibration parameter model, which can be omitted when reading |
+| result         | Block                    | Callback                                                     |
+
+VPMultiBloodGlucoseModel
+
+| Parameter name  | Type                         | Remarks                                                      |
+| --------------- | ---------------------------- | ------------------------------------------------------------ |
+| open            | BOOL                         | Whether private mode is turned on                            |
+| beforeBreakfast | VPMultiBloodGlucoseItemModel | Before breakfast, can only be set between 2:00 am and 12:00 am |
+| afterBreakfast  | VPMultiBloodGlucoseItemModel | After breakfast                                              |
+| beforeLunch     | VPMultiBloodGlucoseItemModel | Before lunch                                                 |
+| afterLunch      | VPMultiBloodGlucoseItemModel | After lunch                                                  |
+| beforeDinner    | VPMultiBloodGlucoseItemModel | Before dinner                                                |
+| afterDinner     | VPMultiBloodGlucoseItemModel | After dinner                                                 |
+
+VPMultiBloodGlucoseItemModel
+
+| Parameter name | Type     | Remarks                                                      |
+| -------------- | -------- | ------------------------------------------------------------ |
+| hour           | uint8_t  | Hour, 24-bit, [0, 23]                                        |
+| minute         | uint8_t  | Minute, [0, 59]                                              |
+| value          | uint16_t | Corresponding blood sugar value, range [300, 1500], actual range [3.0, 15.0] |
+
+### Usage Examples
+
+```swift
+// setting
+        let model:VPMultiBloodGlucoseModel = .init()
+        model.open = true
+        model.beforeBreakfast = VPMultiBloodGlucoseItemModel(hour: 8, minute: 0, value: 8)
+        
+        VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDKBloodGlucoseMultiPersonal(withOpCode: 1, model: model) { success, model in
+            if success {
+                guard let model = model else { return }
+                print(model)
+            }
+        }
+```
+
+
+
+## Blood sugar unit switching
+
+### Prerequisites
+
+The device is connected and supports this function. You can refer to the implementation in the `VPBaseFunctionRemindController` class.
+
+### Class Name
+
+`VPPeripheralBaseManage`
+
+### Interface
+
+```objective-c
+- (void)veepooSDKSettingBaseFunctionType:(VPSettingBaseFunctionSwitchType)baseFunctionType
+                            settingState:(VPSettingFunctionState)settingState
+                           completeBlock:(void(^)(VPSettingFunctionCompleteState completeState))settingCompleteBlock;
+```
+
+### Parameter Explanation
+
+| Parameter name       | Type                            | Remarks                                            |
+| -------------------- | ------------------------------- | -------------------------------------------------- |
+| baseFunctionType     | VPSettingBaseFunctionSwitchType | Type to set or read, use VPSettingBloodGlucoseUnit |
+| settingState         | VPSettingFunctionState          | Set/Read                                           |
+| settingCompleteBlock | Block                           | Callback                                           |
+
+```objective-c
+typedef NS_ENUM(NSInteger, VPSettingFunctionState) {//Set to get a function to read
+VPReadFunctionState = 0,     //Read the switch and existence of a function
+VPSettingFunctionOpen = 1,   //Open a function
+VPSettingFunctionClose = 2,  //Close a function
+VPSettingFunctionCancel = 3, //Only dynamic blood pressure calibration is valid now
+VPSettingFunction = 4,       //Set a function
+};
+```
+
+### Return data
+
+```objective-c
+typedef NS_ENUM(NSInteger, VPSettingFunctionCompleteState) {//Set the state after a function is completed
+VPFunctionCompleteUnknown = 0,   //The device does not have this function
+VPFunctionCompleteOpen = 1,      //This function is turned on
+VPFunctionCompleteClose = 2,     //This function is closed
+VPFunctionCompleteFailure = 3,   //Setting or reading failed
+VPFunctionCompleteComplete = 4,  //Setting completed, response to Data setting
+};
+```
+
+### Usage Examples
+
+```swift
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDKSettingBaseFunctionType(.bloodGlucoseUnit, settingState: .readFunctionState) { state in
+		// todo...
+}
+```
+
+
+
+# Blood pressure function
+
+## Obtain blood pressure historical data
+
+### Prerequisites
+
+The device is connected and supports this function. After calling the daily data reading, obtain the blood pressure data from the SDK database.
+
+### Class Name
+
+`VPDataBaseOperation`, refer to SDK Demo `VPTestBloodController` class implementation
+
+### Interface
+
+Get the blood pressure history data for a certain day. By default, one blood pressure data is collected every 10 minutes. If one data is collected every 10 minutes, there will be a maximum of 144 data in a day.
+
+The measurement frequency of different series of equipment is inconsistent.
+
+```objective-c
++ (NSArray *)veepooSDKGetBloodDataWithDate:(NSString *)queryDate andTableID:(NSString *)tableID;
+```
+
+### Parameter Explanation
+
+| Parameter name | Type     | Remarks                                         |
+| -------------- | -------- | ----------------------------------------------- |
+| queryDate      | NSString | Query date, format is yyyy-MM-dd                |
+| tableID        | NSString | Data ID, MAC address of the transmission device |
+
+### Return data
+
+```objective-c
+[
+ {
+    Time = "07:05";
+    diastolic = "106";
+    isManual = "N";
+    systolic = "71";
+    vein = "0";
+ },
+ {
+    Time = "08:05";
+    diastolic = "101";
+    isManual = "N";
+    systolic = "65";
+    vein = "0";
+ }
+]
+```
+
+| Parameter name | Type     | Remarks                                        |
+| -------------- | -------- | ---------------------------------------------- |
+| Time           | NSString | Measurement time                               |
+| diastolic      | NSString | Diastolic pressure (low pressure)              |
+| isManual       | NSString | Whether it is manual measurement, fixed as "N" |
+| systolic       | NSString | Systolic pressure (high pressure)              |
+| vein           | NSString | Invalid field                                  |
+
+### Usage Examples
+
+```swift
+func obtainOneDayBloodData() {
+        self.bloodDateLabel.text = bloodDayIndex.getOneDayDateString()
+        let bloodDataBaseArray = VPDataBaseOperation.veepooSDKGetBloodData(withDate: self.bloodDateLabel.text, andTableID: VPBleCentralManage.sharedBleManager().peripheralModel.deviceAddress)
+        
+        guard let bloodDataArray = bloodDataBaseArray else {
+            self.bloodArray = [[String: String]]()
+            testBloodTableView.reloadData()
+            return
+        }
+        
+        self.bloodArray = bloodDataArray as! Array<[String : String]>
+        
+        testBloodTableView.reloadData()
+    }
+```
+
+## Blood pressure single test
+
+### Class Name
+
+`VPPeripheralBaseManage`, refer to SDK Demo `VPTestBloodController` class implementation
+
+### Interface
+
+Turn blood pressure test on or off. Blood pressure test is different from heart rate test. A blood pressure test takes about 50-55 seconds. Developers can customize the test progress according to this time. There will be results only after each test is completed, that is, there can only be one set of values for one test.
+
+```objective-c
+- (void)veepooSDKTestBloodStart:(BOOL)start
+                       testMode:(NSUInteger)testMode
+                     testResult:(void(^)(VPTestBloodState testBloodState, NSUInteger testBloodProgress, NSUInteger highBlood, NSUInteger lowBlood))testBloodResultBlock;
+```
+
+### Parameter Explanation
+
+| Parameter name       | Type       | Remarks                                                      |
+| -------------------- | ---------- | ------------------------------------------------------------ |
+| start                | BOOL       | Start/end measurement                                        |
+| testMode             | NSUInteger | Measurement mode, 0 is general mode, 1 is private mode, default is general mode |
+| testBloodResultBlock | Block      | Test result callback                                         |
+
+### Return data
+
+**testBloodResultBlock**
+
+```objc
+typedef NS_ENUM(NSInteger,VPTestBloodState) {//State changes during blood pressure test
+		VPTestBloodStateTesting = 0,			  //Start testing blood pressure, no result yet
+		VPTestBloodStateDeviceBusy = 1,     //Device busy, test ended
+		VPTestBloodStateTestFail = 2,			  //Test invalid, that is, test failure
+		VPTestBloodStateTestInterrupt = 3,  //Test ended manually
+		VPTestBloodStateComplete = 4,			  //Test completed
+		VPTestBloodStateNoFunction = 5,			//Device has no blood pressure function
+};
+```
+
+| Parameter name    | Type             | Remarks                     |
+| ----------------- | ---------------- | --------------------------- |
+| testBloodState    | VPTestBloodState | Measurement status          |
+| testBloodProgress | NSUInteger       | Measurement progress, 0-100 |
+| highBlood         | NSUInteger       | High blood pressure value   |
+| lowBlood          | NSUInteger       | Low blood pressure value    |
+
+### Usage Examples
+
+```swift
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDKTestBloodStart(sender.isSelected, testMode: 0) { (testBloodState, progress, systolic, diastolic) in
+            if sender.isSelected {
+                weakSelf.testProgressLabel.text = "Testing progress:" + String(progress) + "%"
+                weakSelf.systolicLabel.text = "systolic:" + String(systolic)
+                weakSelf.diastolicLabel.text = "diastolic:" + String(diastolic)
+                switch testBloodState {
+                case .testing://Under testing
+                    print("Under testing")
+                case .deviceBusy:
+                    _ = AppDelegate.showHUD(message: "The device is busy, end the test", hudModel: MBProgressHUDModeText, showView: weakSelf.view)
+                    sender.isSelected = false
+                case .testFail:
+                    _ = AppDelegate.showHUD(message: "Test failure", hudModel: MBProgressHUDModeText, showView: weakSelf.view)
+                    sender.isSelected = false
+                case .testInterrupt:
+                    _ = AppDelegate.showHUD(message: "Manual end of test", hudModel: MBProgressHUDModeText, showView: weakSelf.view)
+                    sender.isSelected = false
+                case .complete:
+                    _ = AppDelegate.showHUD(message: "Testing has been completed", hudModel: MBProgressHUDModeText, showView: weakSelf.view)
+                    sender.isSelected = false
+                case .noFunction:
+                    _ = AppDelegate.showHUD(message: "The device does not have this function yet", hudModel: MBProgressHUDModeText, showView: weakSelf.view)
+                    sender.isSelected = false
+                }
+            }
+        }
+```
+
+## Blood pressure private mode
+
+Blood pressure private mode requires the user to set a baseline high and low blood pressure value first, which involves reading and setting the high and low blood pressure baseline values
+
+After the blood pressure private mode is turned on, the blood pressure automatically measured data is measured in private mode
+
+### Class Name
+
+`VPPeripheralBaseManage`
+
+### Interface
+
+Set the private blood pressure mode. When setting, make sure that the high pressure is greater than the low pressure. If the setting mode is to read the systolic and diastolic pressures, both will be 0.
+
+```objective-c
+- (void)veepooSDKSettingPersonalBloodWithModel:(VPDevicePrivateBloodModel *)privateBloodModel
+                                   settingMode:(VPSettingFunctionState)settingMode
+                                 successResult:(void(^)(VPDevicePrivateBloodModel *devicePrivateBloodModel))personalBloodModeResutBlock
+                                 failureResult:(void(^)(void))personalBloodModeFailureBlock;
+```
+
+### Parameter Explanation
+
+| Parameter name                | Type                      | Remarks                                     |
+| ----------------------------- | ------------------------- | ------------------------------------------- |
+| privateBloodModel             | VPDevicePrivateBloodModel | Private Blood Pressure Instantiation Object |
+| settingMode                   | VPSettingFunctionState    | Setting Mode                                |
+| personalBloodModeResutBlock   | Block                     |                                             |
+| personalBloodModeFailureBlock | Block                     |                                             |
+
+**VPDevicePrivateBloodModel**
+
+| Parameter name      | Type       | Remarks                                                      |
+| ------------------- | ---------- | ------------------------------------------------------------ |
+| systolicPressure    | NSUInteger | Systolic pressure is high pressure                           |
+| diastolicPressure   | NSUInteger | Diastolic pressure is low pressure                           |
+| privateMode         | NSUInteger | Private mode status, 0 is off and 1 is on                    |
+| dynamicCalibration  | BOOL       | Whether it is a private mode that requires dynamic calibration |
+| settingState        | NSUInteger | 0 is setting failure, 1 is setting success, 6 is dynamic calibration in progress, 7 is calibration failure, 8 is calibration success, 9 is a type of calibration failure when the device is in use |
+| calibrationProgress | NSUInteger | Calibration progress, only useful for devices with dynamic calibration function |
+
+**VPSettingFunctionState**
+
+```objc
+typedef NS_ENUM(NSInteger, VPSettingFunctionState) {//Set to get a function to read
+		VPReadFunctionState = 0, 			//Read the switch and existence of a function
+		VPSettingFunctionOpen = 1, 		//Open a function
+		VPSettingFunctionClose = 2, 	//Close a function
+		VPSettingFunctionCancel = 3, 	//Only dynamic blood pressure calibration is valid now
+		VPSettingFunction = 4, 			  //Set a function
+};
+```
+
+### Return data
+
+If the setting/reading is successful, the `personalBloodModeResutBlock` callback will be triggered, and if it fails, the `personalBloodModeFailureBlock` will be triggered.
+
+### Usage Examples
+
+```swift
+//You need to read the data of the bracelet first. This App generally displays the data of the bracelet.
+        unowned let weakSelf = self
+        VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDKSettingPersonalBlood(with: VPDevicePrivateBloodModel(), settingMode: .readFunctionState, successResult: { (devicePrivateModel) in
+            weakSelf.privateBloodModel = devicePrivateModel
+            if devicePrivateModel?.systolicPressure == 0 && devicePrivateModel?.diastolicPressure == 0 {
+                _ = AppDelegate.showHUD(message: "The bracelet has not set this function yet", hudModel: MBProgressHUDModeText, showView: weakSelf.view)
+            }else {//Display the current bracelet value to the user
+                _ = AppDelegate.showHUD(message: "Reading blood pressure private mode successfully", hudModel: MBProgressHUDModeText, showView: weakSelf.view)
+                weakSelf.systolicSlider.value = Float((devicePrivateModel?.systolicPressure)!)
+                weakSelf.diastolicSlider.value = Float((devicePrivateModel?.diastolicPressure)!)
+                weakSelf.bloodModeSegControl.selectedSegmentIndex = Int((devicePrivateModel?.privateMode)!)
+                weakSelf.systolicLabel.text = "systolic:" + String((devicePrivateModel?.systolicPressure)!)
+                weakSelf.diastolicLabel.text = "diastolic:" + String((devicePrivateModel?.diastolicPressure)!)
+                weakSelf.modeLabel.text = devicePrivateModel?.privateMode == 0 ? "Mode: General" : "Mode: Private"
+            }
+        }) { 
+            _ = AppDelegate.showHUD(message: "Reading blood pressure private mode failed", hudModel: MBProgressHUDModeText, showView: weakSelf.view)
+        }
+```
+
+
+
+
+
+# Blood oxygen function
+
+## Obtaining historical data of automatic blood oxygen measurement
+
+### Prerequisites
+
+The device is connected and supports this function. After calling the daily data reading, obtain the historical blood oxygen data from the SDK database
+
+Note that the blood oxygen function is a restricted function of the SDK. You need to contact our business first for business docking. In the case of restriction, only the blood oxygen value is returned
+
+### Class Name
+
+`VPDataBaseOperation`, refer to SDK Demo `VPTestOxygenController` class implementation
+
+### Interface
+
+Note that the data returned by the interface is all-day blood oxygen data, but the blood oxygen data of the device is only valid from **0-7 o'clock**. This is a limitation made by the comprehensive evaluation of the algorithm, product and measurement conditions.
+
+```objective-c
++ (NSArray *)veepooSDKGetDeviceOxygenDataWithDate:(NSString *)queryDate andTableID:(NSString *)tableID;
+```
+
+### Parameter Explanation
+
+| Parameter name | Type     | Remarks                                           |
+| -------------- | -------- | ------------------------------------------------- |
+| queryDate      | NSString | The date to be queried, in the format: yyyy-MM-dd |
+| tableID        | NSString | The mac address of the device                     |
+
+### Return data
+
+Dictionary Array
+
+```objective-c
+ NSDictionary *riginalDic = @{
+        ApneaResult = 0;
+        CardiacLoad = 0;
+        HRV = 0;
+        HeartValue = 65;
+        Hypopnea = 0;
+        HypoxiaTime = 0;
+        IsHypoxia = 0;
+        OxygenValue = 0;
+        RespirationRate = 255;
+        SportValue = 0;
+        StepValue = 0;
+        Temp1 = 75;
+        Time = "00:00";
+        protocolType = 2;
+    };
+```
+
+| Parameter name  | Type     | Remarks                                                      |
+| --------------- | -------- | ------------------------------------------------------------ |
+| Time            | NSString | Time                                                         |
+| OxygenValue     | NSString | Blood oxygen value. In restricted mode, only the value of this field is returned |
+| ApneaResult     | NSString | Number of apneas                                             |
+| CardiacLoad     | NSString | Cardiac load                                                 |
+| HRV             | NSString | HRV heart rate variability                                   |
+| HeartValue      | NSString | Heart rate                                                   |
+| Hypopnea        | NSString | Hypopnea                                                     |
+| HypoxiaTime     | NSString | Hypoxia time                                                 |
+| IsHypoxia       | NSString | Whether hypoxia                                              |
+| RespirationRate | NSString | Respiration rate                                             |
+| SportValue      | NSString | Exercise volume                                              |
+| StepValue       | NSString | Number of steps                                              |
+| Temp1           | NSString | Debugging parameters                                         |
+| protocolTyp     | NSString | Protocol version                                             |
+
+### Usage Examples
+
+```objc
+VPDataBaseOperation.veepooSDKGetDeviceOxygenData(withDate: "2020-05-27", andTableID: VPBleCentralManage.sharedBleManager().peripheralModel.deviceAddress)
+```
+
+## Single measurement
+
+### Prerequisites
+
+The device is connected and supports this function
+
+### Class Name
+
+`VPPeripheralBaseManage`
+
+### Interface
+
+Turn on or off the blood oxygen test. The principle of the test is the same as that of the heart rate test, that is, there will be multiple sets of values in one test.
+
+```objective-c
+- (void)veepooSDKTestOxygenStart:(BOOL)start
+                      testResult:(void(^)(VPTestOxygenState testOxygenState, NSUInteger oxygenValue))testOxygenResultBlock;
+```
+
+### Parameter Explanation
+
+| Parameter name        | Type  | Remarks                     |
+| --------------------- | ----- | --------------------------- |
+| start                 | BOOL  | Start/stop measurement      |
+| testOxygenResultBlock | Block | Measurement result callback |
+
+### Return data
+
+Test result callback. When the test is in calibration state, value is the calibration progress. Otherwise, it is the blood oxygen test value.
+
+```objc
+typedef NS_ENUM(NSInteger,VPTestOxygenState) {//State changes during blood oxygen testing
+		VPTestOxygenStateStart = 0,//Start testing blood oxygen, no results yet
+		VPTestOxygenStateTesting = 1,//Testing blood oxygen, blood oxygen value has been measured
+		VPTestOxygenStateNotWear = 2,//Wearing test failed, test has ended
+		VPTestOxygenStateDeviceBusy = 3,//The device is busy and cannot be tested, the test has ended
+		VPTestOxygenStateOver = 4,//Test ended normally, ended manually
+		VPTestOxygenStateNoFunction = 5,//The device has no blood oxygen function
+		VPTestOxygenStateCalibration = 6,//Blood oxygen calibration in progress
+		VPTestOxygenStateCalibrationComplete = 7,//Blood oxygen calibration completed
+		VPTestOxygenStateInvalid = 8, // Blood oxygen function is temporarily unavailable
+};
+```
+
+### Usage Examples
+
+```swift
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDKTestOxygenStart(sender.isSelected) { (testOxygenState, oxygenValue) in
+    if sender.isSelected {
+        switch testOxygenState {
+        case .start:
+            _ = AppDelegate.showHUD(message: "Preparing for the test, please maintain the correct posture", hudModel: MBProgressHUDModeText, showView: weakSelf.view)
+        case .testing: // Blood oxygen is being tested, and the blood oxygen value has been measured
+            weakSelf.currentOxygenValueLabel.text = "Current blood oxygen value:" + String(oxygenValue) + "%"
+        case .notWear: // Wearing detection failed, the test has ended
+            _ = AppDelegate.showHUD(message: "Wearing detection failed", hudModel: MBProgressHUDModeText, showView: weakSelf.view)
+            sender.isSelected = false
+        case .deviceBusy: //The device is busy and cannot be tested. The test has ended.
+            _ = AppDelegate.showHUD(message: "Device is operating", hudModel: MBProgressHUDModeText, showView: weakSelf.view)
+            sender.isSelected = false
+        case .over: //The test ended normally, ended manually
+            _ = AppDelegate.showHUD(message: "Test ended", hudModel: MBProgressHUDModeText, showView: weakSelf.view)
+            sender.isSelected = false
+        case .noFunction: //The device does not have this function
+            _ = AppDelegate.showHUD(message: "The device does not have this function", hudModel: MBProgressHUDModeText, showView: weakSelf.view)
+            sender.isSelected = false
+        case .calibration: //Calibrating
+            weakSelf.currentOxygenValueLabel.text = "Calibration progress:" + String(oxygenValue) + "%"
+        case .calibrationComplete: //calibration completed
+            weakSelf.currentOxygenValueLabel.text = "Calibration progress:" + String(oxygenValue) + "%"
+        default:
+            break
+        }
+    }else {
+        if testOxygenState == .over {
+            _ = AppDelegate.showHUD(message: "Test completed", hudModel: MBProgressHUDModeText, showView: weakSelf.view)
+        }
+    }
+}
+```
+
+
+
+# Flip (Turn) wrist to light up the screen
+
+### Prerequisites
+
+The device is connected and supports this function
+
+```
+var tbyte:[UInt8] = Array(repeating: 0x00, count: 20)
+        VPBleCentralManage.sharedBleManager().peripheralModel.deviceFuctionData.copyBytes(to: &tbyte, count: tbyte.count)
+        if tbyte[11] != 1 {//First determine whether this function exists
+            _ = AppDelegate.showHUD(message: "The bracelet does not have the function of turning the wrist to light up the screen", hudModel: MBProgressHUDModeText, showView: view)
+            return
+        }
+```
+
+### Class Name
+
+`VPPeripheralBaseManage`, refer to SDK `VPRaiseHandSettingController` class implementation
+
+How to get it：**VPBleCentralManage.sharedBleManager().peripheralManage**
+
+### Interface
+
+```objc
+- (void)veepooSDKSettingRaiseHandWithRaiseHandModel:(VPDeviceRaiseHandModel *)raiseHandModel
+                                        settingMode:(NSUInteger)settingMode
+                                      successResult:(void(^)(VPDeviceRaiseHandModel *raiseHandModel))settingRaiseHandResultBlock
+                                      failureResult:(void(^)(void))settingRaiseHandFailureBlock;
+```
+
+### Parameter Explanation
+
+| Parameter                    | Parameter type         | Remarks                                                      |
+| ---------------------------- | ---------------------- | ------------------------------------------------------------ |
+| raiseHandModel               | VPDeviceRaiseHandModel | Wrist-turning screen-lighting model                          |
+| settingMode                  | NSUInteger             | Set the wrist-turning screen-lighting mode. 0 represents off. 1 represents on. 2 represents reading the device wrist-turning screen-lighting information. |
+| settingRaiseHandResultBlock  | Block                  | Success callback                                             |
+| settingRaiseHandFailureBlock | Block                  | Failure callback                                             |
+
+* VPDeviceRaiseHandModel
+
+| Parameter            | Parameter type | Remarks                                                      |
+| -------------------- | -------------- | ------------------------------------------------------------ |
+| raiseHandStartHour   | NSUInteger     | The hour when the screen turns on by turning the wrist. The range is 0-23 |
+| raiseHandStartMinute | NSUInteger     | The minute when the screen turns on by turning the wrist. The range is 0-59 |
+| raiseHandEndHour     | NSUInteger     | The hour when the screen turns on by turning the wrist. The range is 0-23 |
+| raiseHandEndMinute   | NSUInteger     | The minute when the screen turns on by turning the wrist. The range is 0-59 |
+| raiseHandState       | NSUInteger     | This is the state of the screen turning on by turning the wrist. 0 means off and 1 means on. When on, it is valid within the set time |
+| sensitive            | NSUInteger     | The current sensitivity of the bracelet                      |
+| defaultSensitive     | NSUInteger     | The default sensitivity of the bracelet. If not, it means that there is no sensitivity setting function |
+
+### Sample Code
+
+```swift
+@IBAction func startSettingLongseatAction(_ sender: UIButton) {
+        //Building the Model
+        let raiseHandModel = VPDeviceRaiseHandModel(raiseHandStartHour: UInt(startHourSlider.value), raiseHandStartMinute: UInt(startMinuteSlider.value), raiseHandEndHour: UInt(endHourSlider.value), raiseHandEndMinute: UInt(endMinuteSlider.value), raiseHandState: UInt(stateSegControl.selectedSegmentIndex), raiseHandSensitive: UInt(sensitiveSlider.value))
+        
+        //Start setting up
+        unowned let weakSelf = self;
+        VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDKSettingRaiseHand(with: raiseHandModel, settingMode: UInt(stateSegControl.selectedSegmentIndex), successResult: { (raiseHandModel) in
+            _ = AppDelegate.showHUD(message: "Flip wrist to light up the screen setting successfully", hudModel: MBProgressHUDModeText, showView: weakSelf.view)
+        }) { 
+            _ = AppDelegate.showHUD(message: "Failed to set the screen to turn on when wrist is turned on", hudModel: MBProgressHUDModeText, showView: weakSelf.view)
+        }
+    }
+```
+
+
+
+# Screen brightness adjustment function
+
+### Prerequisites
+
+The device is connected and supports this function
+
+```
+var tbyte:[UInt8] = Array(repeating: 0x00, count: 20)
+        VPBleCentralManage
+            .sharedBleManager().peripheralModel.deviceFuctionData.copyBytes(to: &tbyte, count: tbyte.count)
+        if tbyte[13] != 1 {//First determine whether this function exists
+            _ = AppDelegate.showHUD(message: "The bracelet does not have a brightness adjustment function", hudModel: MBProgressHUDModeText, showView: view)
+            return
+        }
+```
+
+### Class Name
+
+`VPPeripheralBaseManage`, refer to SDK `VPSettingBrightController` class implementation
+
+How to get it：**VPBleCentralManage.sharedBleManager().peripheralManage**
+
+### Interface
+
+> For example, if you set a time period of 22:00-8:00 and the gear is firstBrightValue, and the brightness gear for other time periods is otherBrightValue, then the bracelet will display the brightness according to the gear of firstBrightValue during the time period of 22:00-8:00, and the brightness of the gear of otherBrightValue at other times
+>
+>  If it is set to automatic, different gears will be displayed according to different devices in different time periods, which is determined by the bracelet
+>
+>  The maximum gear of each device is also different
+
+```objc
+- (void)veepooSDKSettingBrightWithBrightModel:(VPDeviceBrightModel *)brightModel
+                                  settingMode:(NSUInteger)settingMode
+                                successResult:(void(^)(VPDeviceBrightModel *brightModel))settingBrightResultBlock
+                                failureResult:(void(^)(void))settingBrightFailureBlock;
+```
+
+### Parameter Explanation
+
+| Parameter                 | Parameter type      | Remarks                     |
+| ------------------------- | ------------------- | --------------------------- |
+| brightModel               | VPDeviceBrightModel | Brightness adjustment model |
+| settingMode               | NSUInteger          | 1 for setting 2 for reading |
+| settingBrightResultBlock  | Block               | Success callback            |
+| settingBrightFailureBlock | Block               | Failure callback            |
+
+* VPDeviceBrightModel
+
+| Parameter              | Parameter type | Remarks                                                     |
+| ---------------------- | -------------- | ----------------------------------------------------------- |
+| firstBrightStartHour   | NSInteger      | The first gear starts working hour                          |
+| firstBrightStartMinute | NSInteger      | The first gear starts working minute                        |
+| firstBrightEndHour     | NSInteger      | The first gear ends working hour                            |
+| firstBrightEndMinute   | NSInteger      | The first gear ends working minute                          |
+| firstBrightValue       | NSInteger      | Set the first gear of the time period                       |
+| otherBrightValue       | NSInteger      | Brightness gear of other time periods                       |
+| isAutomatic            | BOOL           | Whether to adjust automatically                             |
+| maxBrightValue         | NSInteger      | Maximum brightness adjustment gear                          |
+| lastManualBrightValue  | NSInteger      | OtherBrightValue last gear manually set for each connection |
+
+### Sample Code
+
+```swift
+@IBAction func startSettingLongseatAction(_ sender: UIButton) {
+        //Building a brightness adjustment model
+        let brightModel = VPDeviceBrightModel(startHour: Int(brightStartHourSlider.value), startMinute: Int(brightStartMinuteSlider.value), endHour: Int(brightEndHourSlider.value), endMinute: Int(brightEndMinuteSlider.value), firstBrightValue: Int(firstBrightValueSlider.value), otherBrightValue: Int(otherBrightValueSlider.value))
+        
+        //Start setting up
+        unowned let weakSelf = self;
+        VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDKSettingBright(with: brightModel, settingMode: 1, successResult: { (deviceBrightModel) in
+            _ = AppDelegate.showHUD(message: "Brightness adjustment setting is successful", hudModel: MBProgressHUDModeText, showView: weakSelf.view)
+        }) { 
+            _ = AppDelegate.showHUD(message: "Brightness adjustment setting failed", hudModel: MBProgressHUDModeText, showView: weakSelf.view)
+        }
+    }
+```
+
+
+
+# Screen on time adjustment function
+
+### Prerequisites
+
+The device is connected and supports this function
+
+```swift
+//1.First determine whether this function exists
+let type = VPBleCentralManage.sharedBleManager().peripheralModel.screenDurationType
+if type == 0 {
+    _ = AppDelegate.showHUD(message: "This device does not have the function of setting the screen duration", hudModel: MBProgressHUDModeText, showView: view)
+    return
+}
+```
+
+### Class Name
+
+`VPPeripheralBaseManage`, refer to SDK `VPSettingScreenDurationController` class implementation
+
+How to get it：**VPBleCentralManage.sharedBleManager().peripheralManage**
+
+### Interface
+
+```objc
+- (void)veepooSDKSettingScreenDuration:(VPScreenDurationModel *)durationModel
+                           settingMode:(NSUInteger)settingMode
+                         successResult:(void(^)(VPScreenDurationModel *DurationModel))settingResult
+                         failureResult:(void(^)(void))failureResult;
+```
+
+### Parameter Explanation
+
+| Parameter     | Parameter type        | Remarks                                                      |
+| ------------- | --------------------- | ------------------------------------------------------------ |
+| durationModel | VPScreenDurationModel | Set the screen duration model. It can be non-nil when reading. |
+| settingMode   | NSUInteger            | 1 for setting 2 for reading                                  |
+| settingResult | Block                 | Success callback                                             |
+| failureResult | Block                 | Failure callback                                             |
+
+* VPScreenDurationModel
+
+| Parameter       | Parameter Type | Notes                                                     |
+| --------------- | -------------- | --------------------------------------------------------- |
+| currentDuration | NSInteger      | Current screen-on duration                                |
+| defaultDuration | NSInteger      | Default screen-on duration for the device                 |
+| minDuration     | NSInteger      | Minimum screen-on duration that can be set for the device |
+| maxDuration     | NSInteger      | Maximum screen-on duration that can be set for the device |
+
+### Sample Code
+
+```swift
+//2.Read the current device screen-on time information
+        VPBleCentralManage.sharedBleManager()
+            .peripheralManage.veepooSDKSettingScreenDuration(VPScreenDurationModel(), settingMode: 2, successResult: {[weak self] (durationModel) in
+                _ = AppDelegate.showHUD(message: "Read information successfully", hudModel: MBProgressHUDModeText, showView: (self?.view)!)
+                self?.durationModel = durationModel!
+                self?.updateUI()
+        }) {[weak self] in
+                _ = AppDelegate.showHUD(message: "Failed to read information", hudModel: MBProgressHUDModeText, showView: (self?.view)!)
+        }
+```
+
+
+
+# Health reminder function
+
+### Prerequisites
+
+The device is connected and supports this function
+
+### Class Name
+
+`VPPeripheralBaseManage`, refer to SDK `VPDeviceHealthRemindViewController` class implementation
+
+How to get it：**VPBleCentralManage.sharedBleManager().peripheralManage**
+
+### Interface
+
+```objc
+- (void)veepooSDKSettingHealthRemindWithRemindType:(VPDeviceHealthRemindType)remindType
+                                            opCode:(NSInteger)opCode
+                                       remindModel:(VPDeviceHealthRemindModel *)remindModel
+                                       resultBlock:(void(^)(BOOL success, VPDeviceHealthRemindModel *successModel))resultBlock
+                          deviceInfoDidChangeBlock:(void(^)(VPDeviceHealthRemindModel *changeModel))deviceInfoDidChangeBlock;
+```
+
+### Parameter Explanation
+
+| Parameter                | Parameter type            | Remarks                                                      |
+| ------------------------ | ------------------------- | ------------------------------------------------------------ |
+| remindType               | VPDeviceHealthRemindType  | Reminder type                                                |
+| opCode                   | NSInteger                 | 1 for setting, 2 for reading, remindModel can be empty when reading |
+| remindModel              | VPDeviceHealthRemindModel | Set the model, only valid when setting                       |
+| resultBlock              | Block                     | Result callback                                              |
+| deviceInfoDidChangeBlock | Block                     | Trigger callback when device information changes             |
+
+```objc
+// Health reminder function type
+typedef NS_ENUM(NSUInteger, VPDeviceHealthRemindType) {
+		VPDeviceHealthRemindTypeAll, 						// All
+		VPDeviceHealthRemindTypeLongSeat, 			// Long-term sitting
+		VPDeviceHealthRemindTypeDrinkWater, 		// Drinking water
+		VPDeviceHealthRemindTypeLookFarAway, 		// Looking far away
+		VPDeviceHealthRemindTypeSport, 					// Sports
+		VPDeviceHealthRemindTypeTakeMedicine, 	// Take medicine
+		VPDeviceHealthRemindTypeRead, 					// Reading
+		VPDeviceHealthRemindTypeTrip, 					// Traveling
+		VPDeviceHealthRemindTypeWashHands, 			// Wash hands
+};
+```
+
+* VPDeviceHealthRemindModel
+
+| Parameter      | Parameter type           | Remarks                                                |
+| -------------- | ------------------------ | ------------------------------------------------------ |
+| type           | VPDeviceHealthRemindType | Reminder type                                          |
+| startHour      | NSInteger                | Start time - hour, please limit the range to [0,23]    |
+| startMinute    | NSInteger                | Start time - minute, please limit the range to [0, 59] |
+| endHour        | NSInteger                | End time - hour, please limit the range to [0,23]      |
+| endMinute      | NSInteger                | End time - minute, please limit the range to [0, 59]   |
+| remindInterval | NSInteger                | Reminder interval                                      |
+| open           | BOOL                     | Whether the reminder is turned on                      |
+
+### Sample Code
+
+```swift
+// Read
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDKSettingHealthRemind(with: .all, opCode: 2, remindModel: nil) { [weak self]success, model in
+            if (success) {
+                if let model = model {
+                    let index = Int(model.type.rawValue)
+                    let start = String(format: "%02d:%02d", model.startHour, model.startMinute)
+                    let end = String(format: "%02d:%02d", model.endHour, model.endMinute)
+                    print("type:\(NameStrArr[index]), Start: \(start), End - \(end), Interval - \(model.remindInterval), Open: \(model.open)")
+                    _ = AppDelegate.showHUD(message: "Read Success", hudModel: MBProgressHUDModeText, showView: self!.view)
+                    self!.mArr.append(model)
+                    self!.tableView.reloadData()
+                }
+            }
+        } deviceInfoDidChange: { [weak self] model in
+            self!.deviceDidChange(model: model)
+        }
+```
+
+
+
+# Body composition function
+
+The body composition function depends on ECG, which is consistent with the ECG measurement posture. It cannot be automatically measured when the watch is worn normally. Therefore, this function can only be measured manually, which is divided into command-activated measurement and device-side offline measurement.
+
+Offline measurement means that the measurement result is stored in the watch side, which has a persistent effect. In the connected state, the data can be read into the SDK through [Daily Data Reading Interface](#Daily Data Reading Function).
+
+### Prerequisites
+
+Support this function, which can be judged by `VPBleCentralManage.sharedBleManager().peripheralModel.bodyCompositionType`
+
+### Class Name
+
+`VPPeripheralBaseManage`, refer to SDK `VPBodyCompositionViewController` class implementation
+
+How to get it：**VPBleCentralManage.sharedBleManager().peripheralManage**
+
+### Interface
+
+```objective-c
+/// Single measurement of body composition on or off
+/// - Parameters:
+/// - start: start or close
+/// - progress: progress callback, lead 0 means the lead has passed (indicates the hand is on the electrode), 1 means the lead has not passed
+/// - testResult: result callback
+- (void)veepooSDKTestBodyCompositionStart:(BOOL)start
+                                 progress:(void(^)(NSInteger lead, NSProgress *progress))progress
+                               testResult:(void(^)(VPDeviceBodyCompositionState state, VPBodyCompositionValueModel *model))testResult;
+```
+
+```objective-c
+/// Callback when the device completes measuring body composition
+@property (nonatomic, copy) void(^deviceTestBodyCompositionDidFinishBlock)(void);
+```
+
+### Parameter Explanation
+
+| Parameter  | Parameter type | Remarks                           |
+| ---------- | -------------- | --------------------------------- |
+| start      | BOOL           | Start or stop                     |
+| progress   | Block          | Progress and lead status callback |
+| testResult | Block          | Result callback                   |
+
+```objective-c
+// Device body composition measurement status
+typedef NS_ENUM(NSUInteger, VPDeviceBodyCompositionState) {
+		VPDeviceBodyCompositionStateNoFunction,   // The device does not have this function
+		VPDeviceBodyCompositionStateDeviceBusy,   // The device is busy and cannot start the test
+		VPDeviceBodyCompositionStateOver, 			  // The test ended normally, ended manually
+		VPDeviceBodyCompositionStateLowPower,     // The device is low power
+		VPDeviceBodyCompositionStateFailure,      // The test failed
+		VPDeviceBodyCompositionStateComplete,     // The test has been completed
+};
+```
+
+VPBodyCompositionValueModel's Parameter Explanation and value range
+
+Height, weight, and gender SDK do not have persistent data, so the application layer needs to handle it
+
+| Parameter           | Parameter type                       | -               | -                               | -                                    | -                                        | -                                   |
+| ------------------- | ------------------------------------ | --------------- | ------------------------------- | ------------------------------------ | ---------------------------------------- | ----------------------------------- |
+| date                | Measurement date yyyy-MM-dd          | -               | -                               | -                                    | -                                        | -                                   |
+| testTime            | Measurement time (end time) HH:mm:ss | **Valid range** | **Low range**                   | **Normal range**                     | **High range**                           | **Excessive range**                 |
+| bmi                 | BMI                                  | [4,1114] kg/m2  | [4,18.5)Low                     | [18.5,24.0)Normal                    | [24.0,28.0)Overweight                    | [28.0,1114]Obese                    |
+| bodyFatPercentage   | Body fat percentage                  | [2,48]%         | Male [2,17], Female [2,25], low | male [18,22], female [26,31], normal | male [23,29], female [32,39], overweight | male [30,48], female [40,48], obese |
+| fatMass             | fat mass                             | [10,248] kg     |                                 |                                      |                                          |                                     |
+| leanBodyMass        | lean body mass                       | [1,132] kg      | [1,45.8) low                    | [45.8,55.9], standard                | (55.9,132], excellent                    |                                     |
+| muscleRate          | muscle rate                          | [39,90]%        | [39,68.1), low                  | [68.1,84.8], standard                | (84.8,90], excellent                     |                                     |
+| muscleMass          | muscle mass                          | [9,248] kg      | [9,40.8), low                   | [40.8,50.8], standard                | (50.8,248], excellent                    |                                     |
+| subcutaneousFat     | [1,47]%                              | [1,8.6), low    | [8.6,16.7], normal              | (16.7,47], high                      |                                          |                                     |
+| bodyMoisture        | [28,79]%                             | [28,53.4), low  | [53.4,66.6], standard           | (66.6,79], excellent                 |                                          |                                     |
+| waterContent        | [7,217] kg                           |                 |                                 |                                      |                                          |                                     |
+| skeletalMuscleRate  | [13,69]%                             | [13,25), low    | [25,35], standard               | (35,69], Excellent                   |                                          |                                     |
+| boneMass            | [2.3,4.8] kg                         | [2.3,2.9), Low  | [2.9,3.7], Standard             | (3.7,4.8], Excellent                 |                                          |                                     |
+| proportionOfProtein | [4,26]%                              | [4,14.1), Low   | [14.1,17.7], Standard           | (17.7,26], Excellent                 |                                          |                                     |
+| proteinAmount       | [1,71] kg                            |                 |                                 |                                      |                                          |                                     |
+| basalMetabolicRate  | [25,14995] kcal                      | [25,1619), Low  | [1619,14995], Excellent         |                                      |                                          |                                     |
+
+### Sample Code
+
+测量
+
+```swift
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDKTestBodyCompositionStart(true) { lead, progress in
+            if let progress = progress {
+                print("lead = \(lead), progress = \(progress)")
+            }
+        } testResult: { [weak self]state, model in
+            if state == .complete {
+                if let model = model {
+                    print(model)
+                }
+            }
+            if state == .failure {
+                print("Measurement failed")
+            }
+            if state == .over {
+                print("End measurement manually")
+            }
+            self?.opButton.isSelected = false
+        }
+```
+
+Offline storage data acquisition
+
+```swift
+let tableID = VPBleCentralManage.sharedBleManager()?.peripheralModel.deviceAddress;
+        var date = "2023-09-22"
+        let arr = VPDataBaseOperation.veepooSDKGetDeviceOffStoreBodyComposition(withDate: date, andTableID: tableID)
+        
+        guard let arr = arr else {
+            print("No data")
+            return
+        }
+        if arr.isEmpty {
+            print("No data")
+            return
+        }
+        print(arr)
+```
+
+
+
+# Blood composition function
+
+The blood composition function supports calibration logic, similar to blood pressure calibration
+
+There is daily data
+
+### Prerequisites
+
+Support this function, which can be judged by `VPBleCentralManage.sharedBleManager().peripheralModel.bloodAnalysisType`
+
+### Class Name
+
+`VPPeripheralBaseManage`, refer to SDK `VPBloodAnalysisViewController` class implementation
+
+How to get it：**VPBleCentralManage.sharedBleManager().peripheralManage**
+
+### Interface
+
+Single measurement
+
+```objective-c
+/// Single blood component measurement on or off
+/// @param start on/off
+/// @param isPersonalModel whether it is in private mode
+/// @param progress progress callback
+/// @param testResult result callback
+- (void)veepooSDKTestBloodAnalysisStart:(BOOL)start
+                        isPersonalModel:(BOOL)isPersonalModel
+                               progress:(void(^)(NSProgress *progress))progress
+                             testResult:(void(^)(VPDeviceBloodAnalysisState state, VPBloodAnalysisResultModel *model))testResult;
+```
+
+Private Mode
+
+```objective-c
+/// Blood component private mode operation
+/// @param opCode 1 for setting 2 for reading
+/// @param open Whether to open, if open, the blood component automatically measured by the device is measured according to the set private mode value
+/// @param model The private mode value to be set, can be empty when reading
+/// @param result Result callback
+- (void)veepooSDKBloodAnalysisPersonalWithOpCode:(NSInteger)opCode
+                                            open:(BOOL)open
+                                           model:(VPBloodAnalysisResultModel *)model
+                                          result:(void(^)(BOOL success, BOOL open, VPBloodAnalysisResultModel *model))result;
+```
+
+Daily data
+
+```objective-c
+/// Get the blood component automatic measurement data of the device on a certain day
+/// @param queryDate The date format to be queried is 2021-06-07
+/// @param tableID The mac address of the device, which device's data is to be obtained
++ (NSArray<VPDailyBloodAnalysisModel *> *)veepooSDKGetDeviceBloodAnalysisDataWithDate:(NSString *)queryDate
+                                                                           andTableID:(NSString *)tableID;
+```
+
+### Parameter Explanation
+
+| Parameter       | Parameter type | Remarks                    |
+| --------------- | -------------- | -------------------------- |
+| start           | BOOL           | Start or close             |
+| isPersonalModel | BOOL           | Whether it is private mode |
+| progress        | Block          | Progress callback          |
+| testResult      | Block          | Result callback            |
+
+```objective-c
+// Blood component measurement status
+typedef NS_ENUM(NSUInteger, VPDeviceBloodAnalysisState) {
+		VPDeviceBloodAnalysisStateNoFunction, // The device does not have this function
+		VPDeviceBloodAnalysisStateDeviceBusy, // The device is busy and cannot start the test
+		VPDeviceBloodAnalysisStateOver, 			// The test ends normally, ended manually
+		VPDeviceBloodAnalysisStateLowPower, 	// The device is low power
+		VPDeviceBloodAnalysisStateFailure, 		// The test failed
+		VPDeviceBloodAnalysisStateNotWear, 		// The device wear detection failed
+		VPDeviceBloodAnalysisStateComplete, 	// The test has been completed
+};
+```
+
+VPBloodAnalysisResultModel
+
+| Parameter                   | Parameter Type | Remarks                                                   | Valid Range   | Normal Range                                             |
+| --------------------------- | -------------- | --------------------------------------------------------- | ------------- | -------------------------------------------------------- |
+| uricAcidValue               | double         | Uric acid, one decimal point, unit μmol/L                 | [90.0,1000.0] | Male [150.0,420.0] μmol/L<br/>Female [90.0,360.0] μmol/L |
+| totalCholesterolValue       | double         | Total cholesterol, two decimal points, unit mmol/L        | [0.01,20.00]  | [2.8,5.17]mmol/L                                         |
+| triglycerideValue           | double         | Triglyceride, two decimal points, unit mmol/L             | [0.01,20.00]  | [2.8,5.17]mmol/L                                         |
+| highDensityLipoproteinValue | double         | High-density lipoprotein, two decimal places, unit mmol/L | [0.01,20.00]  | [2.8,5.17]mmol/L                                         |
+| lowDensityLipoproteinValue  | double         | Low-density lipoprotein, two decimal places, unit mmol/L  | [0.01,20.00]  | [2.8,5.17]mmol/L                                         |
+
+Unit conversion formula:
+
+| Parameter                   | Parameter Name           | Unit Switching  | Conversion Formula     |
+| --------------------------- | ------------------------ | --------------- | ---------------------- |
+| uricAcidValue               | Uric Acid                | μmol/L => mg/dL | 1μmol/L = 59.5 mg/dL   |
+| totalCholesterolValue       | Total Cholesterol        | mmol/L => mg/dL | 38.67mmol/L = 1 mg/dL  |
+| triglycerideValue           | Triglyceride             | mmol/L => mg/dL | 88.545mmol/L = 1 mg/dL |
+| highDensityLipoproteinValue | High Density Lipoprotein | mmol/L => mg/dL | 38.67mmol/L = 1 mg/dL  |
+| lowDensityLipoproteinValue  | Low Density Lipoprotein  | mmol/L => mg/dL | 38.67mmol/L = 1 mg/dL  |
+
+### Sample Code
+
+Measurement
+
+```swift
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDKTestBloodAnalysisStart(ture, isPersonalModel: false, progress: { progress in
+            if let progress = progress {
+                print("progress = \(progress)")
+            }
+        }, testResult: { [weak self]state, model in
+            if state == .complete {
+                if let model = model {
+                    print(model)
+                }
+            }
+            if state == .failure {
+                print("Measurement failed")
+            }
+            if state == .over {
+                print("End measurement manually")
+            }
+            self?.opButton.isSelected = false
+        })
+```
+
+Calibration
+
+```swift
+let setModel:VPBloodAnalysisResultModel = .init()
+        setModel.uricAcidValue = 9.4
+        VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDKBloodAnalysisPersonal(withOpCode: 1, open: false, model: nil) { success, openState, model in
+            if let model = model {
+                print(model)
+            }
+        }
+```
+
+Daily data
+
+```swift
+let tableID = VPBleCentralManage.sharedBleManager()?.peripheralModel.deviceAddress;
+        let arr = VPDataBaseOperation.veepooSDKGetDeviceBloodAnalysisData(withDate: "2023-10-18", andTableID: tableID)
+        
+        guard let arr = arr else {
+            print("No blood component data for that day")
+            return
+        }
+```
+
+# World Clock Function
+
+### Precondition
+
+This function exists. It can be determined by VPBleCentralManage.sharedBleManager().peripheralManage.peripheralModel.worldClockType. A value of 0 indicates no support.
+
+### Class Name
+
+VPPeripheralBaseManage
+
+### Interfaces
+
+```objective-c
+/// Add world clocks
+/// @param models Local cached world clocks. The application layer caches the returned data, and the internal system will verify if the cached data needs to be updated to avoid repeated reading.
+/// @param result Callback result
+- (void)veepooSDKWorldClockReadWithModels:(NSArray<VPWorldClockModel *> *)models
+                                   result:(void(^)(BOOL, NSArray<VPWorldClockModel *> *))result;
+
+/// Adjust the order of world clocks
+/// @param model A single world clock
+/// @param result Callback result
+- (void)veepooSDKWorldClockAddWithModel:(VPWorldClockModel *)model result:(void(^)(BOOL))result;
+
+
+/// Delete a world clock
+/// @param fromIndex The original order of the world clock in the list
+/// @param toIndex The target order of the world clock in the list
+/// @param result Callback result
+- (void)veepooSDKWorldClockAdjustOrderFromArrIndex:(uint8_t)fromIndex
+                                        toArrIndex:(uint8_t)toIndex
+                                            result:(void(^)(BOOL))result;
+
+/// Subscription for device-side operation to delete a world clock
+/// @param deleteID The dataID of the world clock to be deleted
+/// @param result Callback result
+- (void)veepooSDKWorldClockDeleteWithID:(uint8_t)deleteID result:(void(^)(BOOL))result;
+
+/// Subscription for device deletion status of world clock
+/// @param result Callback result
+- (void)veepooSDKWorldClockDeviceDeleteSubscribe:(void (^)(uint8_t deleteID))result;
+```
+
+### Parameter Explanation
+
+VPWorldClockModel
+
+
+
+| Parameter              | Parameter Type | Remarks                                                      |
+| ---------------------- | -------------- | ------------------------------------------------------------ |
+| cityName               | NSString       | City/region name, using UTF-8 encoding when sent             |
+| dataID                 | uint8_t        | ID starts from 1, maximum is 10 (up to 10 world clocks can be added) |
+| standardTimeZoneDiffer | NSNumber       | Time zone value (number of 15-minute intervals from GMT, converted to int8_t type when used, with positive and negative values) |
+
+### Sample Code
+
+```swift
+// Reading
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDKWorldClockRead(with: []) { success, models in
+    guard let models = models else {
+        return
+    }
+    if success {
+        print("\(models.count)")
+    }
+}
+```
+
+# Automatic Measurement Interval
+
+### Precondition
+
+This function exists. It can be determined by VPBleCentralManage.sharedBleManager().peripheralManage.peripheralModel.autoMonitSwitchType. A value of 0 indicates no support.
+
+Note: If the automatic measurement interval setting is supported, taking heart rate as an example, it should not be used together with the following interface:
+
+
+
+> veepooSDKSettingBaseFunctionType:settingState:completeBlock
+
+### Class Name
+
+`VPPeripheralBaseManage`, refer to the implementation of `VPAutoMonitSwitchVC` in the Demo.
+
+### Interfaces
+
+```objective-c
+/// Read the device's automatic measurement data
+/// - Parameter result: Data callback
+- (void)veepooSDKReadAutoMonitSwitchInfo:(void(^)(NSArray<VPAutoMonitTestModel *> *))result;
+
+/// Set the device's automatic measurement
+/// @param model Single measurement data
+/// @param result Setting result callback
+- (void)veepooSDKSetAutoMonitSwitchWithModel:(VPAutoMonitTestModel *)model
+                                      result:(void(^)(BOOL success, VPAutoMonitTestModel *))result;
+```
+
+### Parameter Explanation
+
+```objective-c
+// Type enumeration
+typedef NS_ENUM(NSUInteger, VPAutoMonitTestType) {
+    VPAutoMonitTestTypeHeartRate = 0x00,    // Heart rate
+    VPAutoMonitTestTypeBloodPressure,       // Blood pressure
+    VPAutoMonitTestTypeBloodGlucose,        // Blood glucose
+    VPAutoMonitTestTypeStress,              // Stress
+    VPAutoMonitTestTypeBloodOxygen,         // Blood oxygen
+    VPAutoMonitTestTypeBodyTemperature,     // Body temperature
+    VPAutoMonitTestTypeLorentz,             // Lorentz
+    VPAutoMonitTestTypeHRV,                 // HRV
+    VPAutoMonitTestTypeBloodComponents      // Blood components
+};
+```
+
+
+
+VPAutoMonitTestModel
+
+
+
+| Parameter        | Parameter Type      | Remarks                                  |
+| ---------------- | ------------------- | ---------------------------------------- |
+| type             | VPAutoMonitTestType | Data type                                |
+| on               | BOOL                | Whether to enable                        |
+| minStepValue     | uint16_t            | Minimum step                             |
+| supportRangeTime | BOOL                | Whether to support time range adjustment |
+| startHourRef     | uint8_t             | Start time reference - hour              |
+| startMinuteRef   | uint8_t             | Start time reference - minute            |
+| endHourRef       | uint8_t             | End time reference - hour                |
+| endMinuteRef     | uint8_t             | End time reference - minute              |
+| timeInterval     | uint16_t            | Current measurement interval, in minutes |
+| startHour        | uint8_t             | Current start measurement time - hour    |
+| startMinute      | uint8_t             | Current start measurement time - minute  |
+| endHour          | uint8_t             | Current end measurement time - hour      |
+| endMinute        | uint8_t             | Current end measurement time - minute    |
+
+### Sample Code
+
+```swift
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDKReadAutoMonitSwitchInfo { [weak self] models in
+            guard let someModels = models else {
+                return
+            }
+            self?.dataSource = someModels
+            print(">>> \(someModels.count)")
+        }
+```
+
+# Manually Measured Stored Data
+
+### Precondition
+
+This function is supported. It can be determined by VPBleCentralManage.sharedBleManager().peripheralManage.supportManualTestType
+
+### Class Name
+
+`VPPeripheralBaseManage`, refer to the implementation of `VPManualTestDataVC` in the Demo.
+
+### Interfaces
+
+```objective-c
+/// Read the device's manually measured stored data
+/// - Parameters:
+///   - timestamp: Second-level timestamp, only returns data after the timestamp
+///   - dataType: Data type to be returned
+///   - result: Result callback
+- (void)readManualTestDataWithTimestamp:(uint32_t)timestamp
+                               dataType:(VPManualTestDataType)dataType
+                                 result:(void(^)(VPManualTestDataModel *))result;
+```
+
+### Parameter Explanation
+
+VPManualTestDataType。Based on whether `supportManualTestType` contains the following types, determine whether reading the corresponding function's manual measurement storage data is supported. Similarly, query the corresponding data through the following types.
+
+| Parameter                       | Parameter Type | Remarks          |      |
+| ------------------------------- | -------------- | ---------------- | ---- |
+| VPManualTestDataBloodPressure   | NSUInteger     | blood pressure   |      |
+| VPManualTestDataHeartRate       | NSUInteger     | heart rate       |      |
+| VPManualTestDataBloodSugar      | NSUInteger     | blood sugar      |      |
+| VPManualTestDataStress          | NSUInteger     | Stress           |      |
+| VPManualTestDataBloodOxygen     | NSUInteger     | blood oxygen     |      |
+| VPManualTestDataTemperature     | NSUInteger     | body temperature |      |
+| VPManualTestDataMet             | NSUInteger     | MET              |      |
+| VPManualTestDataHRV             | NSUInteger     | HRV              |      |
+| VPManualTestDataBloodComponents | NSUInteger     | blood components |      |
+| VPManualTestDataHealthGlance    | NSUInteger     | Health Glance    |      |
+| VPManualTestDataEmotion         | NSUInteger     | Emotion          |      |
+| VPManualTestDataFatigueLevel    | NSUInteger     | FatigueLevel     |      |
+| VPManualTestDataGSR             | NSUInteger     | GSR              |      |
+| VPManualTestDataAll             | NSUInteger     | All              |      |
+
+
+
+VPManualTestDataModel
+
+
+
+| Parameter        | Parameter Type                          | Remarks                   |
+| ---------------- | --------------------------------------- | ------------------------- |
+| mac              | NSString                                | Device MAC                |
+| bloodPressureArr | NSArray<VPManualBloodPressureModel *> * | Blood pressure data array |
+| bodyTempArr      | NSArray<VPManualBodyTempModel *> *      | Temperature array         |
+| bloodCompArr     | NSArray<VPManualBloodCompModel *> *     | Blood component array     |
+| heartRateArr     | NSArray<VPManualHeartRateModel *> *     | Heart rate array          |
+| bloodOxygenArr   | NSArray<VPManualBloodOxygenModel *> *   | Blood oxygen array        |
+| bloodSugarArr    | NSArray<VPManualBloodSugarModel *> *    | Blood glucose array       |
+| healthGlanceArr  | NSArray<VPManualHealthGlanceModel *>    | Health Glance array       |
+| hrvArr           | NSArray<VPManualHRVModel *>             | HRV array                 |
+| gsrArr           | NSArray<VPManualGSRModel *>             | GSR array                 |
+| emotionArr       | NSArray<VPManualEmotionModel *>         | Emotion array             |
+| fatigueLevelArr  | NSArray<VPManualFatigueLevelModel *>    | FatigueLevel array        |
+| stressArr        | NSArray<VPManualStressModel *>          | Stress array              |
+| metArr           | NSArray<VPManualMetModel *>             | MET array                 |
+
+
+
+VPManualBloodPressureModel
+
+
+
+| Parameter   | Parameter Type | Remarks                                                      |
+| ----------- | -------------- | ------------------------------------------------------------ |
+| timestamp   | uint32_t       | Measurement timestamp, in seconds                            |
+| testModel   | uint8_t        | Measurement mode: 0 for photoelectric, 1 for airbag          |
+| heart       | uint8_t        | Heart rate                                                   |
+| h_bp        | uint16_t       | Systolic blood pressure                                      |
+| l_bp        | uint16_t       | Diastolic blood pressure                                     |
+| state       | uint8_t        | Test status: 2 for measurement completed with wrong posture, 9 for measurement completed without keeping still during the process |
+| credibility | uint8_t        | Result credibility                                           |
+| height      | uint8_t        | Height                                                       |
+| weight      | uint8_t        | Weight                                                       |
+| age         | uint8_t        | Age                                                          |
+| sex         | uint8_t        | Gender: 0 for female, 1 for male                             |
+| protocol    | uint8_t        | 0: Regular blood pressure, 1: Air-cuff blood pressure (Regular blood pressure parameters only include systolic and diastolic pressure) |
+
+VPManualBodyTempModel
+
+| Parameter | Parameter Type | Remarks                            |
+| --------- | -------------- | ---------------------------------- |
+| timestamp | uint32_t       | Measurement timestamp, in seconds  |
+| bodyTemp  | uint16_t       | body temperature                   |
+| origTemp  | uint16_t       | Raw temperature - Skin temperature |
+
+VPManualBloodCompModel
+
+| Parameter              | Parameter Type | Remarks                           |
+| ---------------------- | -------------- | --------------------------------- |
+| timestamp              | uint32_t       | Measurement timestamp, in seconds |
+| totalCholesterol       | uint16_t       | TotalCholesterol（umol/L）        |
+| triglyceride           | uint16_t       | Triglyceride（mmol/L）            |
+| highDensityLipoprotein | uint16_t       | HighDensityLipoprotein（mmol/L）  |
+| lowDensityLipoprotein  | uint16_t       | LowDensityLipoprotein（mmol/L）   |
+| uricAcid               | uint16_t       | UricAcid（mmol/L）                |
+
+VPManualHeartRateModel
+
+| Parameter  | Parameter Type | Remarks                           |
+| ---------- | -------------- | --------------------------------- |
+| timestamp  | uint32_t       | Measurement timestamp, in seconds |
+| heartArray | NSArray        | Heart rate array                  |
+
+VPManualBloodOxygenModel
+
+| Parameter        | Parameter Type | Remarks                           |
+| ---------------- | -------------- | --------------------------------- |
+| timestamp        | uint32_t       | Measurement timestamp, in seconds |
+| bloodOxygenArray | NSArray        | Blood oxygen array                |
+
+VPManualBloodSugarModel
+
+| Parameter       | Parameter Type | Remarks                                            |
+| --------------- | -------------- | -------------------------------------------------- |
+| timestamp       | uint32_t       | Measurement timestamp, in seconds                  |
+| bloodSugarValue | uint16_t       | Blood glucose value                                |
+| haveLevel       | BOOL           | has blood glucose risk level                       |
+| bloodSugarLevel | uint8_t        | bloodGlucoseRiskLevel (1, 2, 3: low, medium, high) |
+
+VPManualHealthGlanceModel
+
+| Parameter              | Type                   | Remark                                                       |
+| :--------------------- | :--------------------- | :----------------------------------------------------------- |
+| timestamp              | uint32_t               | Measurement Timestamp                                        |
+| heartRate              | UInt8                  | Heart Rate                                                   |
+| bloodOxygen            | UInt8                  | Blood Oxygen                                                 |
+| stress                 | UInt8                  | Stress                                                       |
+| fatigueLevel           | UInt8                  | Fatigue Level                                                |
+| bloodSugar             | double                 | Blood Sugar                                                  |
+| haveLevel              | BOOL                   | Has Blood Sugar Risk Level                                   |
+| bloodSugarLevel        | uint8_t                | Blood Sugar Risk Level (1=Low, 2=Medium, 3=High)             |
+| bodyTemperature        | double                 | Body Temperature                                             |
+| orgTemperature         | double                 | Original Body Temperature                                    |
+| h_bp                   | uint16_t               | Systolic Blood Pressure                                      |
+| l_bp                   | uint16_t               | Diastolic Blood Pressure                                     |
+| hrv                    | UInt8                  | HRV (Heart Rate Variability)                                 |
+| emotionLevel           | NSInteger              | Emotion Level Range [-10, 10]                                |
+| healthGlanceId         | NSInteger              | Health Glance ID                                             |
+| protocol               | NSInteger              | The protocol currently has 0, 1, 2, and only when protocol==2 will the following data be available |
+| functionSupport        | NSUInteger             | What functions are supported based on VPHealthGlanceType     |
+| totalCholesterol       | uint16_t               | Total Cholesterol（umol/L）                                  |
+| triglyceride           | uint16_t               | Triglyceride（mmol/L）                                       |
+| highDensityLipoprotein | uint16_t               | High density lipoprotein（mmol/L）                           |
+| lowDensityLipoprotein  | uint16_t               | Low density lipoprotein（mmol/L）                            |
+| uricAcid               | uint16_t               | uric acid（mmol/L）                                          |
+| cuffBloodPressureHigh  | UInt8                  | High blood pressure of the air pump                          |
+| cuffBloodPressureLow   | UInt8                  | Low blood pressure of the air pump                           |
+| weight                 | UInt8                  | Weight kg                                                    |
+| height                 | UInt8                  | Height cm                                                    |
+| age                    | UInt8                  | Age                                                          |
+| gender                 | UInt8                  | Gender，0：woman，1：man                                     |
+| bodyComModel           | VPManualHGBodyComModel | body composition                                             |
+| skinMoisture           | UInt8                  | SkinMoisture [1,99]                                          |
+| depressionRisk         | UInt8                  | DepressionRisk [0,2] 0:low 1:Middle 2:High                   |
+| snsActivation          | UInt8                  | SnsActivation [1,99]                                         |
+| cortisolValue          | UInt16                 | CortisolValue，Range [0,500]ug/L                             |
+
+VPManualGSRModel
+
+| Parameter      | Type      | Remark                                     |
+| -------------- | --------- | ------------------------------------------ |
+| timestamp      | uint32_t  | Measurement Timestamp                      |
+| emotionLevel   | NSInteger | Emotion [-10,10]                           |
+| skinMoisture   | UInt8     | SkinMoisture [1,99]                        |
+| depressionRisk | UInt8     | DepressionRisk [0,2] 0:low 1:Middle 2:High |
+| snsActivation  | UInt8     | SnsActivation [1,99]                       |
+| cortisolValue  | UInt16    | CortisolValue，Range [0,500]ug/L           |
+
+VPManualHRVModel
+
+| Parameter | Type      | Remark                |
+| --------- | --------- | --------------------- |
+| timestamp | uint32_t  | Measurement Timestamp |
+| hrvArray  | NSInteger | HRV Value             |
+
+VPManualMetModel
+
+| Parameter | Type      | Remark                |
+| --------- | --------- | --------------------- |
+| timestamp | uint32_t  | Measurement Timestamp |
+| value     | NSInteger | MET Value             |
+
+VPManualStressModel
+
+| Parameter | Type      | Remark                |
+| --------- | --------- | --------------------- |
+| timestamp | uint32_t  | Measurement Timestamp |
+| value     | NSInteger | Stress Value          |
+
+VPManualFatigueLevelModel
+
+| Parameter | Type      | Remark                |
+| --------- | --------- | --------------------- |
+| timestamp | uint32_t  | Measurement Timestamp |
+| value     | NSInteger | Fatigue Level[0,99]   |
+
+VPManualEmotionModel
+
+| Parameter | Type      | Remark                |
+| --------- | --------- | --------------------- |
+| timestamp | uint32_t  | Measurement Timestamp |
+| value     | NSInteger | Emotion[-10,10]       |
+
+
+
+### Sample Code
+
+```swift
+// You can get the latest synchronized timestamp of the current device from the DB
+let timestamp: UInt32 = UInt32(self.checkTimeInterval)
+VPBleCentralManage.sharedBleManager().peripheralManage.readManualTestData(withTimestamp: timestamp,
+                                                                          dataType: dataType) { [weak self] model in
+    self?.btnEnabled(true)
+    guard let someModel = model else {
+        self?.logTextView.text += "\n" + "no data"
+        return
+    }
+
+    var logText = ""
+    if !someModel.bloodPressureArr.isEmpty {
+        logText += "\n" + "Blood pressure = \(someModel.bloodPressureArr)"
+    }
+
+    if !someModel.bodyTempArr.isEmpty {
+        logText += "\n" + "body temperature = \(someModel.bodyTempArr)"
+    }
+
+    if !someModel.bloodCompArr.isEmpty {
+        logText += "\n" + "blood components = \(someModel.bloodCompArr)"
+    }
+
+    if !someModel.heartRateArr.isEmpty {
+        logText += "\n" + "Heart rate = \(someModel.heartRateArr)"
+    }
+
+    if !someModel.bloodOxygenArr.isEmpty {
+        logText += "\n" + "Blood oxygen = \(someModel.bloodOxygenArr)"
+    }
+
+    if !someModel.bloodSugarArr.isEmpty {
+        logText += "\n" + "Blood glucose = \(someModel.bloodSugarArr)"
+    }
+     if !someModel.healthGlanceArr.isEmpty {
+        logText += "\n" + "Health Glance = \(someModel.healthGlanceArr)" 
+    }
+
+    if !someModel.stressArr.isEmpty {
+        logText += "\n" + "Stress = \(someModel.stressArr)"
+    }
+
+    if !someModel.gsrArr.isEmpty {
+        logText += "\n" + "GSR = \(someModel.gsrArr)"
+    }
+
+    if !someModel.hrvArr.isEmpty {
+        logText += "\n" + "HRV = \(someModel.hrvArr)"
+    }
+
+    if !someModel.emotionArr.isEmpty {
+        logText += "\n" + "Emotion = \(someModel.emotionArr)"
+    }
+
+    if !someModel.fatigueLevelArr.isEmpty {
+        logText += "\n" + "Fatigue Level = \(someModel.fatigueLevelArr)"
+    }
+
+    if !someModel.metArr.isEmpty {
+        logText += "\n" + "Met = \(someModel.metArr)"
+    } 
+    if let existingText = self?.logTextView.texM {
+        self?.logTextView.text = existingText + logText
+    } else {
+        self?.logTextView.text = logText
+    }
+}
+```
+
+# Text Transmission
+
+### Precondition
+
+Support this feature through VPBleCentralManage.sharedBleManager().peripheralManage.peripheralModel.textAndImageTransmissionType Judgment:  value of 1 indicates support for text transmission. The incoming text content cannot be empty
+
+### Class Name
+
+`VPPeripheralBaseManage`，refer to the implementation of`VPTextImageTransmissionViewController` in the Demo.
+
+### Interfaces
+
+```objective-c
+///Text Transmission
+/// - Parameters:
+///  - msg: Transferred text
+///  - sendResult: Result callback
+-(void)veepooSDKSendStartTransmissionMessage:(NSString*)msg AndResult:(void(^)(BOOL success))sendResult
+```
+
+### Parameter Explanation
+
+| Parameter | Parameter Type | Remarks          |
+| --------- | -------------- | ---------------- |
+| msg       | NSString       | Transferred text |
+
+### Sample Code
+
+```swift
+				let text = "Hello"
+        VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDKSendStartTransmissionMessage(text) { success in
+            success ? print("success") : print("fail")
+        }
+```
+
+# Query the size of the device that supports image transmission
+
+### Precondition
+
+Support this feature through VPBleCentralManage.sharedBleManager().peripheralManage.peripheralModel.textAndImageTransmissionType Judgment: value of 1 indicates support for querying the size of transmitted images。
+
+### Class Name
+
+`VPPeripheralBaseManage`，refer to the implementation of`VPTextImageTransmissionViewController` in the Demo.
+
+### Interfaces
+
+```objective-c
+//Query the size of the device that supports image transmission
+/// - Parameters:
+///   - sendResult: Result callback
+-(void)veepooSDKSendCheckDeviceSupportImageInfoAndResult:(void(^_Nonnull)(VPImageTransmissionModel * _Nonnull model))sendResult;
+```
+
+### Parameter Explanation
+
+VPImageTransmissionModel
+
+| Parameter  | Parameter Type | Remarks                                   |
+| ---------- | -------------- | ----------------------------------------- |
+| dataLength | NSInteger      | The maximum length of transferable images |
+| width      | NSInteger      | Width of transferable images              |
+| height     | NSInteger      | Hight transferable image quality          |
+
+### Sample Code
+
+```swift
+//
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDKSendCheckDeviceSupportImageInfoAndResult { model in
+            print("Length:" + String(model.dataLength) + "Width:" + String(model.width) + "Height:" + String(model.height))
+        }
+```
+
+
+
+# Image Transmission
+
+### Precondition
+
+Support this feature through VPBleCentralManage.sharedBleManager().peripheralManage.peripheralModel.textAndImageTransmissionType Judgment: value of 1 indicates support for image transmission. The content of the incoming image cannot be empty,This interface call will determine whether the size of the incoming image is compliant
+
+### Class Name
+
+`VPPeripheralBaseManage`，refer to the implementation of`VPTextImageTransmissionViewController` in the Demo.
+
+### Interfaces
+
+```objective-c
+//Image Transmission
+/// - Parameters:
+///   - image: transferred images
+///   - sendResult: Result callback
+///   - progress: Progress callback
+-(void)veepooSDKSendStartTransmissionImage:(UIImage*)image andResult:(void(^_Nonnull)(NSError * _Nullable error))sendResult andProgress:(void(^_Nonnull)(double progress))progress;
+```
+
+### Parameter Explanation
+
+| Parameter | Parameter Type | Remarks            |
+| --------- | -------------- | ------------------ |
+| image     | UIImage        | transferred images |
+
+### Sample Code
+
+```swift
+//Image Transmission
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDKSendStartTransmissionImage(UIImage(named: "")) { error in
+            guard let er = error as? NSError else {return}
+            print(er)
+        } andProgress: { [weak self] progress in
+            guard let weakself = self else { return }
+            DispatchQueue.main.async {
+                weakself.progressLabel.text = "Progress:" + String(format: "%.0f", progress*100) + "%"
+            }
+        }
+```
+
+# Get Test Mode Status
+
+### Precondition
+
+JH58 customization function
+
+### Class Name
+
+`VPPeripheralBaseManage`，refer to the implementation of`VPPPGAccelerationViewController` in the Demo
+
+### Interfaces
+
+```objective-c
+//Get test mode status
+/// - Parameters:
+///   - sendResult: Result callback state VPJH58MeasurementModeStateOff:Off VPJH58MeasurementModeStateModeOne:Mode 1 on VPJH58MeasurementModeStateModeTwo:Mode 2 on
+-(void)veepooSDK_JH58GetMeasurementMode:(void(^_Nonnull)(VPJH58MeasurementModeState state))sendResult
+```
+
+### Parameter Explanation
+
+VPJH58MeasurementModeState
+
+| Parameter                         | Parameter Type | Remarks |
+| --------------------------------- | -------------- | ------- |
+| VPJH58MeasurementModeStateOff     | NSUInteger     | OFF     |
+| VPJH58MeasurementModeStateModeOne | NSUInteger     | Mode 1  |
+| VPJH58MeasurementModeStateModeTwo | NSUInteger     | Mode 2  |
+
+### Sample Code
+
+```swift
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDK_JH58GetMeasurementMode { [weak self] state in
+            guard let weakSelf = self else {return}
+ }
+```
+
+# Set Test Mode
+
+### Precondition
+
+JH58 customization function
+
+### Class Name
+
+`VPPeripheralBaseManage`，refer to the implementation of`VPPPGAccelerationViewController` in the Demo
+
+### Interfaces
+
+```objective-c
+//Set test mode
+/// - Parameters:
+///   - state: VPJH58MeasurementModeStateOff:Off VPJH58MeasurementModeStateModeOne:Mode 1 onVPJH58MeasurementModeStateModeTwo:Mode 2 on
+///   - sendResult: Result callback
+-(void)veepooSDK_JH58SetMeasurementMode:(VPJH58MeasurementModeState)state andResult:(void(^)(NSError *error,VPJH58MeasurementModeState state))sendResult;
+```
+
+### Parameter Explanation
+
+VPJH58MeasurementModeState
+
+| Parameter                         | Parameter Type | Remarks |
+| --------------------------------- | -------------- | ------- |
+| VPJH58MeasurementModeStateOff     | NSUInteger     | Off     |
+| VPJH58MeasurementModeStateModeOne | NSUInteger     | Mode 1  |
+| VPJH58MeasurementModeStateModeTwo | NSUInteger     | Mode 2  |
+
+### Sample Code
+
+```swift
+let state :VPJH58MeasurementModeState = .off
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDK_JH58SetMeasurementMode(state) { [weak self] error ,backState in
+            guard let weakSelf = self else {return}
+            
+        }
+```
+
+# Obtain raw data of PPG and acceleration
+
+### Precondition
+
+JH58 customization function
+
+### Class Name
+
+`VPPeripheralBaseManage`，refer to the implementation of`VPPPGAccelerationViewController` in the Demo
+
+### Interfaces
+
+```objective-c
+//Obtain raw data of green light and acceleration
+/// - Parameters:
+///   - state VPJH58MeasurementModeStateModeOne:Obtain Mode 1 VPJH58MeasurementModeStateModeTwo:Obtain Mode 2
+///   - timestamp:Get the data after this timestamp, 0 is all the data
+///   - sendResult:Result callback
+-(void)veepooSDK_JH58GetPPGAndAccelerationRawDataWithMeasurementMode:(VPJH58MeasurementModeState)state andTimestamp:(NSTimeInterval)timestamp andResult:(void(^)(NSError *error,NSMutableArray<VPJH58PPGAccelerationModel*> *array))sendResult
+```
+
+### Parameter Explanation
+
+| Parameter | Parameter Type | Remarks   |
+| --------- | -------------- | --------- |
+| timestamp | NSTimeInterval | timestamp |
+
+VPJH58MeasurementModeState
+
+| Parameter                         | Parameter Type | Remarks       |
+| --------------------------------- | -------------- | ------------- |
+| VPJH58MeasurementModeStateModeOne | NSUInteger     | Obtain Mode 1 |
+| VPJH58MeasurementModeStateModeTwo | NSUInteger     | Obtain Mode 2 |
+
+VPGreenLightAccelerationModel
+
+| Parameter         | Parameter Type                       | Remarks                 |
+| ----------------- | ------------------------------------ | ----------------------- |
+| timestamp         | NSTimeInterval                       | Time of data generation |
+| ppgValueArray     | NSMutableArray                       | PPG data                |
+| accelerationArray | NSMutableArray<VPAccelerationModel*> | Acceleration            |
+
+VPAccelerationModel
+
+| Parameter | Parameter Type | Remarks       |
+| --------- | -------------- | ------------- |
+| x         | int16_t        | Accelerationx |
+| y         | int16_t        | Accelerationy |
+| z         | int16_t        | Accelerationz |
+
+### 
+
+### Sample Code
+
+```swift
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDK_JH58GetPPGAndAccelerationRawData(withMeasurementMode: mode, andTimestamp: self.checkTimeInterval) {[weak self] error,array in
+            guard let array = array,let weakSelf = self else {return}
+            
+        }
+```
+
+# APP Requests Real-Time Transmission Mode From Device
+
+### Precondition
+
+JH58 customization function, only when the measurement mode is enabled can the request be successful
+
+### Class Name
+
+`VPPeripheralBaseManage`，refer to the implementation of`VPPPGAccelerationViewController` in the Demo
+
+### Interfaces
+
+```objective-c
+//APP requests real-time transmission mode from device
+/// - Parameters:
+///   - open :YES Request to activate NO:Request to close
+///   - sendResult:Result callback
+-(void)veepooSDK_JH58ReqRealTimeTransmission:(BOOL)open andResult:(void(^)(BOOL success))sendResult
+```
+
+### Parameter Explanation
+
+| Parameter | Parameter Type | Remarks                                      |
+| --------- | -------------- | -------------------------------------------- |
+| open      | BOOL           | YES: Request to activate NO:Request to close |
+
+### Sample Code
+
+```swift
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDK_JH58ReqRealTimeTransmission(btn.tag == 1000 ? true : false) {[weak self] success in
+            guard let weakSelf = self else {return}
+            let str = success ? "success" : "fail"
+        }
+```
+
+# APP Monitors Real-Time Transmission Requests From Devices
+
+### Precondition
+
+JH58 customization function, the device will send real-time transmission requests after enabling measurement mode
+
+### Class Name
+
+`VPPeripheralBaseManage`，refer to the implementation of`VPPPGAccelerationViewController` in the Demo
+
+### Interfaces
+
+```objective-c
+//APP Monitors Real-Time Transmission Requests From Devices
+/// - Parameters:
+///   - sendResult:Result callback YES:Request to activate NO:Request to close
+-(void)veepooSDK_JH58MonitorDeviceReqRealTimeTransmission:(void(^)(BOOL open))sendResult
+```
+
+### Sample Code
+
+```swift
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDK_JH58MonitorDeviceReqRealTimeTransmission {[weak self] open in
+            guard let weakSelf = self else {return}
+            
+        }
+```
+
+# APP Responds To Real-Time Transmission Requests From Devices
+
+### Precondition
+
+JH58 customization function
+
+### Class Name
+
+`VPPeripheralBaseManage`，refer to the implementation of`VPPPGAccelerationViewController` in the Demo
+
+### Interfaces
+
+```objective-c
+//APP responds to real-time transmission requests from devices
+/// - Parameters:
+///   - agree :YES:Agree to activate,NO:Refuse to open
+///   - sendResult:Result callback
+-(void)veepooSDK_JH58ResDeviceRealTimeTransmission:(BOOL)agree
+```
+
+### Parameter Explanation
+
+| Parameter | Parameter Type | Remarks                                 |
+| --------- | -------------- | --------------------------------------- |
+| agree     | BOOL           | YES:Agree to activate,NO:Refuse to open |
+
+### Sample Code
+
+```swift
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDK_JH58ResDeviceRealTimeTransmission(true)
+```
+
+# APP Monitoring Device Test Mode Switch Change Status Report
+
+### Precondition
+
+JH58 customization function
+
+### Class Name
+
+`VPPeripheralBaseManage`，refer to the implementation of`VPPPGAccelerationViewController` in the Demo
+
+### Interfaces
+
+```objective-c
+/// - Parameters:
+///   - state: VPJH58MeasurementModeStateOff:OFF VPJH58MeasurementModeStateModeOne:Mode1 ON
+-(void)veepooSDK_JH58MonitorMeasurementMode:(void(^_Nonnull)(VPJH58MeasurementModeState state))sendResult
+```
+
+### Sample Code
+
+```swift
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDK_JH58MonitorMeasurementMode {[weak self] state in
+            guard let weakSelf = self else {return}
+            
+        }
+```
+
+# Real Time Transmission Of PPG Data by APP Monitoring Devices
+
+### Precondition
+
+JH58 customization function
+
+### Class Name
+
+`VPPeripheralBaseManage`，refer to the implementation of`VPPPGAccelerationViewController` in the Demo
+
+### Interfaces
+
+```objective-c
+/// - Parameters:
+///   - sendResult:Result callback
+-(void)veepooSDK_JH58MonitorRealTimeTransmissionPPGData:(void(^)(NSMutableArray *array))sendResult;
+```
+
+### Sample Code
+
+```swift
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDK_JH58MonitorRealTimeTransmissionPPGData {[weak self] array in
+            guard let weakSelf = self else {return}
+           
+        }
+```
+
+# Real Time Transmission Of Acceleration Data by APP Monitoring Devices
+
+### Precondition
+
+JH58 customization function
+
+### Class Name
+
+`VPPeripheralBaseManage`，refer to the implementation of`VPPPGAccelerationViewController` in the Demo
+
+### Interfaces
+
+```objective-c
+/// - Parameters:
+///   - sendResult:Result callback
+-(void)veepooSDK_JH58MonitorRealTimeTransmissionAccelerationData:(void(^)(NSMutableArray <VPAccelerationModel*> *array))sendResult;
+```
+
+### Parameter Explanation
+
+VPAccelerationModel
+
+| Parameter | Parameter Type | Remarks       |
+| --------- | -------------- | ------------- |
+| x         | int16_t        | AccelerationX |
+| y         | int16_t        | AccelerationY |
+| z         | int16_t        | AccelerationZ |
+
+### Sample Code
+
+```swift
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDK_JH58MonitorRealTimeTransmissionAccelerationData { [weak self] array in
+            guard let weakSelf = self else {return}
+    
+        }
+```
+
+# Active Measurement
+
+### Precondition
+
+JH58 customization function
+
+### Class Name
+
+`VPPeripheralBaseManage`, refer to the implementation of `VPPPGAccelerationViewController` in the Demo
+
+### Interfaces
+
+```objective-c
+// Actively start measurement
+/// - Parameters:
+///   - sendResult: Result callback
+- (void)veepooSDK_JH58ActiveTestPPGAndAcceleration:(VPJH58ActiveMeasurementState)state andResult:(void(^_Nullable)(VPJH58ActiveMeasurementResultState state))sendResult;
+```
+
+```objective-c
+// Data reporting after starting measurement
+/// - Parameters:
+///   - sendResult: Result callback
+- (void)veepooSDK_JH58ActiveTestPPGAndAccelerationReport:(void(^_Nullable)( NSMutableArray<VPJH58PPGAccelerationModel*> * _Nullable array))sendResult
+```
+
+### Parameter Explanation
+
+VPJH58ActiveMeasurementState
+
+| Parameter                            | Parameter Type | Remarks                                               |
+| ------------------------------------ | ---------- | --------------------------------------------------------- |
+| VPJH58ActiveMeasurementStateRealTime | NSUInteger | Start measurement, real-time transmission                                        |
+| VPJH58ActiveMeasurementStateResume   | NSUInteger | Start measurement, breakpoint transmission (after reconnection, replenish the 5-minute data before disconnection, then switch to real-time) |
+| VPJH58ActiveMeasurementStateOff      | NSUInteger | Stop measurement                                                  |
+
+### Sample Code
+
+```swift
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDK_JH58ActiveTestPPGAndAcceleration(state) { [weak self] resultState in
+            guard let weakSelf = self else {return}
+            weakSelf.hud?.show(true)
+            switch resultState {
+            case .success:
+                weakSelf.hud?.labelText = "success"
+            case .busy:
+                weakSelf.hud?.labelText = "Busy"
+            case .lowBattery:
+                weakSelf.hud?.labelText = "low battery"
+            @unknown default:
+                weakSelf.hud?.labelText = ""
+            }
+            weakSelf.hud?.hide(true, afterDelay: 1.0)
+        }
+```
+
+```swift
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDK_JH58ActiveTestPPGAndAccelerationReport { [weak self] array in
+            guard let array = array, let weakSelf = self else {return}
+            
+        }
+```
+
+# Micro-test on/off
+
+### Precondition
+
+Support this feature through VPBleCentralManage.sharedBleManager().peripheralManage.peripheralModel.healthGlanceType Judgment:  value of 1 indicates support Microtest
+
+### Class Name
+
+`VPPeripheralBaseManage`，refer to the implementation of`VPMicroTestViewController`in the Demo
+
+### Interfaces
+
+```objective-c
+//Micro-test on/off
+/// - Parameters:
+///   - open:YES Open NO Close
+///   - progressResult :progress callback
+///   - failResult :fail callback
+///   - successResult :success callback
+///   - heartRateBlock: heartRate callback
+///   - ppgBlock: PPG callback
+-(void)veepooSDKMicroTestOpenState:(BOOL)open andProgress:(void(^)(int progress))progressResult andFail:(void(^)(NSError *error))failResult andSuccess:(void(^)(BOOL endState,VPMicroTestModel *miniCheckModel))successResult andHeartRate:(void(^)(int heartRateStatus))heartRateBlock andPPG:(void(^)(NSMutableArray *ppgArray))ppgBlock;
+```
+
+### Parameter Explanation
+
+VPMicroTestModel
+
+| Parameter              | Parameter Type | Remarks                  |
+| ---------------------- | -------------- | ------------------------ |
+| heartRate              | int            | Heart rate               |
+| bloodOxygen            | int            | Blood oxygen             |
+| pressure               | int            | Pressure                 |
+| bloodSugar             | CGFloat        | Blood sugar              |
+| bodyTemperature        | CGFloat        | Body temperature         |
+| systolicBloodPressure  | int            | Systolic blood pressure  |
+| diastolicBloodPressure | int            | Diastolic blood pressure |
+| hrv                    | int            | HRV                      |
+
+### Sample Code
+
+```swift
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDKMicroTestOpenState(btn.tag == 1000 ? true : false) { [weak self] progress in
+            guard let self = self else {return}
+           
+        } andFail: { error in
+            
+        } andSuccess: { [weak self] endState, model in
+            guard let self = self else {return}
+            if let resultModel = model {
+                
+            }
+        } andHeartRate: { [weak self] heart in
+            guard let self = self else {return}
+           
+        } andPPG: { ppgArray in
+            
+        }
+```
+
+# Obtain Manual Measurement Data For Microtests
+
+### Precondition
+
+Support this feature through VPBleCentralManage.sharedBleManager().peripheralManage.peripheralModel.healthGlanceType Judgment:  value of 1 indicates support Microtest
+
+### Class Name
+
+`VPPeripheralBaseManage`，refer to the implementation of`VPMicroTestViewController`in the Demo
+
+### Interfaces
+
+```objective-c
+//Obtain manual measurement data for microtests
+/// - Parameters:
+///   - timestamp: Second-level timestamp, only returns data after the timestamp
+///   - sendBlock :Result callback
+-(void)veepooSDKMicroTestManualMeasurement:(NSTimeInterval)timestamp andPPG:(void(^)(NSMutableArray<VPManualMeasurementMicroTestModel*> *microTestArray))sendBlock
+```
+
+### Parameter Explanation
+
+VPManualMeasurementMicroTestModel
+
+| Parameter              | Parameter Type | Remarks                  |
+| ---------------------- | -------------- | ------------------------ |
+| heartRate              | int            | Heart rate               |
+| bloodOxygen            | int            | Blood oxygen             |
+| pressure               | int            | Pressure                 |
+| bloodSugar             | CGFloat        | Blood sugar              |
+| bodyTemperature        | CGFloat        | Body temperature         |
+| skinTemperature        | CGFloat        | Skin temperature         |
+| systolicBloodPressure  | int            | Systolic blood pressure  |
+| diastolicBloodPressure | int            | Diastolic blood pressure |
+| hrv                    | int            | HRV                      |
+
+### Sample Code
+
+```swift
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDKMicroTestManualMeasurement(self.checkTimeInterval) {[weak self] array in
+            guard let weakSelf = self else {return}
+            
+        }
+```
+
+# Get the always off screen state
+
+### Precondition
+
+ZT163 customization function
+
+### Class Name
+
+`VPPeripheralBaseManage`，refer to the implementation of `VPAlwaysOffScreenViewController` in the Demo
+
+### Interfaces
+
+```objective-c
+// Get the always off screen state
+/// - Parameters:
+///   - sendResult :Result callback
+- (void)veepooSDK_ZT163GetDeviceAlwaysOffScreenState:(void(^)(VPZT163AlwaysOffScreenState state))sendResult
+```
+
+### Parameter Explanation
+
+VPZT163AlwaysOffScreenState
+
+| Parameter                        | Remarks       |
+| -------------------------------- | ------------- |
+| VPZT163AlwaysOffScreenStateNoSup | Not supported |
+| VPZT163AlwaysOffScreenStateOpen  | Open          |
+| VPZT163AlwaysOffScreenStateClose | Close         |
+
+### Sample Code
+
+```swift
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDK_ZT163GetDeviceAlwaysOffScreenState {[weak self] state in
+                                                                                                     
+}
+```
+
+# Set always-off screen
+
+### Precondition
+
+ZT163 customization function
+
+### Class Name
+
+`VPPeripheralBaseManage`，refer to the implementation of `VPAlwaysOffScreenViewController` in the Demo
+
+### Interfaces
+
+```objective-c
+// Set always-off screen
+/// - Parameters:
+///   - open:YES:Open,NO:Close
+///   - sendResult :Result callback
+- (void)veepooSDK_ZT163SetDeviceAlwaysOffScreen:(BOOL)open andResult:(void(^)(BOOL success))sendResult
+```
+
+### Parameter Explanation
+
+| Parameter | Parameter Type | Remarks           |
+| --------- | -------------- | ----------------- |
+| open      | BOOL           | YES:open,NO:close |
+
+### Sample Code
+
+```swift
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDK_ZT163SetDeviceAlwaysOffScreen(sw.isOn) { success in
+
+}
+```
+
+# Met
+
+## Determine whether the device has a Met function
+
+### Precondition
+
+* The device is connected
+* Met does not support single item measurement
+
+### Class Name
+
+`VPPeripheralModel`
+
+How to get it：[VPBleCentralManage sharedBleManager].peripheralModel
+
+```objective-c
+//met，0 and 1 are not supported
+@property (nonatomic, assign) NSUInteger metType;
+```
+
+### Sample Code
+
+```objective-c
+  if ([VPBleCentralManage sharedBleManager].peripheralModel.metType > 1) {
+    
+  }
+```
+
+# Stress
+
+## Determine whether the device has a Stress function
+
+### Precondition
+
+* The device is connected
+
+### Class Name
+
+`VPPeripheralModel`
+
+How to get it：[VPBleCentralManage sharedBleManager].peripheralModel
+
+```objective-c
+//Stress，0 and 1 are not supported
+@property (nonatomic, assign) NSUInteger stressType;
+```
+
+### Sample Code
+
+```objective-c
+  if ([VPBleCentralManage sharedBleManager].peripheralModel.stressType > 1) {
+    
+  }
+```
+
+# Stress measurement 
+
+### Precondition
+
+The device supports stress function
+
+### Class Name
+
+`VPPeripheralBaseManage`，refer to the implementation of`VPStressTestViewController`in the demo
+
+### Interfaces
+
+```objective-c
+/// Stress measurement 
+/// - Parameters:
+///   - start: open/close
+///   - result: result callback
+- (void)veepooSDK_stressTestStart:(BOOL)start
+                           result:(void (^)(VPDeviceStressTestState state, NSInteger progress, NSInteger stress))result;
+```
+
+### Parameter Explanation
+
+| Parameter               | Parameter Type | Remarks            |
+| ----------------------- | -------------- | ------------------ |
+| VPDeviceStressTestState | NS_ENUM        | measurement status |
+| progress                | NSInteger      | Progress           |
+| stress                  | NSInteger      | Result             |
+
+### Sample Code
+
+```swift
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDK_stressTestStart(btn.isSelected) {[weak self] state, progress, stress in
+            
+ }
+```
+
+# Read the list types supported by health assistance features
+
+### Precondition
+
+The device supports health assistance functions
+
+### Class Name
+
+`VPPeripheralBaseManage`，refer to the implementation of`VPHealthFuncAssessmentViewController`in the demo
+
+### Interfaces
+
+```swift
+/// Determine whether health assistance functions are supported
+VPBleCentralManage.sharedBleManager().peripheralModel.funcAssessmentType != []
+```
+
+```objective-c
+/// read the list types supported by health assistance features
+/// - Parameter result: Health assistance function list callback
+- (void)veepooSDK_readFuncAssessment:(void (^)(NSArray<VPHealthFunctionModel *> *))result
+```
+
+### Parameter Explanation
+
+VPHealthFunctionModel
+
+| Parameter            | Parameter Type | Remarks         |
+| -------------------- | -------------- | --------------- |
+| VPHealthFunctionType | NS_OPTIONS     | functional type |
+| support              | BOOL           | Is it supported |
+| open                 | BOOL           | Open/Close      |
+
+### Sample Code
+
+```swift
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDK_readFuncAssessment {[weak self] models in
+            
+ }
+```
+
+# Set up health assistance functions
+
+### Precondition
+
+The device supports health assistance functions
+
+### Class Name
+
+`VPPeripheralBaseManage`，refer to the implementation of`VPHealthFuncAssessmentViewController`in the demo
+
+### Interfaces
+
+```objective-c
+/// Set up health assistance functions
+/// - Parameters:
+///   - type: VPFuncAssessmentType
+///   - open: Open/Close
+///   - result: result callback
+- (void)veepooSDK_setFuncAssessmentWithType:(VPFuncAssessmentType)type open:(BOOL)open result:(void(^)(BOOL))result
+```
+
+### Parameter Explanation
+
+| Parameter            | Parameter Type | Remarks         |
+| -------------------- | -------------- | --------------- |
+| VPFuncAssessmentType | NS_OPTIONS     | functional type |
+| open                 | BOOL           | Open/Close      |
+
+VPFuncAssessmentType
+
+| Parameter                        | Parameter Type | Remarks          |
+| -------------------------------- | -------------- | ---------------- |
+| VPFuncAssessmentTypeBloodGlucose | NSUInteger     | BloodGlucose     |
+| VPFuncAssessmentTypeBloodComp    | NSUInteger     | Blood components |
+| VPFuncAssessmentTypeBodyComp     | NSUInteger     | Body composition |
+
+### Sample Code
+
+```swift
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDK_setFuncAssessment(with: type, open: sw.isOn) { state in
+            
+}
+```
+
+# Galvanic Skin Response
+
+### Precondition
+
+The device supports Galvanic Skin Response functions
+
+### Class Name
+
+`VPPeripheralBaseManage`，refer to the implementation of`VPGSRViewController`in the demo
+
+### Interfaces
+
+Determine whether the Galvanic Skin Response is supported
+
+```swift
+VPBleCentralManage.sharedBleManager().peripheralModel.gsrType != 0
+```
+
+```objective-c
+#pragma mark - Galvanic Skin Response test
+/// - Parameters:
+///   - start:YES Open NO Close
+///   - progress :progress callback
+///   - testResult :result callback
+- (void)veepooSDKTestGSRStart:(BOOL)start
+                     progress:(void(^)(NSProgress *progress))progress
+                   testResult:(void(^)(VPDeviceGSRState state, VPGSRResultModel *model))testResult
+```
+
+### Parameter Explanation
+
+```objective-c
+// Galvanic Skin Response test state
+typedef NS_ENUM(NSUInteger, VPDeviceGSRState) {
+    VPDeviceGSRStateNoFunction,    // The device does not have this function
+    VPDeviceGSRStateDeviceBusy,    // The device is busy and cannot start testing
+    VPDeviceGSRStateOver,          // The test has ended normally, but it was manually terminated
+    VPDeviceGSRStateLowPower,      // Equipment low power
+    VPDeviceGSRStateFailure,       // Test failed
+    VPDeviceGSRStateNotWear,       // Device wearing detection failed
+    VPDeviceGSRStateComplete,      // The test has been completed
+};
+```
+
+```objective-c
+@interface VPGSRResultModel : NSObject
+///
+@property (nonatomic, assign) int emotin_level;
+
+///
+@property (nonatomic, assign) int skin_moisture;
+
+///
+@property (nonatomic, assign) int depression_risk;
+
+///
+@property (nonatomic, assign) int sns_activation;
+
+///
+@property (nonatomic, assign) int cortisol_value;
+
+@end
+```
+
+### Sample Code
+
+```swift
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDKTestGSRStart(btn.isSelected) {[weak self] progress in
+    guard let self = self, let pro = progress else { return }
+    let value = Double(pro.completedUnitCount) / Double(pro.totalUnitCount)
+    self.progressLabel.text = "Progress:\(value*100)%"
+} testResult: {[weak self] state, resultModel in
+    guard let self = self else { return }
+    if state == .complete {
+        guard let res = resultModel else { return }
+        self.resultLabel.text = "emotion:\(res.emotin_level) skin_moisture:\(res.skin_moisture) depression_risk:\(res.depression_risk) sns_activation:\(res.sns_activation) cortisol_value:\(res.cortisol_value)"
+    }else if state == .over {
+
+    }else {
+
+    }
+}
+```
+
+# Health Glance（public domain）
+
+### Precondition
+
+The device supports Health Glance functions
+
+### Class Name
+
+`VPPeripheralBaseManage`，refer to the implementation of`VPHealthGlanceViewController`in the demo
+
+### Interfaces
+
+Determine whether the Health Glance function is supported
+
+```swift
+VPBleCentralManage.sharedBleManager().peripheralModel.healthGlanceType > 1
+```
+
+```objective-c
+#pragma mark - Health Glance test
+/// - Parameters:
+///   - open:YES Open NO Close
+///   - progressResult :progress callback
+///   - result :result callback
+-(void)veepooSDK_healthGlanceTestStart:(BOOL)start andProgress:(void(^)(NSInteger progress))progressResult andResult:(void(^)(VPDeviceHealthGlanceState state,VPHealthGlanceTestModel *healthGlanceModel))result;
+```
+
+### Parameter Explanation
+
+```objective-c
+// Health Glance test state
+typedef NS_ENUM(NSUInteger, VPDeviceHealthGlanceState) {
+    VPDeviceHealthGlanceStateNoFunction,    // The device does not have this function
+    VPDeviceHealthGlanceStateDeviceBusy,    // The device is busy and cannot start testing
+    VPDeviceHealthGlanceStateOver,          // The test has ended normally, but it was manually terminated
+    VPDeviceHealthGlanceStateLowPower,      // Equipment low power
+    VPDeviceHealthGlanceStateFailure,       // Test failed
+    VPDeviceHealthGlanceStateNotWear,       // Device wearing detection failed
+    VPDeviceHealthGlanceStateComplete,      // The test has been completed
+    VPDeviceHealthGlanceStateNotLead,      // lead detachment
+};
+```
+
+```objective-c
+@interface VPHealthGlanceTestModel : NSObject
+///
+@property (nonatomic, assign) UInt8 heartRate;
+///
+@property (nonatomic, assign) UInt8 bloodOxygen;
+///
+@property (nonatomic, assign) UInt8 stress;
+///
+@property (nonatomic, assign) UInt8 fatigueLevel;
+///
+@property (nonatomic, assign) double bloodSugar;
+///
+@property (nonatomic, assign) UInt8 bloodSugarType;
+///
+@property (nonatomic, assign) UInt8 bloodSugarLevel;
+///
+@property (nonatomic, assign) double bodyTemperature;
+///
+@property (nonatomic, assign) double orgTemperature;
+///
+@property (nonatomic, assign) UInt8 systolicBloodPressure;
+///
+@property (nonatomic, assign) UInt8 diastolicBloodPressure;
+///
+@property (nonatomic, assign) UInt8 hrv;
+///
+@property (nonatomic, assign) UInt8 ppgBloodPressureHigh;
+///
+@property (nonatomic, assign) UInt8 ppgBloodPressureLow;
+///
+@property (nonatomic, assign) UInt8 cuffBloodPressureHigh;
+///
+@property (nonatomic, assign) UInt8 cuffBloodPressureLow;
+///
+@property (nonatomic, assign) double totalCholesterol;
+///
+@property (nonatomic, assign) double triglyceride;
+///
+@property (nonatomic, assign) double highDensityLipoprotein;
+///
+@property (nonatomic, assign) double lowDensityLipoprotein;
+///
+@property (nonatomic, assign) double uricAcid;
+///
+@property (nonatomic, assign) NSUInteger functionSupport;
+///
+@property (nonatomic, assign) UInt8 weight;
+///
+@property (nonatomic, assign) UInt8 height;
+///
+@property (nonatomic, assign) UInt8 age;
+///
+@property (nonatomic, assign) UInt8 gender;
+///
+@property (nonatomic, assign) double bmi;
+///
+@property (nonatomic, assign) double bodyFatPercentage;
+///
+@property (nonatomic, assign) double fatMass;
+///
+@property (nonatomic, assign) double leanBodyMass;
+///
+@property (nonatomic, assign) double muscleRate;
+///
+@property (nonatomic, assign) double muscleMass;
+///
+@property (nonatomic, assign) double subcutaneousFat;
+///
+@property (nonatomic, assign) double bodyMoisture;
+///
+@property (nonatomic, assign) double waterContent;
+//
+@property (nonatomic, assign) double skeletalMuscleRate;
+///
+@property (nonatomic, assign) double boneMass;
+///
+@property (nonatomic, assign) double proportionOfProtein;
+///
+@property (nonatomic, assign) double proteinAmount;
+///
+@property (nonatomic, assign) double basalMetabolicRate;
+///
+@property (nonatomic, assign) NSInteger emotionLevel;
+///
+@property (nonatomic, assign) UInt8 skinMoisture;
+///
+@property (nonatomic, assign) UInt8 depressionRisk;
+///
+@property (nonatomic, assign) UInt8 snsActivation;
+//
+@property (nonatomic, assign) UInt16 cortisolValue;
+@end
+```
+
+### Sample Code
+
+```swift
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDK_healthGlanceTestStart(btn.isSelected) {[weak self] progress in
+    guard let self = self else { return }
+    self.progressLabel.text = "Progress:\(progress)%"
+} andResult: {[weak self] state, resultModel in
+    guard let self = self else { return }
+    if state == .complete {
+        guard let res = resultModel else { return }
+        var result = "Measurement completed "
+        //Support heart rate, and so on, to determine whether the micro physical examination results include this function. Support outputting the corresponding results, but do not support not outputting
+        if res.functionSupport & VPHealthGlanceType.heartValue.rawValue != 0 {
+            let str = "heart rate:\(res.heartRate)"
+            result += str
+        }
+        if res.functionSupport & VPHealthGlanceType.bloodOxy.rawValue != 0 {
+            let str = "blood oxygen:\(res.bloodOxygen)"
+            result += str
+        }
+        //Other results refer to the above implementation
+        self.resultLabel.text = result + " *Other results refer to the above implementation*"
+    }else if state == .over {
+        
+    }else {
+        
+    }
+}
+```
+
+# 4G Function
+
+### Precondition
+
+The device supports 4G functionality
+
+### Class Name
+
+`VPPeripheralBaseManage`，refer to the implementation of`VP4GViewController`in the demo
+
+### Interfaces
+
+Determine whether 4G functionality is supported
+
+```swift
+VPBleCentralManage.sharedBleManager().peripheralModel.isSupport4GType != 0
+```
+
+```objective-c
+/// Read 4G device configuration information
+- (void)veepooSDK_read4GDeviceConfigInfoSubscribe:(void (^)(BOOL isReadAckInfo, VP4GFunctionConfigurationInfoModel *deviceConfigInfo))result;
+```
+
+### Parameter Explanation
+
+VP4GFunctionConfigurationInfoModel
+
+| Parameter              | Parameter Type | Remarks                                                |
+| ---------------------- | -------------- | ------------------------------------------------------ |
+| deviceHost             | NSUInteger     | Device domain name information (IP address)            |
+| devicePort             | uint16_t       | Device port information                                |
+| account                | NSString       | Account name for device login                          |
+| password               | NSString       | Account and password for logging in on the device side |
+| is4GSwitchEnable       | BOOL           | 4G switch, 0 for off, 1 for on                         |
+| isSyncDataSwitchEnable | BOOL           | Data upload switch, 0 for off, 1 for on                |
+| intervalTime           | uint8_t        | Reporting time interval                                |
+
+### Sample Code
+
+```swift
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDK_read4GDeviceConfigInfoSubscribe {[weak self] state, config in
+    guard let self = self, let config = config else { return }
+    print("host:\(config.deviceHost),port:\(config.devicePort),account:\(config.account),password:\(config.password)")
+    switch4g?.isOn = config.is4GSwitchEnable
+    switchSync?.isOn = config.isSyncDataSwitchEnable
+    intervalTimeLab?.text = "synchronization frequency:\(config.intervalTime)min"
+    hostTextFiled?.text = config.deviceHost
+    portTextField?.text = "\(config.devicePort)"
+    accountTextFiled?.text = config.account
+    passwordTextField?.text = config.password
+}
+```
+
+# 4G Function - Bind Device
+
+### Precondition
+
+The device supports 4G functionality
+
+### Class Name
+
+`VPPeripheralBaseManage`，refer to the implementation of`VP4GViewController`in the demo
+
+### Interfaces
+
+Determine whether 4G functionality is supported
+
+```swift
+VPBleCentralManage.sharedBleManager().peripheralModel.isSupport4GType != 0
+```
+
+```objective-c
+/// Bind Device
+/// - Parameter account: App Account
+/// - Parameter password: Random password generated by the app
+/// - Parameter callback: 
+- (void)veepooSDK_bind4GDeviceAccount:(NSString *)account password:(NSString *)password callback:(void (^)(BOOL isSucc))result;
+```
+
+### Parameter Explanation
+
+| Parameter | Parameter Type | Remarks                              |
+| --------- | -------------- | ------------------------------------ |
+| account   | NSString       | App Account                          |
+| password  | NSString       | Random password generated by the app |
+
+### Sample Code
+
+```swift
+guard let acc = accountTextFiled?.text, let pass = passwordTextField?.text else { return }
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDK_bind4GDeviceAccount(acc, password: pass) { success in
+    if success {
+        VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDK_sendVerifyInfoSucc()
+    }
+}
+```
+
+
+
+# 4G Function - Modify Mobile Network Switch Enable Status
+
+### Precondition
+
+The device supports 4G functionality
+
+### Class Name
+
+`VPPeripheralBaseManage`，refer to the implementation of`VP4GViewController`in the demo
+
+### Interfaces
+
+Determine whether 4G functionality is supported
+
+```swift
+VPBleCentralManage.sharedBleManager().peripheralModel.isSupport4GType != 0
+```
+
+```objective-c
+/// Modify Mobile Network Switch Enable Status
+/// - Parameter state: On state
+/// - Parameter callback: 
+- (void)veepooSDK_modify4GSwitchEnableState:(NSInteger)state callback:(void (^)(BOOL isSucc))result;
+```
+
+### Parameter Explanation
+
+| Parameter | Parameter Type | Remarks                   |
+| --------- | -------------- | ------------------------- |
+| state     | NSInteger      | 0 is closed and 1 is open |
+
+### Sample Code
+
+```swift
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDK_modify4GSwitchEnableState(switch4g!.isOn ? 1 : 0) { success in
+            
+        }
+```
+
+# 4G Function - Modify the Enable Status of the Mobile Data Synchronization Switch
+
+### Precondition
+
+The device supports 4G functionality
+
+### Class Name
+
+`VPPeripheralBaseManage`，refer to the implementation of`VP4GViewController`in the demo
+
+### Interfaces
+
+Determine whether 4G functionality is supported
+
+```swift
+VPBleCentralManage.sharedBleManager().peripheralModel.isSupport4GType != 0
+```
+
+```objective-c
+/// Modify the Enable Status of the Mobile Data Synchronization Switch
+/// - Parameter state: On state
+/// - Parameter callback: 
+- (void)veepooSDK_modify4GSyncSwitchEnableState:(NSInteger)state callback:(void (^)(BOOL isSucc))result
+```
+
+### Parameter Explanation
+
+| Parameter | Parameter Type | Remarks                   |
+| --------- | -------------- | ------------------------- |
+| state     | NSInteger      | 0 is closed and 1 is open |
+
+### Sample Code
+
+```swift
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDK_modify4GSyncSwitchEnableState(switchSync!.isOn ? 1 : 0) { success in
+            
+        }
+```
+
+# 4G function - modify device data reporting interval time
+
+### Precondition
+
+The device supports 4G functionality
+
+### Class Name
+
+`VPPeripheralBaseManage`，refer to the implementation of`VP4GViewController`in the demo
+
+### Interfaces
+
+Determine whether 4G functionality is supported
+
+```swift
+VPBleCentralManage.sharedBleManager().peripheralModel.isSupport4GType != 0
+```
+
+```objective-c
+/// modify device data reporting interval time
+/// - Parameter time: time interval
+/// - Parameter callback: 
+- (void)veepooSDK_modifySyncTimeInterval:(NSInteger)time callback:(void (^)(BOOL isSucc))result
+```
+
+### Parameter Explanation
+
+| Parameter | Parameter Type | Remarks                                  |
+| --------- | -------------- | ---------------------------------------- |
+| time      | NSInteger      | Unit minute, such as 5 minutes, time = 5 |
+
+### Sample Code
+
+```swift
+let times = [5,10,15]
+        VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDK_modifySyncTimeInterval(times[seg.selectedSegmentIndex]) {[weak self] success in
+            
+            
+ }
+```
+
+# 4G Function - Modify Device MQTT Configuration
+
+### Precondition
+
+The device supports 4G functionality
+
+### Class Name
+
+`VPPeripheralBaseManage`，refer to the implementation of`VP4GViewController`in the demo
+
+### Interfaces
+
+Determine whether 4G functionality is supported
+
+```swift
+VPBleCentralManage.sharedBleManager().peripheralModel.isSupport4GType != 0
+```
+
+```objective-c
+/// Modify Device MQTT Configuration
+/// - Parameter host: IP
+/// - Parameter port: prot
+/// - Parameter callback:
+- (void)veepooSDK_modifyMQTTConfig:(NSString *)host port:(NSInteger)port callback:(void (^)(BOOL isSucc))result
+```
+
+### Parameter Explanation
+
+| Parameter | Parameter Type | Remarks    |
+| --------- | -------------- | ---------- |
+| host      | NSString       | IP address |
+| port      | NSInteger      | Port       |
+
+### Sample Code
+
+```swift
+guard let host = hostTextFiled?.text, let port = portTextField?.text, let p = Int(port) else { return }
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDK_modifyMQTTConfig(host, port: p) { success in
+    
+}
+```
+
+# 4G Function - Read device IMEI information
+
+### Precondition
+
+The device supports 4G functionality
+
+### Class Name
+
+`VPPeripheralBaseManage`，refer to the implementation of`VP4GViewController`in the demo
+
+### Interfaces
+
+Determine whether 4G functionality is supported
+
+```swift
+VPBleCentralManage.sharedBleManager().peripheralModel.isSupport4GType != 0
+```
+
+```objective-c
+/// Read device IMEI information
+/// - Parameters:
+///   - result : CallBack
+- (void)veepooSDK_readIMEIInfo:(void (^_Nullable)(NSString *_Nullable))result
+```
+
+### Parameter Explanation
+
+| Parameter | Parameter Type | Remarks    |
+| --------- | -------------- | ---------- |
+| host      | NSString       | IP address |
+| port      | NSInteger      | Port       |
+
+### Sample Code
+
+```swift
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDK_readIMEIInfo {[weak self] text in
+            
+        }
+```
+
+
+
+# Enable device movement on the app
+
+### Precondition
+
+Ring and screenless wristband device support
+
+### Class Name
+
+`VPPeripheralBaseManage`，refer to the implementation of`VPDeviceSportViewController`in the demo
+
+### Interfaces
+
+```objective-c
+/// Sports mode control interface
+/// - Parameters:
+///   - code: operator
+///   - type: Sports mode type
+- (void)veepooSDK_deviceSportControlWithCode:(VPDeviceSportControlOpCode)code type:(VPDeviceRuningMode)type;
+```
+
+### Parameter Explanation
+
+VPDeviceSportControlOpCode
+
+```
+// 
+typedef NS_ENUM(NSUInteger, VPDeviceSportControlOpCode) {
+    VPDeviceSportControlOpCodeStart = 0x01,
+    VPDeviceSportControlOpCodePause = 0x02,
+    VPDeviceSportControlOpCodeContinue = 0x03,
+    VPDeviceSportControlOpCodeStop = 0x04,
+};
+```
+
+### Sample Code
+
+```swift
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDK_deviceSportControl(with: opCode!, type: .outdoorRun)
+```
+
+# Query the information of device movement enabled in the current app
+
+### Precondition
+
+Ring and screenless wristband device support
+
+### Class Name
+
+`VPPeripheralBaseManage`，refer to the implementation of`VPDeviceSportViewController`in the demo
+
+### Interfaces
+
+```objective-c
+/// Subscribe to the interface for changing the current device's motion status
+/// - Parameter result: callback
+- (void)veepooSDK_deviceSportRunninStateSubscribe:(void (^)(VPSportControlRunState))result
+```
+
+```objective-c
+/// Subscribe to the change interface for the current device's motion information
+/// - Parameter result: callback
+- (void)veepooSDK_deviceSportInfoSubscribe:(void (^)(VPDeviceSportControlModel *))result
+```
+
+```objective-c
+/// Read the current device's motion status
+- (void)veepooSDK_readDeviceSportState
+```
+
+### Parameter Explanation
+
+VPSportControlRunState
+
+```
+typedef NS_ENUM(NSInteger, VPSportControlRunState) {
+    VPSportControlRunStateNotStarted = 0x00,
+    VPSportControlRunStateRunning = 0x01,
+    VPSportControlRunStatePaused = 0x02
+};
+```
+
+VPDeviceSportControlModel
+
+```
+@interface VPDeviceSportControlModel : NSObject
+
+// 
+@property (nonatomic, assign) VPSportControlProtocolSportMode sportMode;
+// 
+@property (nonatomic, assign) NSInteger operationCode;
+// 
+@property (nonatomic, assign) VPSportControlRunState runState;
+// 
+@property (nonatomic, assign) VPSportControlDeviceState deviceState;
+// 
+@property (nonatomic, assign) uint32_t duration;
+// 
+@property (nonatomic, assign) uint32_t distance;
+// 
+@property (nonatomic, assign) uint8_t heartRate;
+// 
+@property (nonatomic, assign) uint32_t calories;
+// 
+@property (nonatomic, assign) uint16_t pace;
+// 
+@property (nonatomic, assign) uint16_t speed;
+```
+
+### Sample Code
+
+```swift
+readTimer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true, block: { timer in
+    VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDK_readDeviceSportState()
+})
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDK_deviceSportRunninStateSubscribe { state in
+    print("veepooSDK_deviceSportRunninStateSubscribe:\(state)")
+}
+
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDK_deviceSportInfoSubscribe {[weak self] model in
+    guard let self = self, let model = model else { return }
+    var runState =  "Not started"
+    if model.runState == .paused {
+        runState =  "pause"
+    } else if model.runState == .running {
+        runState =  "in motion"
+    }
+    let result = "Run state:\(runState),duration:\(model.duration),distance:\(model.distance),heartRate:\(model.heartRate),calories:\(model.calories),pace:\(model.pace),speed:\(model.speed)"
+    if textView!.text != "" {
+        textView!.text = textView!.text + "\n" + result
+    } else {
+        textView!.text = result
+    }
+
+    textView!.scrollToBottom()
+    print(result)
+}
+```
+
+# Read device motion records
+
+### Precondition
+
+Ring and screenless wristband device support
+
+### Class Name
+
+`VPPeripheralBaseManage`，refer to the implementation of`VPDeviceSportViewController`in the demo
+
+### Interfaces
+
+```objective-c
+/// Read the CRC list of motion mode data stored in the device
+/// - Parameter result: CRC array callback, NSNumber type is uint16
+- (void)readDeviceSportCRCArr:(void(^)(bool success, NSArray<NSNumber *> * _Nullable))result
+```
+
+```objective-c
+/// Read the detailed data of the motion mode from the given CRC list
+/// - Parameters:
+///   - crcArr: CRC list, obtained by the reading interface, and filtered at the application layer for CRC that has already been read
+///   - result: 
+- (void)readDeviceSportWithCRC:(NSArray<NSNumber *> *)crcArr result:(void(^)(NSArray<VPDeviceSportModel *> * _Nullable, NSArray<VPDeviceSportWithGPSModel *> * _Nullable))result
+```
+
+### Parameter Explanation
+
+VPDeviceSportModel
+
+```
+@interface VPDeviceSportModel : NSObject
+
+/// 
+@property (nonatomic, assign) uint8_t dsProtocol;
+/// 
+@property (nonatomic, assign) uint16_t type;
+/// 
+@property (nonatomic, assign) uint16_t crc;
+/// 
+@property (nonatomic, strong) NSString *date;
+/// 
+@property (nonatomic, strong) NSString *beginTime;
+/// 
+@property (nonatomic, strong) NSString *endTime;
+/// 
+@property (nonatomic, assign) uint32_t totalStep;
+/// 
+@property (nonatomic, assign) uint32_t totalSport;
+/// 
+@property (nonatomic, assign) uint32_t totalDis;
+/// 
+@property (nonatomic, assign) uint32_t totalCal;
+/// 
+@property (nonatomic, assign) uint16_t pauseTotalTime;
+/// 
+@property (nonatomic, assign) uint32_t averPace;
+/// 
+@property (nonatomic, assign) uint32_t aerobTime;
+/// 
+@property (nonatomic, assign) uint32_t totalTime;
+/// 
+@property (nonatomic, assign) uint8_t averHeart;
+/// 
+@property (nonatomic, assign) uint8_t pauseCount;
+/// 
+@property (nonatomic, assign) uint16_t recordCount;
+
+@property (nonatomic, strong) NSArray<VPDeviceSportMinuteModel *> *oneMinuteData;
+
+- (instancetype)initWithData:(NSData *)sourceData;
+
+```
+
+VPDeviceSportWithGPSModel
+
+```
+@interface VPDeviceSportWithGPSModel : NSObject
+
+/// 
+@property (nonatomic, assign) uint8_t dsProtocol;
+/// 
+@property (nonatomic, assign) uint32_t startTimestamp;
+/// 
+@property (nonatomic, assign) uint32_t stopTimestamp;
+/// 
+@property (nonatomic, assign) uint32_t duration;
+
+@property (nonatomic, assign) uint32_t step;
+@property (nonatomic, assign) uint32_t dis;
+@property (nonatomic, assign) uint32_t cal;
+@property (nonatomic, assign) uint32_t sport;
+
+/// 
+@property (nonatomic, assign) uint8_t maxHeart;
+@property (nonatomic, assign) uint8_t aveHeart;
+@property (nonatomic, assign) uint8_t minHeart;
+
+/// 
+@property (nonatomic, assign) uint16_t maxPace;
+@property (nonatomic, assign) uint16_t avePace;
+@property (nonatomic, assign) uint16_t minPace;
+
+/// 
+@property (nonatomic, assign) uint16_t maxSpeed;
+@property (nonatomic, assign) uint16_t aveSpeed;
+@property (nonatomic, assign) uint16_t minSpeed;
+
+///
+@property (nonatomic, assign) uint16_t maxCadence;
+@property (nonatomic, assign) uint16_t aveCadence;
+@property (nonatomic, assign) uint16_t minCadence;
+
+///
+@property (nonatomic, assign) uint16_t aerobicCount;
+/// 
+@property (nonatomic, assign) uint16_t recordCount;
+///
+@property (nonatomic, assign) uint8_t pauseCount;
+/// 
+@property (nonatomic, assign) uint16_t pauseDuration;
+@property (nonatomic, assign) uint16_t crc;
+@property (nonatomic, assign) uint16_t sportType;
+
+@property (nonatomic, assign) uint8_t showType;
+
+
+@property (nonatomic, strong) NSArray<VPDSOneMinuteModel *> *minutes;
+
+```
+
+### Sample Code
+
+```swift
+VPBleCentralManage.sharedBleManager().peripheralManage.readDeviceSportCRCArr {[weak self] success, crcs in
+    guard let self = self else { return }
+    if crcs?.count != 0 {
+        VPBleCentralManage.sharedBleManager().peripheralManage.readDeviceSport(withCRC: crcs) {[weak self] sportModels, sportGpsModels in
+            guard let sportModels = sportModels, let sportGpsModels = sportGpsModels, let self = self else { return }
+            print(sportModels)
+            print(sportGpsModels)
+        }
+    } else {
+        
+    }
+}
+```
+
+# AI Function - AI Q&A
+
+### Precondition
+
+The device supports AI function, and the process of AI Q&A is as follows: When the device activates AI Q&A and asks a question, the device will record it. After the recording is completed, the app will receive the recording file opusData. The app needs to convert Opus into a PCM voice file, and the obtained voice file will be sent to the device as text through a third-party AI. At the same time, the answer to the question will be obtained through the third-party AI and then sent to the device. SDK only provides interaction with devices and does not offer third-party AI. Please integrate third-party AI on your own.
+
+### Class Name
+
+`VPPeripheralBaseManage`，refer to the implementation of`VPAIViewController`in the demo
+
+### Interfaces
+
+Does it support AI functionality
+
+```
+(VPBleCentralManage.sharedBleManager().peripheralModel.aiChatType != 0 || VPBleCentralManage.sharedBleManager().peripheralModel.aiDialType != 0) ? true : false
+```
+
+```objective-c
+/// External network status changes, assignment, ensuring that AI processes can end correctly and respond appropriately in the absence of a network
+/// - Parameter status: network status
+- (void)veepooSDK_aiFuncAINetworkStatus:(VPAINetworkStatus)status
+```
+
+### Parameter Explanation
+
+VPAINetworkStatus
+
+```
+typedef NS_ENUM(uint8_t, VPAINetworkStatus){
+    VPAINetworkStatusNotReachable,              
+    VPAINetworkStatusReachableViaWiFi,
+    VPAINetworkStatusReachableViaWWAN
+};
+```
+
+### Sample Code
+
+```swift
+//Set the current network situation     
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDK_aiFuncAINetworkStatus(.reachableViaWiFi)
+```
+
+
+
+```objective-c
+//Monitoring device AI function usage
+- (void)veepooSDK_aiFuncOpusDataSubscribe:(void (^)(VPCurrentAIFunctionType, NSData *opusData))result
+```
+
+### Parameter Explanation
+
+VPCurrentAIFunctionType
+
+```
+// Current AI event types
+typedef NS_ENUM(NSUInteger, VPCurrentAIFunctionType){
+    VPCurrentAIFunctionTypeEndInteraction,          // 
+    VPCurrentAIFunctionTypeDeviceAIChatUsing,       // 
+    VPCurrentAIFunctionTypeDeviceAIDialUsing,       // 
+    VPCurrentAIFunctionTypeAppAIChatUsing,          // 
+    VPCurrentAIFunctionTypeAppAIDialUsing,          // 
+};
+```
+
+| Parameter | Parameter Type | Remarks                                        |
+| --------- | -------------- | ---------------------------------------------- |
+| opusData  | NSData         | The recording opus data returned by the device |
+
+### Sample Code
+
+```swift
+// Monitor OPUS data channel language Q&A data stream
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDK_aiFuncOpusDataSubscribe {[weak self] type, opusData in
+    if type == .deviceAIChatUsing {//
+        self?.handleAnswer(questionData: opusData!)
+    } else if type == .deviceAIDialUsing {/
+        self?.handleAnswerGenerateImage(questionData: opusData!)
+    }
+}
+```
+
+
+
+```objective-c
+// Monitoring device triggers AI to answer again
+/// - Parameters:
+///  - askBlock: text
+- (void)veepooSDK_aiFuncReceiveAnswerAgainSubscribe:(void (^)(NSString *ask))askBlock
+```
+
+### Parameter Explanation
+
+| Parameter | Parameter Type | Remarks |
+| --------- | -------------- | ------- |
+| ask       | NSString       | 问题    |
+
+### Sample Code
+
+```swift
+// Listening and receiving a response again
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDK_aiFuncReceiveAnswerAgainSubscribe {[weak self] text in
+    print("Listening and receiving a response again\(text!)")
+    self?.handleReplyAnswerToDevice(result: "Resend the conclusion drawn by AI")
+}
+```
+
+
+
+```objective-c
+// Send the result of converting voice to text to the device
+/// - Parameters:
+///  - resultStr: Text
+- (void)veepooSDK_aiFuncSendSpeechConvertWithTextResult:(NSString *)resultStr
+```
+
+### Sample Code
+
+```swift
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDK_aiFuncSendSpeechConvert(withTextResult: text)
+```
+
+
+
+```objective-c
+// Send the result of AI response to the device
+/// - Parameters:
+///  - resultStr: Text
+- (void)veepooSDK_aiFuncSendChatAnswerWithTextResult:(NSString *)resultSt
+```
+
+### Sample Code
+
+```swift
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDK_aiFuncSendChatAnswer(withTextResult: result)
+```
+
+# AI function - AI dial
+
+### Precondition
+
+The device supports AI function, and the process of AI dial: When the device turns on the AI dial and says a sentence, the device will record. After the recording is completed, the app will receive the recording file opusData. The app needs to convert Opus into a PCM voice file, and the obtained voice file will be converted into text and sent to the device through a third-party AI. The device can choose to generate an image, and the app will receive a notification to generate an image. After the text is generated into an image through the third-party AI, the image will be sent to the device. The device can choose whether to set it as a dial. If you choose to set the dial, the app will receive a notification and set the image as the device's image dial. SDK only provides interaction with devices and does not offer third-party AI. Please integrate third-party AI on your own.
+
+### Class Name
+
+`VPPeripheralBaseManage`，refer to the implementation of`VPAIViewController`in the demo
+
+### Interfaces
+
+Does it support AI functionality
+
+```
+(VPBleCentralManage.sharedBleManager().peripheralModel.aiChatType != 0 || VPBleCentralManage.sharedBleManager().peripheralModel.aiDialType != 0) ? true : false
+```
+
+```objective-c
+/// External network status changes, assignment, ensuring that AI processes can end correctly and respond appropriately in the absence of a network
+/// - Parameter status: network status
+- (void)veepooSDK_aiFuncAINetworkStatus:(VPAINetworkStatus)status
+```
+
+### Parameter Explanation
+
+VPAINetworkStatus
+
+```
+typedef NS_ENUM(uint8_t, VPAINetworkStatus){
+    VPAINetworkStatusNotReachable,              
+    VPAINetworkStatusReachableViaWiFi,
+    VPAINetworkStatusReachableViaWWAN
+};
+```
+
+### Sample Code
+
+```swift
+//Set the current network situation     
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDK_aiFuncAINetworkStatus(.reachableViaWiFi)
+```
+
+
+
+```objective-c
+//Monitoring device AI function usage
+- (void)veepooSDK_aiFuncOpusDataSubscribe:(void (^)(VPCurrentAIFunctionType, NSData *opusData))result
+```
+
+### Parameter Explanation
+
+VPCurrentAIFunctionType
+
+```
+// Current AI event types
+typedef NS_ENUM(NSUInteger, VPCurrentAIFunctionType){
+    VPCurrentAIFunctionTypeEndInteraction,          // 
+    VPCurrentAIFunctionTypeDeviceAIChatUsing,       // 
+    VPCurrentAIFunctionTypeDeviceAIDialUsing,       //
+    VPCurrentAIFunctionTypeAppAIChatUsing,          // 
+    VPCurrentAIFunctionTypeAppAIDialUsing,          //
+};
+```
+
+| Parameter | Parameter Type | Remarks                                        |
+| --------- | -------------- | ---------------------------------------------- |
+| opusData  | NSData         | The recording opus data returned by the device |
+
+### Sample Code
+
+```swift
+// Monitor OPUS data channel language Q&A data stream
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDK_aiFuncOpusDataSubscribe {[weak self] type, opusData in
+    if type == .deviceAIChatUsing {//
+        self?.handleAnswer(questionData: opusData!)
+    } else if type == .deviceAIDialUsing {//
+        self?.handleAnswerGenerateImage(questionData: opusData!)
+    }
+}
+```
+
+
+
+```objective-c
+/// AI dial monitoring received device acquisition image
+/// - Parameters:
+///  - result: lastAsk:Result text,style:image style
+- (void)veepooSDK_aiFuncCanGetImageActionSubscribe:(void (^)(NSString *lastAsk, NSInteger style))result
+```
+
+### Parameter Explanation
+
+| Parameter | Parameter Type | Remarks     |
+| --------- | -------------- | ----------- |
+| lastAsk   | NSString       | Result text |
+| style     | NSInteger      | image style |
+
+### Sample Code
+
+```swift
+// The AI dial has received another image from the device
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDK_aiFuncCanGetImageActionSubscribe { string, style in
+    print("The AI dial has received another image from the device:\(string)\(style)")
+    let img = UIImage(named: "test_390_450") // This is a test image. Normally, if the image is generated by AI, it needs to be integrated with AI for implementation
+    if let pngData = UIImagePNGRepresentation(img!) {
+        VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDK_aiFuncSendImageData(pngData)
+    }
+}
+```
+
+
+
+```objective-c
+/// Monitoring device triggers sending AI dial
+///  - result: start:Whether to start,success:Whether it is successful image:Completed image transmission
+- (void)veepooSDK_aiFuncImageTransformResultSubscribe:(void (^)(BOOL start, BOOL success, UIImage *image))result
+```
+
+### Parameter Explanation
+
+| Parameter | Parameter Type | Remarks                      |
+| --------- | -------------- | ---------------------------- |
+| start     | BOOL           | Whether to start             |
+| success   | BOOL           | Whether it is successful     |
+| image     | UIImage        | Completed image transmission |
+
+### Sample Code
+
+```swift
+// AI dial received device settings dial
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDK_aiFuncImageTransformResultSubscribe { [weak self] start, success, image in
+    if start {
+        print("Start transmission")
+    } else {
+        if success {
+            print("Transmission complete")
+        }
+    }
+}
+
+```
+
+
+
+```objective-c
+/// Send AI dial preview image
+/// /// - Parameters:
+///  - imageData: Convert images to NSData
+- (void)veepooSDK_aiFuncSendImageData:(NSData *)imageData
+```
+
+### Sample Code
+
+```swift
+let img = UIImage(named: "test_390_450") // This is a test image. Normally, if the image is generated by AI, it needs to be integrated with AI for implementation
+if let pngData = UIImagePNGRepresentation(img!) {
+    VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDK_aiFuncSendImageData(pngData)
+}
+```
+
+# Nordic OTA
+
+### Precondition
+
+The device supports upgrading with Nordic firmware
+
+### Class Name
+
+`VPHNordic54LDFUManager`，refer to the implementation of`VPHNordic54LDFUVC`in the demo
+
+### Interfaces
+
+Does it support Nordic firmware upgrade
+
+```
+VPBleCentralManage.sharedBleManager().peripheralModel.isSupportNordic
+```
+
+1.import iOSMcuManagerLibrary.framework, SwiftCBOR.framework, ZIPFoundation.framework
+
+2.pod 'iOSMcuManagerLibrary'
+
+### Sample Code
+
+```swift
+// FileURL: The URL of the firmware, which can be downloaded by oneself
+let nordic = VPHNordic54LDFUManager()
+nordic.delegate = self //VPHNordic54LDFUManagerDelegate
+nordic.setFileInfo(fileURL)
+nordic.startOTA()
+```
+
+
+
+```objective-c
+// Implement VPHNordic54LDFUManagerial Delegate to monitor upgrade process through delegate monitoring
+  func nordicOtaDidStart() {
+        print("nordicOtaDidStart")
+        stateLabel.text = "Start"
+    }
+    
+    func nordicOtaStateDidChange(from previousState: String, to newState: String) {
+        print("nordicOtaStateDidChange\(previousState)")
+        
+    }
+    
+    func nordicOtaDidComplete() {
+        print("nordicOtaDidComplete")
+        stateLabel.text = "Complete"
+    }
+    
+    func nordicOtaDidFail(inState state: String, error: NSError) {
+        print("nordicOtaDidFail")
+        stateLabel.text = "Fail"
+    }
+    
+    func nordicOtaUploadProgress(bytesSent: Int, imageSize: Int, progress: Float) {
+        print("nordicOtaUploadProgress\(progress)")
+        stateLabel.text = "Progress:\(Int(progress*100))"
+    }
+```
+
+# Confirm whether the control device has a pop-up connection
+
+### Precondition
+
+Equipment support is required.
+
+### Class Name
+
+VPBleCentralManage.sharedBleManager()
+
+### Interfaces
+
+By default, it is enabled. If you do not want to use it, you can set it to false when connecting the device
+
+```
+VPBleCentralManage.sharedBleManager().deviceShowConfirm = false
+```
+
+### Sample Code
+
+```swift
+VPBleCentralManage.sharedBleManager().veepooSDKConnectDevice(p) { [weak self](connectState) in
+    if connectState == .BleConfirmTimeout {
+      //Please note that if the device times out without operation, please perform the device disconnection operation yourself, otherwise the device will still be in Bluetooth connection state
+      //    VPBleCentralManage.sharedBleManager().peripheralManage.disconnectPhone()
+//          VPBleCentralManage.sharedBleManager().veepooSDKDisconnectDevice()
+    }
+}
+```
+
+# HRV Measurement
+
+### Precondition
+
+Equipment support is required.
+
+### Class Name
+
+VPPeripheralBaseManage`，refer to the implementation of`VPHRVTestVC in the demo
+
+### Interfaces
+
+```
+VPBleCentralManage.sharedBleManager().peripheralModel.isSupportHRVTest
+```
+
+```objective-c
+/// HRV Measurement
+/// Parameters:
+///   - state: YES:start NO:close
+///   - result: callBack
+- (void)veepooSDK_HRVTest:(BOOL)state callBack:(void(^)(int con, VPTestHRVState ack, int value))result
+```
+
+### Parameter Explanation
+
+| Parameter | Parameter Type | Remarks                                                      |
+| --------- | -------------- | ------------------------------------------------------------ |
+| con       | int            | 0: Measurement not supported, 1: Start measurement, 2: Close measurement |
+| ack       | VPTestHRVState | 0: Normal measurement, other values represent errors         |
+| value     | int            | HRV measurement results                                      |
+
+### Sample Code
+
+```swift
+// *HRV measurement is a continuous measurement, and the device will not actively turn off the measurement, so the app needs to actively turn off the measurement*
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDK_HRVTest(state) {[weak self] con, ack, hrvValue in
+    print(con,ack,hrvValue)
+}
+```
+
+# Change Bluetooth name
+
+### Precondition
+
+Equipment support is required.。
+
+### Class Name
+
+VPPeripheralBaseManage`，refer to the implementation of`VPChangeDeviceNameViewController in the demo
+
+### Interfaces
+
+```objective-c
+//Set the name of the device, pay attention ⚠️ After successful modification, the device side has already completed the modification, but the next scan on the mobile side may not immediately change to the modified name, which may be the cache of the Bluetooth system on the mobile phone
+ @param textString The name of the device will be encoded in UTF8, and there is a limit on the number of bytes after conversion. The maximum number of bytes for the Jelly platform is 18 bytes, while for other platforms it is 8 bytes
+ @param resultBlock Result callback, state 0 indicates success, 1 indicates failure, 2 indicates textString length overflow, 3 indicates textString length insufficient
+   
+- (void)veepooSDKSettingDeviceNameWithString:(NSString *)textString resultBlock:(void(^)(NSUInteger state))resultBlock;
+```
+
+### Parameter Explanation
+
+| Parameter | Parameter Type | Remarks                                                      |
+| --------- | -------------- | ------------------------------------------------------------ |
+| state     | NSUInteger     | A state of 0 indicates success, 1 indicates failure, 2 indicates textString length overflow, and 3 indicates textString length insufficiency |
+
+### Sample Code
+
+```swift
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDKSettingDeviceName(with: textField.text) { state in
+  print(state)
+}
+```
+
+# JE136P customized TCM data distribution
+
+### Precondition
+
+Equipment customization function
+
+### Class Name
+
+VPPeripheralBaseManage`，refer to the implementation of`VPJE136PTCMVCin the demo
+
+### Interfaces
+
+```objective-c
+/// JE136P customized TCM data distribution
+/// Parameters:
+///     - model: 
+///     - result: callback
+- (void)veepooSDK_JE136PSendTCMCustomData:(VPJE136PTCMModel *)model callBack:(void(^)(uint32_t time))result
+```
+
+### Parameter Explanation
+
+VPJE136PTCMModel
+
+| Parameter      | Parameter Type | Remarks                                                      |
+| -------------- | -------------- | ------------------------------------------------------------ |
+| timestamp      | uint32_t       | timestamp                                                    |
+| bloodStasis    | uint16_t       | bloodStasis                                                  |
+| dampHeat       | uint16_t       | dampHeat                                                     |
+| specialAllergy | uint16_t       | specialAllergy                                               |
+| yangDeficiency | uint16_t       | yangDeficiency                                               |
+| yinDeficiency  | uint16_t       | yinDeficiency                                                |
+| phlegmDampness | uint16_t       | phlegmDampness                                               |
+| balanced       | uint16_t       | balanced                                                     |
+| qiStagnation   | uint16_t       | qiStagnation                                                 |
+| qiDeficiency   | uint16_t       | qiDeficiency                                                 |
+| largeIntestine | uint16_t       | largeIntestine                                               |
+| gallbladder    | uint16_t       | gallbladder                                                  |
+| liver          | uint16_t       | liver                                                        |
+| spleen         | uint16_t       | spleen                                                       |
+| lung           | uint16_t       | lung                                                         |
+| smallIntestine | uint16_t       | smallIntestine                                               |
+| sanjiaoBladder | uint16_t       | sanjiaoBladder                                               |
+| kidney         | uint16_t       | kidney                                                       |
+| stomach        | uint16_t       | stomach                                                      |
+| heart          | uint16_t       | heart                                                        |
+| option         | uint32_t       | JE136PTCMOption，Can control which data to send to the device |
+
+### Sample Code
+
+```swift
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDK_JE136PSendTCMCustomData(model) {[weak self] time in
+            guard let self = self else { return }
+            AppDelegate.showHUD(message: sendTime == time ? "success" : "fail", hudModel: MBProgressHUDModeText, showView: self.view)
+        }
+```
+
+# QX17 customized function
+
+### Precondition
+
+Equipment customization function
+
+### Class Name
+
+VPPeripheralBaseManage`，`refer to the implementation of VPQX17ViewController in the demo
+
+### Interfaces
+
+```objective-c
+/// Start data acquisition
+/// - Parameters:
+///   - result : callback
+- (void)veepooSDK_QX17StartDataAcquisition:(void(^_Nullable)(VPQX17DataAcqSetResult resultCode))result;
+
+/// Stop data acquisition
+/// - Parameters:
+///   - result : callback
+- (void)veepooSDK_QX17StopDataAcquisition:(void(^_Nullable)(VPQX17DataAcqSetResult resultCode))result;
+
+/// Continue data acquisition
+/// - Parameters:
+///   - result : callback
+- (void)veepooSDK_QX17ContinueDataAcquisition:(void(^_Nullable)(VPQX17DataAcqSetResult resultCode))result;
+
+/// The real-time data acquition status of the monitoring device is on
+/// - Parameters:
+///     - result: callback
+- (void)veepooSDK_QX17DataAcquitionStateSubscribe:(void(^_Nullable)(VPQX17DataAcqState dataAcqState))result;
+
+/// Monitor real-time data notifications from the IMU
+/// - Parameters:
+///     - result: callback
+- (void)veepooSDK_QX17IMUResultSubscribe:(void(^_Nullable)(NSArray<VPQX17IMUModel *> * _Nullable imuDatas))result;
+
+/// Monitor real-time GPS data notifications
+/// - Parameters:
+///     - result: callback
+- (void)veepooSDK_QX17GPSResultSubscribe:(void(^_Nullable)(NSArray<VPQX17GPSModel *> * _Nullable gpsDatas))result;
+
+/// Monitor real-time heart rate data notifications
+/// - Parameters:
+///     - result: callback
+- (void)veepooSDK_QX17HeartRateResultSubscribe:(void(^_Nullable)(NSArray<VPQX17HeartRateModel *> * _Nullable heartDatas))result;
+
+/// Vibration mode control
+/// - Parameters:
+///   - mode : Vibration mode
+///   - duration : Custom duration, unit: 10 milliseconds, value range: 0 to 255
+///   - callback : callback
+- (void)veepooSDK_QX17SetVibrationMode:(VPQX17VibrationMode)mode
+                              duration:(NSInteger)duration
+                              callback:(void(^_Nullable)(VPQX17VibrationModeSetResultCode resultCode))result;
+
+```
+
+### Parameter Explanation
+
+VPQX17IMUModel
+
+| Parameter     | Parameter Type    | Remarks                                         |
+| ------------- | ----------------- | ----------------------------------------------- |
+| timestamp     | uint32_t          | The timestamp of this sampling, in milliseconds |
+| accelerometer | AccelerometerData | Accelerometer data                              |
+| ax            | int16_t           | Accelerometer X-axis                            |
+| ay            | int16_t           | Accelerometer Y-axis                            |
+| az            | int16_t           | Accelerometer Z-axis                            |
+| gyroscope     | GyroscopeData     | Gyroscope data                                  |
+| gx            | int16_t           | Gyroscope X-axis                                |
+| gy            | int16_t           | Gyroscope Y-axis                                |
+| gz            | int16_t           | Gyroscope Z-axis                                |
+| magnetometer  | MagnetometerData  | Magnetometer data                               |
+| mx            | int16_t           | Magnetometer X-axis                             |
+| my            | int16_t           | Magnetometer Y-axis                             |
+| mz            | int16_t           | Magnetometer Z-axis                             |
+
+VPQX17GPSModel
+
+| Parameter | Parameter Type | Remarks                                         |
+| --------- | -------------- | ----------------------------------------------- |
+| timestamp | uint32_t       | The timestamp of this sampling, in milliseconds |
+| longitude | float          | longitude                                       |
+| latitude  | float          | latitude                                        |
+| accuracy  | float          | Positioning accuracy, unit: meters              |
+
+VPQX17HeartRateModel
+
+| Parameter | Parameter Type | Remarks                                         |
+| --------- | -------------- | ----------------------------------------------- |
+| timestamp | uint32_t       | The timestamp of this sampling, in milliseconds |
+| heartRate | uint8_t        | Heart rate value                                |
+
+
+
+VPQX17DataAcqState
+
+```
+// QX17 Data Acquisition is in the enabled state
+typedef NS_ENUM(uint8_t, VPQX17DataAcqState) {
+    VPQX17DataAcqStateOpening = 0x36,
+    VPQX17DataAcqStateClosed = 0x37,
+};
+```
+
+VPQX17DataAcqSetResult
+
+```
+// QX17 Start data acquisition、Continue data acquisition、Stop data acquisition result
+typedef NS_ENUM(uint8_t, VPQX17DataAcqSetResult) {
+    VPQX17DataAcqSetResultBleConnectFail = 0x00, 
+    VPQX17DataAcqSetSetResultFail = 0x01,
+    VPQX17DataAcqSetSetResultSucc = 0x02,
+};
+```
+
+VPQX17VibrationMode
+
+```
+// QX17 Vibration mode
+typedef NS_ENUM(uint8_t, VPQX17VibrationMode) {
+    VPQX17VibrationModeStart = 0x00,
+    VPQX17VibrationModeEnd = 0x01,
+    VPQX17VibrationModeNotify = 0x02,
+    VPQX17VibrationModeReminder = 0x03,
+    VPQX17VibrationModeEnsure = 0x04,
+    VPQX17VibrationModeBeat = 0x05,
+    VPQX17VibrationModeConnected = 0x06,
+    VPQX17VibrationModeError = 0x07,
+};
+```
+
+VPQX17VibrationModeSetResultCode
+
+```
+// QX17 Vibration mode setting result
+typedef NS_ENUM(uint8_t, VPQX17VibrationModeSetResultCode) {
+    VPQX17VibrationModeSetResultCodeBleConnectFail = 0x00,   // Failed. Abnormal Bluetooth connection detected
+    VPQX17VibrationModeSetResultCodeDurationErr = 0x01,      // Failed. The password length is abnormal
+    VPQX17VibrationModeSetResultCodeSucc = 0x02,             // Success
+};
+```
+
+### 
+
+### Sample Code
+
+```swift
+// Notification of the activation status of data acquition for monitoring devices
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDK_QX17DataAcquitionStateSubscribe { [weak self] dataAcquitionState in
+            // The current status of data acquition on the device end can be recorded in the callback
+            guard let self = self else { return }
+            self.dataAcqState = dataAcquitionState
+        }
+
+// Start data acquisition
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDK_QX17StartDataAcquisition { [weak self] result in
+            // In the callback, you can verify whether the data acquition on the device end has been successfully enabled. If it is successful, you can add monitoring for real-time data transmission such as IMU, GPS, and heart rate respectively
+            guard let self = self else { return }
+            let isSucc = result == .setResultSucc
+            if isSucc {
+                self.registDataAcquisitionCallback()
+            }
+        }
+
+// Stop data acquisition
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDK_QX17StopDataAcquisition { result in
+            let isSucc = result == .setResultSucc
+        }
+
+// Continue data acquition. When checking that the device is currently acquition data, call this interface to have the device return the offline data of the last 5 minutes
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDK_QX17ContinueDataAcquisition { [weak self] result in
+            // In the callback, you can verify whether the device's continued return transmission is successful. If it is successful, you can respectively re-add the monitoring of real-time data return transmission such as IMU, GPS, and heart rate 
+            guard let self = self else { return }
+            let isSucc = result == .setResultSucc
+            if isSucc {
+                self.registDataAcquisitionCallback()
+            }
+        }
+
+// Monitor real-time data notifications from the IMU
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDK_QX17IMUResultSubscribe { [weak self] imuDatas in
+            guard let self = self else { return }
+            guard let imuResults = imuDatas else {
+                return
+            }
+            // Some data collection tasks can be performed in the callback
+        }
+
+// Monitor real-time GPS data notifications
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDK_QX17GPSResultSubscribe { [weak self] gpsDatas in
+            guard let self = self else { return }
+            guard let gpsResults = gpsDatas else {
+                return
+            }
+            // Some data collection tasks can be performed in the callback
+        }
+
+// Monitor real-time heart rate data notifications
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDK_QX17HeartRateResultSubscribe { [weak self] heartRateDatas in
+            guard let self = self else { return }
+            guard let hRateResults = heartRateDatas else {
+                return
+            }
+            // Some data collection tasks can be performed in the callback
+        }
+
+
+// Modify the vibration mode
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDK_QX17SetVibrationMode(mode, duration: duration) { [weak self] resultCode in
+            guard let self = self else { return }
+            // Based on the returned result code, complete the subsequent task execution
+        }
+```
+
+# Zhongke firmware OTA
+
+### Precondition
+
+The device supports the use of Zhongke firmware upgrade。
+
+### Class Name
+
+`VPHZKDFUManager`，refer to the implementation of`VPHZKDFUVC`in the demo
+
+### Interfaces
+
+Does it support firmware upgrade for Zhongke
+
+```
+VPBleCentralManage.sharedBleManager().peripheralModel.isSupportZKOTA
+```
+
+### Sample Code
+
+```swift
+// FileURL: The URL of the firmware, which can be downloaded by oneself
+let fileURL = URL(fileURLWithPath: filePath!)
+zkDfuManager.zkDeinitialize()
+zkDfuManager.setFileInfo(fileURL)
+zkDfuManager.enterDfu()
+```
+
+
+
+```objective-c
+// Implement VPHZKDFUManagerial Delegate to monitor upgrade process through delegate
+  func zkOtaStatusReady() {
+        print("zkOtaStatusReady")
+    }
+    
+    func zkOtaStatusStart() {
+        print("zkOtaStatusStart")
+    }
+    
+    func zkOtaStatusUpdating(progress: UInt) {
+        print("zkOtaStatusUpdating\(progress)")
+    }
+    
+    func zkOtaStatuSuccess() {
+        print("zkOtaStatuSuccess")
+    }
+    
+    func zkOtaStatusFail(errorCode: Int) {
+        print("zkOtaStatusFail\(errorCode)")
+    }
+```
+
+# QH15 Customized Health Data
+
+### Precondition
+
+Equipment customization function
+
+### Class Name
+
+VPPeripheralBaseManage`，refer to the implementation VPQH15CustomVC the demo
+
+### Interfaces
+
+```objective-c
+/// QH15 Customized Health Data
+/// - Parameters:
+///   - model : Health Data
+///   - callback : result callBack
+- (void)veepooSDK_QH15SetHealthData:(VPQH15HealthDataModel *_Nullable)model callback:(void(^_Nullable)(BOOL success))result
+```
+
+### Parameter Explanation
+
+VPQH15HealthDataModel
+
+## 1. Age-Related Parameters (TAG 0x10-0x12)
+
+| Parameter     | Type  | Remark             |
+| :------------ | :---- | :----------------- |
+| biosAge       | UInt8 | Biological Age     |
+| heartAge      | UInt8 | Heart Age          |
+| fitnessAge    | UInt8 | Fitness Age        |
+| hasBiosAge    | BOOL  | Has Biological Age |
+| hasHeartAge   | BOOL  | Has Heart Age      |
+| hasFitnessAge | BOOL  | Has Fitness Age    |
+
+## 2. Age Status (TAG 0x13-0x15)
+
+| Parameter           | Type          | Remark                    |
+| :------------------ | :------------ | :------------------------ |
+| biosAgeStatus       | AgeStatusType | Biological Age Status     |
+| heartAgeStatus      | AgeStatusType | Heart Age Status          |
+| fitnessAgeStatus    | AgeStatusType | Fitness Age Status        |
+| hasBiosAgeStatus    | BOOL          | Has Biological Age Status |
+| hasHeartAgeStatus   | BOOL          | Has Heart Age Status      |
+| hasFitnessAgeStatus | BOOL          | Has Fitness Age Status    |
+
+## 3. Age Change Values (TAG 0x16-0x18)
+
+| Parameter           | Type  | Remark                    |
+| :------------------ | :---- | :------------------------ |
+| biosAgeChange       | UInt8 | Biological Age Change     |
+| heartAgeChange      | UInt8 | Heart Age Change          |
+| fitnessAgeChange    | UInt8 | Fitness Age Change        |
+| hasBiosAgeChange    | BOOL  | Has Biological Age Change |
+| hasHeartAgeChange   | BOOL  | Has Heart Age Change      |
+| hasFitnessAgeChange | BOOL  | Has Fitness Age Change    |
+
+## 4. 90-Day Trend Data (TAG 0x19-0x1B)
+
+| Parameter           | Type                | Remark                          |
+| :------------------ | :------------------ | :------------------------------ |
+| biosAge90Days       | NSArray<NSNumber *> | Biological Age 90-Day Trend     |
+| heartAge90Days      | NSArray<NSNumber *> | Heart Age 90-Day Trend          |
+| fitnessAge90Days    | NSArray<NSNumber *> | Fitness Age 90-Day Trend        |
+| hasBiosAge90Days    | BOOL                | Has Biological Age 90-Day Trend |
+| hasHeartAge90Days   | BOOL                | Has Heart Age 90-Day Trend      |
+| hasFitnessAge90Days | BOOL                | Has Fitness Age 90-Day Trend    |
+
+## 5. Last Month/Last Year Single Point Data (TAG 0x1C-0x21)
+
+| Parameter              | Type  | Remark                        |
+| :--------------------- | :---- | :---------------------------- |
+| biosAgeLastMonth       | UInt8 | Last Month Biological Age     |
+| heartAgeLastMonth      | UInt8 | Last Month Heart Age          |
+| fitnessAgeLastMonth    | UInt8 | Last Month Fitness Age        |
+| biosAgeLastYear        | UInt8 | Last Year Biological Age      |
+| heartAgeLastYear       | UInt8 | Last Year Heart Age           |
+| fitnessAgeLastYear     | UInt8 | Last Year Fitness Age         |
+| hasBiosAgeLastMonth    | BOOL  | Has Last Month Biological Age |
+| hasHeartAgeLastMonth   | BOOL  | Has Last Month Heart Age      |
+| hasFitnessAgeLastMonth | BOOL  | Has Last Month Fitness Age    |
+| hasBiosAgeLastYear     | BOOL  | Has Last Year Biological Age  |
+| hasHeartAgeLastYear    | BOOL  | Has Last Year Heart Age       |
+| hasFitnessAgeLastYear  | BOOL  | Has Last Year Fitness Age     |
+
+## 6. Last Month/Last Year Status (TAG 0x22-0x27)
+
+| Parameter                    | Type          | Remark                               |
+| :--------------------------- | :------------ | :----------------------------------- |
+| biosAgeLastMonthStatus       | AgeStatusType | Last Month Biological Age Status     |
+| heartAgeLastMonthStatus      | AgeStatusType | Last Month Heart Age Status          |
+| fitnessAgeLastMonthStatus    | AgeStatusType | Last Month Fitness Age Status        |
+| biosAgeLastYearStatus        | AgeStatusType | Last Year Biological Age Status      |
+| heartAgeLastYearStatus       | AgeStatusType | Last Year Heart Age Status           |
+| fitnessAgeLastYearStatus     | AgeStatusType | Last Year Fitness Age Status         |
+| hasBiosAgeLastMonthStatus    | BOOL          | Has Last Month Biological Age Status |
+| hasHeartAgeLastMonthStatus   | BOOL          | Has Last Month Heart Age Status      |
+| hasFitnessAgeLastMonthStatus | BOOL          | Has Last Month Fitness Age Status    |
+| hasBiosAgeLastYearStatus     | BOOL          | Has Last Year Biological Age Status  |
+| hasHeartAgeLastYearStatus    | BOOL          | Has Last Year Heart Age Status       |
+| hasFitnessAgeLastYearStatus  | BOOL          | Has Last Year Fitness Age Status     |
+
+## 7. Last Month/Last Year Change Values (TAG 0x28-0x2D)
+
+| Parameter                    | Type  | Remark                               |
+| :--------------------------- | :---- | :----------------------------------- |
+| biosAgeLastMonthChange       | UInt8 | Last Month Biological Age Change     |
+| heartAgeLastMonthChange      | UInt8 | Last Month Heart Age Change          |
+| fitnessAgeLastMonthChange    | UInt8 | Last Month Fitness Age Change        |
+| biosAgeLastYearChange        | UInt8 | Last Year Biological Age Change      |
+| heartAgeLastYearChange       | UInt8 | Last Year Heart Age Change           |
+| fitnessAgeLastYearChange     | UInt8 | Last Year Fitness Age Change         |
+| hasBiosAgeLastMonthChange    | BOOL  | Has Last Month Biological Age Change |
+| hasHeartAgeLastMonthChange   | BOOL  | Has Last Month Heart Age Change      |
+| hasFitnessAgeLastMonthChange | BOOL  | Has Last Month Fitness Age Change    |
+| hasBiosAgeLastYearChange     | BOOL  | Has Last Year Biological Age Change  |
+| hasHeartAgeLastYearChange    | BOOL  | Has Last Year Heart Age Change       |
+| hasFitnessAgeLastYearChange  | BOOL  | Has Last Year Fitness Age Change     |
+
+## 8. Three Major Chronic Disease Risks (TAG 0x30-0x32)
+
+| Parameter             | Type  | Remark                          |
+| :-------------------- | :---- | :------------------------------ |
+| cardiovascularRisk    | UInt8 | Cardiovascular Disease Risk     |
+| dementiaRisk          | UInt8 | Dementia Risk                   |
+| diabetesRisk          | UInt8 | Diabetes Risk                   |
+| hasCardiovascularRisk | BOOL  | Has Cardiovascular Disease Risk |
+| hasDementiaRisk       | BOOL  | Has Dementia Risk               |
+| hasDiabetesRisk       | BOOL  | Has Diabetes Risk               |
+
+## 9. Three Major Chronic Disease Risk Status (TAG 0x33-0x35)
+
+| Parameter                   | Type          | Remark                             |
+| :-------------------------- | :------------ | :--------------------------------- |
+| cardiovascularRiskStatus    | AgeStatusType | Cardiovascular Disease Risk Status |
+| dementiaRiskStatus          | AgeStatusType | Dementia Risk Status               |
+| diabetesRiskStatus          | AgeStatusType | Diabetes Risk Status               |
+| hasCardiovascularRiskStatus | BOOL          | Has Cardiovascular Risk Status     |
+| hasDementiaRiskStatus       | BOOL          | Has Dementia Risk Status           |
+| hasDiabetesRiskStatus       | BOOL          | Has Diabetes Risk Status           |
+
+## 10. Three Major Chronic Disease Risk Change Values (TAG 0x36-0x38)
+
+| Parameter                   | Type  | Remark                             |
+| :-------------------------- | :---- | :--------------------------------- |
+| cardiovascularRiskChange    | UInt8 | Cardiovascular Disease Risk Change |
+| dementiaRiskChange          | UInt8 | Dementia Risk Change               |
+| diabetesRiskChange          | UInt8 | Diabetes Risk Change               |
+| hasCardiovascularRiskChange | BOOL  | Has Cardiovascular Risk Change     |
+| hasDementiaRiskChange       | BOOL  | Has Dementia Risk Change           |
+| hasDiabetesRiskChange       | BOOL  | Has Diabetes Risk Change           |
+
+## 11. Cardiovascular Detailed Risks (TAG 0x39-0x3B)
+
+| Parameter           | Type  | Remark                 |
+| :------------------ | :---- | :--------------------- |
+| heartAttackRisk     | UInt8 | Heart Attack Risk      |
+| strokeRisk          | UInt8 | Stroke Risk            |
+| heartFailureRisk    | UInt8 | Heart Failure Risk     |
+| hasHeartAttackRisk  | BOOL  | Has Heart Attack Risk  |
+| hasStrokeRisk       | BOOL  | Has Stroke Risk        |
+| hasHeartFailureRisk | BOOL  | Has Heart Failure Risk |
+
+## 12. Cardiovascular Detailed Risk Status (TAG 0x3C-0x3E)
+
+| Parameter                 | Type          | Remark                        |
+| :------------------------ | :------------ | :---------------------------- |
+| heartAttackRiskStatus     | AgeStatusType | Heart Attack Risk Status      |
+| strokeRiskStatus          | AgeStatusType | Stroke Risk Status            |
+| heartFailureRiskStatus    | AgeStatusType | Heart Failure Risk Status     |
+| hasHeartAttackRiskStatus  | BOOL          | Has Heart Attack Risk Status  |
+| hasStrokeRiskStatus       | BOOL          | Has Stroke Risk Status        |
+| hasHeartFailureRiskStatus | BOOL          | Has Heart Failure Risk Status |
+
+## 13. Cardiovascular Detailed Risk Change Values (TAG 0x3F-0x41)
+
+| Parameter                 | Type  | Remark                        |
+| :------------------------ | :---- | :---------------------------- |
+| heartAttackRiskChange     | UInt8 | Heart Attack Risk Change      |
+| strokeRiskChange          | UInt8 | Stroke Risk Change            |
+| heartFailureRiskChange    | UInt8 | Heart Failure Risk Change     |
+| hasHeartAttackRiskChange  | BOOL  | Has Heart Attack Risk Change  |
+| hasStrokeRiskChange       | BOOL  | Has Stroke Risk Change        |
+| hasHeartFailureRiskChange | BOOL  | Has Heart Failure Risk Change |
+
+## 14. Quality of Life Risks (TAG 0x42-0x44)
+
+| Parameter                | Type  | Remark                      |
+| :----------------------- | :---- | :-------------------------- |
+| memoryDeclineRisk        | UInt8 | Memory Decline Risk         |
+| fallInjuryRisk           | UInt8 | Fall Injury Risk            |
+| independentLivingRisk    | UInt8 | Independent Living Risk     |
+| hasMemoryDeclineRisk     | BOOL  | Has Memory Decline Risk     |
+| hasFallInjuryRisk        | BOOL  | Has Fall Injury Risk        |
+| hasIndependentLivingRisk | BOOL  | Has Independent Living Risk |
+
+## 15. Quality of Life Risk Status (TAG 0x45-0x47)
+
+| Parameter                      | Type          | Remark                             |
+| :----------------------------- | :------------ | :--------------------------------- |
+| memoryDeclineRiskStatus        | AgeStatusType | Memory Decline Risk Status         |
+| fallInjuryRiskStatus           | AgeStatusType | Fall Injury Risk Status            |
+| independentLivingRiskStatus    | AgeStatusType | Independent Living Risk Status     |
+| hasMemoryDeclineRiskStatus     | BOOL          | Has Memory Decline Risk Status     |
+| hasFallInjuryRiskStatus        | BOOL          | Has Fall Injury Risk Status        |
+| hasIndependentLivingRiskStatus | BOOL          | Has Independent Living Risk Status |
+
+## 16. Quality of Life Risk Change Values (TAG 0x48-0x4A)
+
+| Parameter                      | Type  | Remark                             |
+| :----------------------------- | :---- | :--------------------------------- |
+| memoryDeclineRiskChange        | UInt8 | Memory Decline Risk Change         |
+| fallInjuryRiskChange           | UInt8 | Fall Injury Risk Change            |
+| independentLivingRiskChange    | UInt8 | Independent Living Risk Change     |
+| hasMemoryDeclineRiskChange     | BOOL  | Has Memory Decline Risk Change     |
+| hasFallInjuryRiskChange        | BOOL  | Has Fall Injury Risk Change        |
+| hasIndependentLivingRiskChange | BOOL  | Has Independent Living Risk Change |
+
+## 17. Diabetes Complication Risks (TAG 0x4B-0x4D)
+
+| Parameter            | Type  | Remark                  |
+| :------------------- | :---- | :---------------------- |
+| kidneyDiseaseRisk    | UInt8 | Kidney Disease Risk     |
+| nerveDamageRisk      | UInt8 | Nerve Damage Risk       |
+| visionLossRisk       | UInt8 | Vision Loss Risk        |
+| hasKidneyDiseaseRisk | BOOL  | Has Kidney Disease Risk |
+| hasNerveDamageRisk   | BOOL  | Has Nerve Damage Risk   |
+| hasVisionLossRisk    | BOOL  | Has Vision Loss Risk    |
+
+## 18. Diabetes Complication Risk Status (TAG 0x4E-0x50)
+
+| Parameter                  | Type          | Remark                         |
+| :------------------------- | :------------ | :----------------------------- |
+| kidneyDiseaseRiskStatus    | AgeStatusType | Kidney Disease Risk Status     |
+| nerveDamageRiskStatus      | AgeStatusType | Nerve Damage Risk Status       |
+| visionLossRiskStatus       | AgeStatusType | Vision Loss Risk Status        |
+| hasKidneyDiseaseRiskStatus | BOOL          | Has Kidney Disease Risk Status |
+| hasNerveDamageRiskStatus   | BOOL          | Has Nerve Damage Risk Status   |
+| hasVisionLossRiskStatus    | BOOL          | Has Vision Loss Risk Status    |
+
+## 19. Diabetes Complication Risk Change Values (TAG 0x51-0x53)
+
+| Parameter                  | Type  | Remark                         |
+| :------------------------- | :---- | :----------------------------- |
+| kidneyDiseaseRiskChange    | UInt8 | Kidney Disease Risk Change     |
+| nerveDamageRiskChange      | UInt8 | Nerve Damage Risk Change       |
+| visionLossRiskChange       | UInt8 | Vision Loss Risk Change        |
+| hasKidneyDiseaseRiskChange | BOOL  | Has Kidney Disease Risk Change |
+| hasNerveDamageRiskChange   | BOOL  | Has Nerve Damage Risk Change   |
+| hasVisionLossRiskChange    | BOOL  | Has Vision Loss Risk Change    |
+
+## 20. Health Index (TAG 0x54-0x55)
+
+| Parameter          | Type  | Remark                  |
+| :----------------- | :---- | :---------------------- |
+| nutritionStatus    | UInt8 | Nutrition Status        |
+| goalStatus         | UInt8 | Goal Achievement Status |
+| hasNutritionStatus | BOOL  | Has Nutrition Status    |
+| hasGoalStatus      | BOOL  | Has Goal Status         |
+
+## 21. Timestamp (TAG 0xA1)
+
+| Parameter    | Type   | Remark        |
+| :----------- | :----- | :------------ |
+| timestamp    | UInt32 | Timestamp     |
+| hasTimestamp | BOOL   | Has Timestamp |
+
+
+
+### Sample Code
+
+```swift
+healthData.timestamp = UInt32(Date().timeIntervalSince1970)
+healthData.hasTimestamp = true
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDK_QH15SetHealthData(healthData) { success in
+   print(success ? "success" : "fail")
+}
+```
+
+### Interfaces
+
+```objective-c
+/// QH15 custom reads the timestamp of the last set health data
+/// - Parameters:
+///   - callback : result callBack
+- (void)veepooSDK_QH15GetHealthDataTimestamp:(void(^_Nullable)(uint32_t timestamp))result;
+```
+
+### Sample Code
+
+```swift
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDK_QH15GetHealthDataTimestamp { time in
+            print("\(time)")
+        }
+```
+
+### Interfaces
+
+```objective-c
+/// QH15 customized reading of current step counting data
+/// - Parameters:
+///   - callback : result callBack
+- (void)veepooSDK_QH15ReadStepData:(void(^_Nullable)(VPQH15StepDataModel * _Nullable model))result
+```
+
+### Sample Code
+
+```swift
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDK_QH15ReadStepData { step in
+            guard let stepM = step else { return }
+            print(stepM.readId, stepM.step, stepM.timestamp)
+        }
+```
+
+### Interfaces
+
+```objective-c
+/// QH15 customized setting of current health target achievement events to devices
+/// - Parameters:
+///   - callback : result callBack
+- (void)veepooSDK_QH15SetComplianceEvent:(AchievementType)type callback:(void(^_Nullable)(BOOL success))result
+```
+
+### Sample Code
+
+```swift
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDK_QH15SetComplianceEvent(achievementType) { success in
+                print(success ? "success" : "fail")
+            }
+```
+
+# Event Reminder
+
+### Precondition
+
+Equipment support is required。
+
+### Class Name
+
+VPPeripheralBaseManage`，refer to the implementation`VPReminderEventVC in the demo
+
+### Interfaces
+
+```
+VPBleCentralManage.sharedBleManager().peripheralManage.peripheralModel.isSupportReminderEvent
+```
+
+```objective-c
+/// Read historical reminder events
+/// - Parameters:
+///   - type: Event Type
+///   - time: Timestamp (events reported by devices that are greater than or equal to this timestamp)
+///   - callBack : result callback
+- (void)veepooSDK_readHistoricalDataReminderEvents:(VPReminderEventType)type andTime:(uint32_t)time callBack:(void (^_Nullable)(NSArray<VPReminderEventModel *> * _Nullable array))result
+```
+
+```objective-c
+/// Proactively report monitoring reminder events
+/// - Parameters:
+///   - result : result callback
+- (void)veepooSDK_listenReminderEventReport:(void (^_Nullable)(NSArray<VPReminderEventModel *> * _Nullable array))result
+```
+
+### Parameter Explanation
+
+VPReminderEventModel
+
+| Parameter | Type                | Remark                                                       |
+| --------- | ------------------- | ------------------------------------------------------------ |
+| type      | VPReminderEventType | VPReminderEventTypeFall：Fall VPReminderEventTypeSedentary：Sedentary |
+| timestamp | int64_t             | Timestamp                                                    |
+
+### Sample Code
+
+```swift
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDK_readHistoricalDataReminderEvents(.all, andTime: UInt32(self.checkTimeInterval)) {[weak self] array in
+    guard let self = self, let array = array else { return }
+    self.textView.text += "active reading:\n"
+    for model in array {
+        self.textView.text += "Timestamp\(model.timestamp),Event Type:\(model.type == .fall ? "Fall" : "Sedentary")\n"
+    }
+}
+```
+
+```swift
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDK_listenReminderEventReport {[weak self] array in
+    guard let self = self, let array = array else { return }
+    self.textView.text += "voluntary reporting:\n"
+    for model in array {
+        self.textView.text += "Timestamp\(model.timestamp),Event Type:\(model.type == .fall ? "Fall" : "Sedentary")\n"
+    }
+}
+```
+
+# Obtain motion status data
+
+### Precondition
+
+Equipment support is required。
+
+### Class Name
+
+VPPeripheralBaseManage`，refer to the implementation`VPMotionStateVC in the demo
+
+### Interfaces
+
+```
+VPBleCentralManage.sharedBleManager().peripheralManage.peripheralModel.isSupportMotionState
+```
+
+```objective-c
++ (NSDictionary *)veepooSDKGetOriginalDataWithDate:(NSString *)queryDate andTableID:(NSString *)tableID
+```
+
+### Parameter Explanation
+
+| Parameter | Type     | Remark     |
+| --------- | -------- | ---------- |
+| queryDate | NSString | query date |
+| tableID   | NSString | Device MAC |
+
+### Return data
+
+```objc
+{
+ "10:40" = {
+ ....
+   motionState:[] //1: Walking, 2: Running, 3: Resting, Other: Unknown 5-minute data, each data represents 1-minute exercise status
+ };
+ }
+```
+
+### Sample Code
+
+```swift
+let onedayData = VPDataBaseOperation.veepooSDKGetOriginalData(withDate: self.dateL.text, andTableID: VPBleCentralManage.sharedBleManager().peripheralModel.deviceAddress)
+        if onedayData == nil {
+            dataDict = [String : [String: String]]()
+        }else {
+            dataDict = onedayData as! [String : [String : Any]]
+        }
+```
+
+# Met measurement
+
+### Precondition
+
+Equipment support is required。
+
+### Class Name
+
+VPPeripheralBaseManage`，refer to the implementation`VPMetVC in the demo
+
+### Interfaces
+
+```
+VPBleCentralManage.sharedBleManager().peripheralManage.peripheralModel.isSupportMetTest
+```
+
+```objective-c
+/// Met measurement
+/// - Parameters:
+///   - result : result callback
+- (void)veepooSDK_metTest:(BOOL)state callBack:(void(^_Nullable)(int con, VPTestMetState ack, int progress,int hrvValue))result;
+```
+
+### Parameter Explanation
+
+| Parameter | Type           | Remark             |
+| --------- | -------------- | ------------------ |
+| con       | int            | 1: Open 2: Close   |
+| ack       | VPTestMetState | measurement status |
+| progress  | int            | Progress           |
+| hrvValue  | int            | result value       |
+
+### Sample Code
+
+```swift
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDK_metTest(state) {[weak self] con, ack, progress, value in
+    print(con,ack, progress,value)
+    guard let self = self else { return }
+    if ack == .testing {
+        if con == 1 {
+            self.progressLab.text = "Progress:\(progress)%"
+            if progress == 100 {
+                self.valueLab.text = "Result:\(Double(value)/10.0)"
+                self.testBtn.isSelected = !self.testBtn.isSelected
+            }
+        }
+    } else {
+
+    }
+}
+```
+
+# Emotion measurement
+
+### Precondition
+
+Equipment support is required。
+
+### Class Name
+
+VPPeripheralBaseManage`，refer to the implementation`VPEmotionVC in the demo
+
+### Interfaces
+
+```
+VPBleCentralManage.sharedBleManager().peripheralManage.peripheralModel.isSupportEmotionTest
+```
+
+```objective-c
+/// Emotion measurement
+/// - Parameters:
+///   - result : result callback
+- (void)veepooSDK_emotionTest:(BOOL)state callBack:(void(^_Nullable)(int con, VPTestEmotionState ack, int progress,NSInteger value))result;
+```
+
+### Parameter Explanation
+
+| Parameter | Type               | Remark             |
+| --------- | ------------------ | ------------------ |
+| con       | int                | 1: Open 2: Close   |
+| ack       | VPTestEmotionState | measurement status |
+| progress  | int                | Progress           |
+| value     | int                | result value       |
+
+### Sample Code
+
+```swift
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDK_emotionTest(state) {[weak self] con, ack, progress, value in
+    print(con,ack, progress,value)
+    guard let self = self else { return }
+    if ack == .testing {
+        if con == 1 {
+            self.progressLab.text = "Progress:\(progress)%"
+            if progress == 100 {
+                self.valueLab.text = "result:\(value)"
+                self.testBtn.isSelected = !self.testBtn.isSelected
+            }
+        }
+    } else {
+
+    }
+}
+```
+
+# Health Light
+
+### Precondition
+
+Equipment support is required。
+
+### Class Name
+
+VPPeripheralBaseManage`，refer to the implementation`VPHealthLightVC in the demo
+
+### Interfaces
+
+```swift
+VPBleCentralManage.sharedBleManager().peripheralModel.healthLightType != 0
+```
+
+```objective-c
+/// Read the status of the health light
+/// - Parameters:
+///   - result : result callback
+- (void)veepooSDKReadHealthLightStatus:(void(^_Nullable)(VPHealthLightStatusType type))result
+```
+
+```objective-c
+/// Set the health light status
+/// - Parameters:
+///   - type : status
+///   - result : result callback
+- (void)veepooSDKSetHealthLightStatus:(VPHealthLightStatusType)type callBack:(void(^_Nullable)(BOOL result, VPHealthLightStatusType type))result
+```
+
+```objective-c
+/// Monitor changes in the status of health lights
+/// - Parameters:
+///   - result : result callback
+- (void)veepooSDKListenHealthLightStatus:(void(^_Nullable)(VPHealthLightStatusType type))result
+```
+
+### Parameter Explanation
+
+VPHealthLightStatusType
+
+| Parameter                                 | Type                    | Remark              |
+| ----------------------------------------- | ----------------------- | ------------------- |
+| VPHealthLightStatusTypeOff                | VPHealthLightStatusType | OFF                 |
+| VPHealthLightStatusTypeSlowFlash          | VPHealthLightStatusType | Slow Flash          |
+| VPHealthLightStatusTypeContinuousFlashing | VPHealthLightStatusType | Continuous Flashing |
+| VPHealthLightStatusTypeStayOn             | VPHealthLightStatusType | Stay On             |
+
+### Sample Code
+
+```swift
+/// Set
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDKSetHealthLightStatus(self.statusType) {[weak self] state, type in
+            guard let self = self else { return }
+            if state {
+                self.statusType = type
+                self.stateLab.text = self.getHealthLightState()
+            }
+        }
+```
+
+```swift
+/// Read
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDKReadHealthLightStatus {[weak self] type in
+            guard let self = self else { return }
+            self.statusType = type
+            self.stateLab.text = self.getHealthLightState()
+        }
+```
+
+```swift
+/// Listen
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDKListenHealthLightStatus {[weak self] type in
+            guard let self = self else { return }
+            self.statusType = type
+            self.stateLab.text = self.getHealthLightState()
+        }
+```
+
+# AGPS (Ephemeris) Reading
+
+### Prerequisites
+
+The device must support this function.
+
+### Class name
+
+`VPPeripheralBaseManage`. For details, refer to the `VPAGPSViewController` implementation in the Demo
+
+### Interface
+
+```
+VPBleCentralManage.sharedBleManager().peripheralModel.agpsFunction != 0
+```
+
+```objective-c
+/// Read the device ephemeris (AGPS) information
+/// @param result Callback
+-(void)veepooSDK_readDeviceAGPSDataResult:(void (^)(VPAGPSDataModel *model))result
+```
+
+### Parameter Explanation
+
+VPAGPSDataModel
+
+| Parameter | Parameter type | Remarks                                                        |
+| --------- | -------------- | -------------------------------------------------------------- |
+| address   | NSInteger      | Data receiving address                                         |
+| length    | NSInteger      | Writable data length                                           |
+| crc       | uint16_t       | crc                                                            |
+| validDay  | int            | Total valid duration of the ephemeris file, in days            |
+| validMin  | int            | Remaining valid duration of the ephemeris, little-endian, in minutes |
+
+### Sample Code
+
+```swift
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDK_readDeviceAGPSDataResult {[weak self] model in
+            guard let weakSelf = self, let m = model else { return }
+            let validDay = String(format: "%.1f", Double(m.validMin) / 1440.0)
+            weakSelf.stateLab.text = "Total valid duration of ephemeris: \(m.validDay) days, remaining duration: \(validDay) days"
+        }
+```
+
+# AGPS (Ephemeris) Download and Transfer
+
+### Prerequisites
+
+The device must support this function.
+
+### Class name
+
+`VPPeripheralBaseManage`. For details, refer to the `VPAGPSViewController` implementation in the Demo
+
+### Interface
+
+```
+VPBleCentralManage.sharedBleManager().peripheralModel.agpsFunction != 0
+```
+
+```objective-c
+/// Get the ephemeris file for transfer -- a network request, requires network permission
+- (void)veepooSDK_getAGPSFileUrl:(void(^_Nullable)(NSURL *fileUrl, NSURLResponse * _Nullable response ,NSError * _Nullable error))result 
+```
+
+```objective-c
+/// Ephemeris (AGPS) data transfer V1. First determine whether the AGPS function is supported via peripheralModel.agpsFunction -- recommended - with a transfer completion callback; after the transfer is completed, read the ephemeris data
+/// @param fileUrl Ephemeris file (rtcm format)
+/// @param timestamp Timestamp of the ephemeris file generation time (obtained from the website)
+/// @param result Result; since the UI transfer method is used, error is meaningful
+/// @param transformProgress Data transfer progress
+/// @param transformCompleted Data transfer completed
+- (void)veepooSDK_AGPSTransformV1WithFileUrl:(NSURL *_Nullable)fileUrl
+                                 timestamp:(long)timestamp
+                                      result:(void (^_Nullable)(NSError * _Nullable error))result
+                           transformProgress:(void (^_Nullable)(double progress))transformProgress transformCompleted:(void (^_Nullable)(void))transformCompleted
+```
+
+### Parameter Explanation
+
+| Parameter          | Parameter type | Remarks                                        |
+| ------------------ | -------------- | ---------------------------------------------- |
+| fileUrl            | NSURL          | Ephemeris file, obtained by downloading        |
+| timestamp          | long           | Timestamp of the ephemeris file generation time |
+| transformProgress  | Block          | Data transfer progress                         |
+| transformCompleted | Block          | Data transfer completed                        |
+
+### Sample Code
+
+```swift
+let timestamp = Int(Date().timeIntervalSince1970) /// veepooSDK_getAGPSFileUrl is a network request, requires network permission
+        VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDK_getAGPSFileUrl { url, respone, error  in
+            if error == nil && url != nil {
+                VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDK_AGPSTransformV1(withFileUrl: url, timestamp: timestamp) { error in
+                    
+                } transformProgress: { [weak self] progress in
+                    guard let weakSelf = self else { return }
+                    weakSelf.progressLab.text = "Transfer progress:\(Int(progress * 100))%"
+                } transformCompleted: { [weak self] in
+                    guard let weakSelf = self else { return }
+                    weakSelf.readAGPSAction()// Re-read the ephemeris information after the transfer is completed
+                }
+            }
+        }
+```
+
+# SN Code Setting
+
+### Prerequisites
+
+The device must support this function (JH76 customized feature).
+
+### Class name
+
+`VPPeripheralBaseManage`. For details, refer to the `VPSNCodeVC` implementation in the Demo
+
+### Interfaces
+
+```objective-c
+/// Read the SN code
+/// - Parameters:
+///   - result : result callback
+- (void)veepooSDK_JH76ReadSNCode:(void(^_Nullable)(BOOL isSet, NSString * _Nullable string))result;
+```
+
+```objective-c
+/// Set the SN code (digits only, fixed 10 characters)
+/// - Parameters:
+///   - code: SN code (digits only, fixed 10 characters)
+///   - result : result callback, returns VPJH76SNCodeErrorCode (0 success, non-zero failure)
+- (void)veepooSDK_JH76SetSNCode:(NSString *_Nullable)code callBack:(void(^_Nullable)(VPJH76SNCodeErrorCode errorCode))result;
+```
+
+```objective-c
+/// Modify the SN code (digits only, fixed 10 characters)
+/// - Parameters:
+///   - code: SN code (digits only, fixed 10 characters)
+///   - result : result callback, returns VPJH76SNCodeErrorCode (0 success, non-zero failure)
+- (void)veepooSDK_JH76ModifySNCode:(NSString *_Nullable)code callBack:(void(^_Nullable)(VPJH76SNCodeErrorCode errorCode))result;
+```
+
+```objective-c
+/// Delete the SN code
+/// - Parameters:
+///   - result : result callback, returns VPJH76SNCodeErrorCode (0 success, non-zero failure)
+- (void)veepooSDK_JH76DeleteSNCode:(void(^_Nullable)(VPJH76SNCodeErrorCode errorCode))result;
+```
+
+### Parameter Explanation
+
+VPJH76SNCodeErrorCode (result error code for set/modify/delete)
+
+| Parameter | Parameter type | Remarks |
+| --------- | -------------- | ------- |
+| VPJH76SNCodeErrorCodeSuccess | VPJH76SNCodeErrorCode | Success (0) |
+| VPJH76SNCodeErrorCodeDeviceFailed | VPJH76SNCodeErrorCode | Device returned failure (1000) |
+| VPJH76SNCodeErrorCodeInvalidFormat | VPJH76SNCodeErrorCode | Format error: SN code must contain digits only (1001) |
+| VPJH76SNCodeErrorCodeInvalidLength | VPJH76SNCodeErrorCode | Length error: SN code must be exactly 10 characters (1002) |
+| VPJH76SNCodeErrorCodeAllZero | VPJH76SNCodeErrorCode | SN code cannot be all zeros (1003) |
+
+Read callback `veepooSDK_JH76ReadSNCode` parameters:
+
+| Parameter | Parameter type | Remarks |
+| --------- | -------------- | ------- |
+| isSet | BOOL | Whether the SN code has been set |
+| string | NSString | The set SN code content (empty if not set) |
+
+### Sample Code
+
+```swift
+/// Read
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDK_JH76ReadSNCode {[weak self] isSet, string in
+    guard let weakSelf = self else { return }
+    weakSelf.resultLabel.text = isSet ? "Query result: \(string ?? "")" : "SN code not set"
+}
+```
+
+```swift
+/// Set
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDK_JH76SetSNCode(self.snTextField.text) {[weak self] errorCode in
+    guard let weakSelf = self else { return }
+    weakSelf.resultLabel.text = (errorCode == .success) ? "Set successfully" : "Set failed: \(VPJH76SNCodeErrorDescription(errorCode))"
+}
+```
+
+```swift
+/// Modify
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDK_JH76ModifySNCode(self.snTextField.text) {[weak self] errorCode in
+    guard let weakSelf = self else { return }
+    weakSelf.resultLabel.text = (errorCode == .success) ? "Modified successfully" : "Modification failed: \(VPJH76SNCodeErrorDescription(errorCode))"
+}
+```
+
+```swift
+/// Delete
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDK_JH76DeleteSNCode {[weak self] errorCode in
+    guard let weakSelf = self else { return }
+    weakSelf.resultLabel.text = (errorCode == .success) ? "Deleted successfully" : "Deletion failed: \(VPJH76SNCodeErrorDescription(errorCode))"
+}
+```
+
+# YM23PRO wearing status reporting and testing status function
+
+### Prerequisites
+
+The device must support this function (YM23PRO custom).
+
+### Class name
+
+`VPPeripheralBaseManage`. For details, refer to the `VPYM23ProVC` implementation in the Demo
+
+### Interfaces
+
+```objective-c
+/// Wear status active report (after enabling the wear report, it callbacks continuously: wear change / per-second timed report).
+/// - reportType: 1=wear status change report 2=per-second timed report
+/// - isWear: whether worn (YES=worn)
+/// - heartRate: heart rate bpm (0 if invalid)
+@property (nonatomic, copy, nullable) void(^ym23ProWearReportResult)(NSInteger reportType, BOOL isWear, NSInteger heartRate);
+```
+
+```objective-c
+/// Set the wear status report switch
+/// - Parameters:
+///   - open: YES to enable / NO to disable
+///   - result: switch ack callback (only returns ack: 0 unsupported 1 success 2 failure)
+- (void)veepooSDK_YM23ProSetWearStatus:(BOOL)open callBack:(void(^_Nullable)(NSInteger ack))result;
+```
+
+```objective-c
+/// Send the test status
+/// - Parameters:
+///   - status: YM23PRO test status (see the VPM23ProTestStatus enum)
+///   - result: ack callback (ack: 0 unsupported 1 success 2 failure; currentStatus: the device's actual status)
+- (void)veepooSDK_YM23ProSendTest:(VPM23ProTestStatus)status callBack:(void(^_Nullable)(NSInteger ack, NSInteger currentStatus))result;
+```
+
+### Parameter Explanation
+
+VPM23ProTestStatus (test status)
+
+| Parameter                         | Parameter type       | Remarks              |
+| --------------------------------- | -------------------- | -------------------- |
+| VPM23ProTestStatusIdle            | VPM23ProTestStatus   | Idle/Exit (0)        |
+| VPM23ProTestStatusDetecting       | VPM23ProTestStatus   | Detecting (1)        |
+| VPM23ProTestStatusRepairing       | VPM23ProTestStatus   | Repairing (2)        |
+| VPM23ProTestStatusDetectComplete  | VPM23ProTestStatus   | Detection complete (3) |
+| VPM23ProTestStatusRepairComplete  | VPM23ProTestStatus   | Repair complete (4)  |
+| VPM23ProTestStatusDetectPaused    | VPM23ProTestStatus   | Detection paused (5) |
+| VPM23ProTestStatusRepairPaused    | VPM23ProTestStatus   | Repair paused (6)    |
+
+ack response code (shared by the switch setting and the test status sending)
+
+| Parameter | Parameter type | Remarks                 |
+| --------- | -------------- | ----------------------- |
+| 0         | NSInteger      | Protocol not supported  |
+| 1         | NSInteger      | Success                 |
+| 2         | NSInteger      | Failure                 |
+
+Wear status active report callback parameters
+
+| Parameter  | Parameter type | Remarks                                          |
+| ---------- | -------------- | ------------------------------------------------ |
+| reportType | NSInteger      | 1=wear status change report 2=per-second timed report |
+| isWear     | BOOL           | Whether worn (YES=worn / NO=not worn)            |
+| heartRate  | NSInteger      | Heart rate bpm (0 if invalid)                    |
+
+### Sample Code
+
+```swift
+/// Set the wear status active report listener (continuous callback; set to nil to cancel on exit)
+VPBleCentralManage.sharedBleManager().peripheralManage?.ym23ProWearReportResult = { [weak self] reportType, isWear, heartRate in
+    guard let weakSelf = self else { return }
+    let typeDesc = (reportType == 1) ? "wear change" : "per-second report"
+    weakSelf.wearReportLabel.text = "Realtime report[\(typeDesc)]: worn=\(isWear ? "yes" : "no"), HR=\(heartRate)bpm"
+}
+```
+
+```swift
+/// Enable/disable the wear status report switch
+VPBleCentralManage.sharedBleManager().peripheralManage?.veepooSDK_YM23ProSetWearStatus(true) { [weak self] ack in
+    // ack: 0 unsupported 1 success 2 failure
+    guard let weakSelf = self else { return }
+    weakSelf.wearResultLabel.text = "Switch result: " + (ack == 1 ? "success" : (ack == 0 ? "protocol not supported" : "failure"))
+}
+```
+
+```swift
+/// Send the test status
+VPBleCentralManage.sharedBleManager().peripheralManage?.veepooSDK_YM23ProSendTest(.detecting) { [weak self] ack, currentStatus in
+    // ack: 0 unsupported 1 success 2 failure; currentStatus is the device's actual status (see VPM23ProTestStatus)
+    guard let weakSelf = self else { return }
+    weakSelf.testResultLabel.text = "Ack result: ack=\(ack), device status=\(currentStatus)"
+}
+```
+
+# QH15 Family Care (Security Protection)
+
+### Prerequisites
+
+The device must support this function: peripheralModel.securityProtection != 0.
+
+### Class name
+
+`VPPeripheralBaseManage`. For details, refer to the `VPQH15SecurityProtectionViewController` implementation in the Demo
+
+### Interfaces
+
+```objective-c
+/// Set the security protection state
+/// - Parameters:
+///   - isOpen: YES: open NO: close
+///   - result: callback
+- (void)veepooSDK_QH15SetProtectionOpen:(BOOL)isOpen callBack:(void(^_Nullable)(VPQH15SetProtectionFuncAckState ackState))result;
+```
+
+```objective-c
+/// Monitor the security protection state notification
+/// - Parameters:
+///   - result: callback
+- (void)veepooSDK_QH15ProtectionResultSubscribe:(void(^_Nullable)(BOOL isOpen, uint32_t time))result;
+```
+
+```objective-c
+/// Monitor the GNSS real-time location data notification (includes device requesting real-time location and device pushing real-time location, distinguished by type)
+/// - Parameters:
+///   - result: callback
+- (void)veepooSDK_QH15SecurityProtectionLocationResultSubscribe:(void(^_Nullable)(VPQH15SPType type, VPQH15SecurityProtectionModel * _Nullable locationModel))result;
+```
+
+```objective-c
+/// Auxiliary information configuration, aimed at enhancing the speed and accuracy of device positioning
+/// - Parameter model: location model
+- (void)veepooSDK_QH15SendSecurityProtectionLocation:(VPQH15SecurityProtectionModel * _Nullable)model;
+```
+
+### Parameter Explanation
+
+VPQH15SetProtectionFuncAckState (protection setting ack state)
+
+| Parameter | Parameter type | Remarks |
+| --- | --- | --- |
+| VPQH15SetProtectionFuncAckStateSuccess | VPQH15SetProtectionFuncAckState | Success (0x01) |
+| VPQH15SetProtectionFuncAckStateLowBattery | VPQH15SetProtectionFuncAckState | Watch battery too low to enable (0x02) |
+| VPQH15SetProtectionFuncAckStateLocationMalfunction | VPQH15SetProtectionFuncAckState | Location module malfunction (0x03) |
+
+VPQH15SPType (location interaction type)
+
+| Parameter | Parameter type | Remarks |
+| --- | --- | --- |
+| VPQH15SPTypeReq | VPQH15SPType | Request real-time location (device requests current location from App) |
+| VPQH15SPTypePush | VPQH15SPType | Push real-time location data (device reports location to App) |
+
+VPQH15SecurityProtectionModel (location data model)
+
+| Parameter | Parameter type | Remarks |
+| --- | --- | --- |
+| rssi | int | Bluetooth RSSI |
+| location | CLLocationCoordinate2D | Latitude and longitude (5 decimal places) |
+| gnssState | VPQH15SecurityProtectionState | GNSS state |
+| alt | int | Altitude |
+
+VPQH15SecurityProtectionState (GNSS state)
+
+| Parameter | Parameter type | Remarks |
+| --- | --- | --- |
+| VPQH15SecurityProtectionStateNone | VPQH15SecurityProtectionState | No command |
+| VPQH15SecurityProtectionStateEffectiveLocation | VPQH15SecurityProtectionState | Effective location |
+| VPQH15SecurityProtectionStateInvalidLocation | VPQH15SecurityProtectionState | Invalid location |
+| VPQH15SecurityProtectionStatePoorSignal | VPQH15SecurityProtectionState | Poor signal |
+| VPQH15SecurityProtectionStateNoPermission | VPQH15SecurityProtectionState | No permission |
+
+### Sample Code
+
+```swift
+/// Set the security protection switch
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDK_QH15SetProtectionOpen(sw.isOn) { ack in
+    if ack == .success {
+        print("success")
+    }
+}
+```
+
+```swift
+/// Monitor the security protection state notification (recommended to call when the device connects successfully)
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDK_QH15ProtectionResultSubscribe {[weak self] open, time in
+    guard let weakSelf = self else { return }
+    weakSelf.stateSwitch?.isOn = open
+}
+```
+
+```swift
+/// Monitor the GNSS real-time location data notification
+/// type == .req the App should obtain system location and send it back via the send interface.
+/// type == .push means the device pushes real-time location; just display it.
+VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDK_QH15SecurityProtectionLocationResultSubscribe {[weak self] (type, model) in
+    guard let weakSelf = self, let model = model else { return }
+    if type == .req {
+        weakSelf.reqRssiRaw = Int(model.rssi)
+        let status = CLLocationManager.authorizationStatus()
+        if status == .authorizedAlways || status == .authorizedWhenInUse {
+            weakSelf.locationManager?.requestLocation()
+        } else {
+            let sendModel = VPQH15SecurityProtectionModel()
+            sendModel.rssi = Int32(weakSelf.reqRssiRaw)
+            sendModel.gnssState = .noPermission
+            VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDK_QH15SendSecurityProtectionLocation(sendModel)
+        }
+    } else {
+        weakSelf.locationLabel?.text = "Location: latitude(\(model.location.latitude)) longitude(\(model.location.longitude))"
+    }
+}
+```
+
+```swift
+/// Send real-time location to the device after obtaining system location
+func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+    guard let loc = locations.last else { return }
+    var stateRaw: UInt8 = 0x01
+    if loc.horizontalAccuracy < 0 {
+        stateRaw = 0x02
+    } else if loc.horizontalAccuracy > 30 {
+        stateRaw = 0x03
+    }
+    let model = VPQH15SecurityProtectionModel()
+    model.rssi = Int32(reqRssiRaw)
+    model.gnssState = VPQH15SecurityProtectionState(rawValue: stateRaw)!
+    model.location = CLLocationCoordinate2D(latitude: round(loc.coordinate.latitude * 100000) / 100000.0,
+                                            longitude: round(loc.coordinate.longitude * 100000) / 100000.0)
+    model.alt = Int32(Int(loc.altitude))
+    VPBleCentralManage.sharedBleManager().peripheralManage.veepooSDK_QH15SendSecurityProtectionLocation(model)
+}
+```
