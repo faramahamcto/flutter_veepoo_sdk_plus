@@ -26,10 +26,6 @@ class FlutterVeepooSdkPlugin: FlutterPlugin, ActivityAware {
   private lateinit var vpSpGetUtil: VpSpGetUtil
   private var vpManager: VPOperateManager? = null
 
-  init {
-      vpManager = VPOperateManager.getInstance()
-  }
-
   companion object {
     private const val CHANNEL = "site.shasmatic.flutter_veepoo_sdk"
     private const val COMMAND_CHANNEL = "$CHANNEL/command"
@@ -50,7 +46,11 @@ class FlutterVeepooSdkPlugin: FlutterPlugin, ActivityAware {
 
   override fun onAttachedToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
     deviceStorage = DeviceStorage(flutterPluginBinding.applicationContext)
-    vpManager?.init(flutterPluginBinding.applicationContext)
+    // The first init() replaces the SDK singleton, so take the instance after it. Holding the
+    // pre-init one meant we connected on an orphan while SDK helpers (UiUpdateUtil, JieLi) used
+    // the new singleton with no device address, and their commands were dropped (mac=null).
+    VPOperateManager.getInstance().init(flutterPluginBinding.applicationContext)
+    vpManager = VPOperateManager.getInstance()
     vpSpGetUtil = VpSpGetUtil.getVpSpVariInstance(flutterPluginBinding.applicationContext)
     initializeChannels(flutterPluginBinding.binaryMessenger)
   }
