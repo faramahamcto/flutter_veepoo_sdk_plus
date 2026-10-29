@@ -26,7 +26,10 @@ apply plugin: "kotlin-android"
 
 android {
     if (project.android.hasProperty("namespace")) {
-        namespace = "site.shasmatic.flutter_veepoo_sdk"
+        // The vendor jar reads its resources through com.veepoo.protocol.R, and the app build
+        // generates each library's R from its namespace, so take the vendor's package as ours.
+        // (A hand-written R class doesn't work: AGP strips R classes from library output.)
+        namespace = "com.veepoo.protocol"
     }
 
     compileSdk = 34

@@ -17,6 +17,17 @@ Veepoo SDK Smartwatch for Flutter.
   s.dependency 'Flutter'
   s.platform = :ios, '12.0'
 
+  # Vendor SDK (HBandSDK/iOS_Ble_SDK): VeepooBleSDK 2.2.XX.15 + the frameworks its demo app links.
+  # VeepooBleSDK is a static archive whose swiftinterface was built with Swift 6.2.3 (needs Xcode 26.2+).
+  # Every vendor binary is arm64 device-only (no simulator slice): build and run on a real iPhone.
+  s.vendored_frameworks = 'Frameworks/*.framework'
+  s.dependency 'FMDB'
+  s.dependency 'MJExtension'
+  s.frameworks = 'CoreBluetooth', 'CoreLocation'
+  s.static_framework = true
+  # The vendor demo links with -ObjC; the static SDK relies on ObjC categories being loaded.
+  s.user_target_xcconfig = { 'OTHER_LDFLAGS' => '$(inherited) -ObjC' }
+
   # Flutter.framework does not contain a i386 slice.
   s.pod_target_xcconfig = { 'DEFINES_MODULE' => 'YES', 'EXCLUDED_ARCHS[sdk=iphonesimulator*]' => 'i386' }
   s.swift_version = '5.0'

@@ -76,6 +76,13 @@ libraries again in the future and they now ship as `.aar`, repeat this: extract
 `classes.jar` -> rename into `android/libs/`, extract `jni/<abi>/*.so` -> merge into
 `android/src/main/jniLibs/<abi>/`.
 
+`vpprotocol`'s `.aar` also bundles Android resources (watch face preview images), which the
+`classes.jar` alone loses, so the vendor code crashed with `NoClassDefFoundError:
+com.veepoo.protocol.R$drawable` (e.g. when sending a JieLi photo watch face). Its `res/` is
+copied into `android/src/main/res/`, and the plugin's namespace is `com.veepoo.protocol` so the
+app build generates exactly the `com.veepoo.protocol.R` the vendor code expects. (A hand-written
+`R` class doesn't work: AGP strips `R` classes from library output.) Re-copy `res/` on upgrade.
+
 `libnative-lib.so` (below) is the one exception: it isn't bundled in any of the
 vendor's `.aar` files, so it was always manually placed here, independent of this
 jar/aar extraction process.

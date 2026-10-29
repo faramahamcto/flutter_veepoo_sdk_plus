@@ -578,4 +578,42 @@ class VeepooSDK {
     DateTime endDate,
   ) =>
       _platform.readHeartRateHistory(startDate, endDate);
+
+  // ==================== Watch Face ====================
+
+  /// Reads the photo (custom) watch face, or null when the watch doesn't support one.
+  Future<CustomWatchFace?> readCustomWatchFace() => _platform.readCustomWatchFace();
+
+  /// Sets the photo watch face layout and, when [imagePath] is given, uploads it as the
+  /// background (any size; the native side scales it to the screen, so crop it first).
+  /// Check the battery before uploading: a dead battery mid-transfer blanks the face.
+  /// Without [imagePath], [useDefaultBackground] switches back to the built-in background.
+  Future<void> setCustomWatchFace({
+    required WatchFacePosition timePosition,
+    required WatchFaceElement upElement,
+    required WatchFaceElement downElement,
+    required int color,
+    bool useDefaultBackground = false,
+    String? imagePath,
+  }) =>
+      _platform.setCustomWatchFace(
+        timePosition: timePosition,
+        upElement: upElement,
+        downElement: downElement,
+        color: color,
+        useDefaultBackground: useDefaultBackground,
+        imagePath: imagePath,
+      );
+
+  /// Ready-made watch faces from the Veepoo server that fit the connected watch, or null
+  /// when the watch has no watch face market. Needs internet.
+  Future<List<MarketWatchFace>?> readMarketWatchFaces() => _platform.readMarketWatchFaces();
+
+  /// Downloads [fileUrl] (from [readMarketWatchFaces]) and transfers it to the watch, which
+  /// then shows it. Check the battery first, as with [setCustomWatchFace].
+  Future<void> installMarketWatchFace(String fileUrl) => _platform.installMarketWatchFace(fileUrl);
+
+  /// Transfer progress, 0-100, while [setCustomWatchFace] uploads a photo or
+  /// [installMarketWatchFace] sends a watch face.
+  Stream<int> get watchFaceProgress => _platform.watchFaceProgress;
 }

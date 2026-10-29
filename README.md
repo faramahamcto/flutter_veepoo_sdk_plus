@@ -2,7 +2,7 @@
 
 A comprehensive Flutter plugin for Veepoo smartwatch SDK that provides extensive health monitoring and device management capabilities.
 
-> **Note**: This plugin currently supports Android only. The Dart/Flutter API is complete, but some Android native implementations are still in development. See [IMPLEMENTATION_NOTES.md](IMPLEMENTATION_NOTES.md) for details.
+> **Note**: Android is the tested platform. iOS implements the same native methods as Android (see [docs/iOS-Android-API-Mapping.md](docs/iOS-Android-API-Mapping.md)) but has not been verified on a real watch yet. Some Dart APIs (device settings, date-range history) have no native implementation on either platform.
 
 ## Features
 
@@ -44,17 +44,20 @@ A comprehensive Flutter plugin for Veepoo smartwatch SDK that provides extensive
 
 ## Platform Support
 
+iOS column: 🧪 = implemented to match Android, not yet verified on a real watch.
+
 | Feature Category | Android | iOS |
 |-----------------|---------|-----|
-| Basic Connectivity | ✅ Supported | ❌ Not Supported |
-| Heart Rate & SpO2 | ✅ Supported | ❌ Not Supported |
-| Blood Pressure | 🔄 API Ready | ❌ Not Supported |
-| Temperature | 🔄 API Ready | ❌ Not Supported |
-| Blood Glucose | 🔄 API Ready | ❌ Not Supported |
-| ECG | 🔄 API Ready | ❌ Not Supported |
-| Steps & Sleep | 🔄 API Ready | ❌ Not Supported |
-| Device Settings | 🔄 API Ready | ❌ Not Supported |
-| Historical Data | 🔄 API Ready | ❌ Not Supported |
+| Basic Connectivity | ✅ Supported | 🧪 |
+| Heart Rate & SpO2 | ✅ Supported | 🧪 |
+| Blood Pressure | 🔄 API Ready | 🧪 |
+| Temperature | 🔄 API Ready | 🧪 |
+| Blood Glucose | 🔄 API Ready | 🧪 |
+| ECG | 🔄 API Ready | 🧪 |
+| Steps & Sleep | 🔄 API Ready | 🧪 |
+| Origin (5-min) data, HRV, body/blood composition, Mini Checkup, auto-measure | ✅ Supported | 🧪 |
+| Device Settings | 🔄 API Ready | ❌ Not implemented |
+| Historical Data (date ranges) | 🔄 API Ready | ❌ Not implemented |
 
 ## Installation
 
@@ -99,6 +102,16 @@ Add required permissions to `android/app/src/main/AndroidManifest.xml`:
         android:required="true"/>
 </manifest>
 ```
+
+### iOS Setup
+
+The iOS side vendors the Veepoo iOS SDK (`ios/Frameworks/`, from [HBandSDK/iOS_Ble_SDK](https://github.com/HBandSDK/iOS_Ble_SDK)) and pulls `FMDB` + `MJExtension` through CocoaPods.
+
+- **Xcode 26.2+** (the SDK's Swift interface was built with Swift 6.2.3).
+- **Real iPhone only**: the vendor binaries are arm64 device builds without simulator slices.
+- App `Podfile`: `platform :ios, '13.0'` or higher.
+- App `Info.plist`: `NSBluetoothAlwaysUsageDescription`, and `UIBackgroundModes` → `bluetooth-central` to keep the watch connected in the background.
+- iOS can't switch Bluetooth on for the user: `openBluetooth()` opens the app's Settings page and `closeBluetooth()` does nothing.
 
 ### 3. Minimum SDK Version
 
@@ -619,7 +632,7 @@ See [IMPLEMENTATION_NOTES.md](IMPLEMENTATION_NOTES.md) for detailed implementati
 - Flutter SDK: >=3.0.0
 - Dart SDK: >=3.0.0
 - Android: minSdkVersion 21 (Android 5.0+)
-- iOS: Not supported yet
+- iOS: 13.0+, Xcode 26.2+, real device (see [iOS Setup](#ios-setup))
 
 ## Contributing
 
