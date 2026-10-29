@@ -13,6 +13,7 @@ import com.jieli.jl_fatfs.model.FatFile
 import com.jieli.jl_rcsp.model.base.BaseError
 import com.veepoo.protocol.VPOperateManager
 import com.veepoo.protocol.customui.WatchUIType
+import com.veepoo.protocol.http.vp_a as HttpHelper
 import com.veepoo.protocol.listener.data.IUiUpdateListener
 import com.veepoo.protocol.listener.oad.OnDownLoadListener
 import com.veepoo.protocol.model.datas.UICustomSetData
@@ -28,6 +29,7 @@ import com.veepoo.protocol.util.UiUpdateUtil
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodChannel
 import site.shasmatic.flutter_veepoo_sdk.VPLogger
+import org.json.JSONArray
 import java.io.File
 import java.util.UUID
 import kotlin.concurrent.thread
@@ -98,8 +100,23 @@ class WatchFace(
                 try {
                     val sp = VpSpGetUtil.getVpSpVariInstance(context)
                     val appVersion = context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: ""
-                    val themes = UiServerHttpUtil().getThemeInfo(data, sp.deviceNumber, sp.testVersion, context.packageName, appVersion)
-                    reply.success(themes.orEmpty().map { mapOf("previewUrl" to it.previewUrl, "fileUrl" to it.fileUrl) })
+                    // Same request as UiServerHttpUtil.getThemeInfo, which can't parse its own response: the
+                    // vendor obfuscator stripped its Gson TypeToken's generic signature, so it always throws.
+                    val json = HttpHelper().vp_a("system/getthemes", mapOf(
+                        "dialShape" to "${data.deviceAialShape}",
+                        "binProtocol" to "${data.binDataType}",
+                        "maxLength" to "${data.dataCanSendLength}",
+                        "deviceNumber" to sp.deviceNumber,
+                        "deviceVersion" to sp.testVersion,
+                        "appType" to context.packageName,
+                        "appVersion" to appVersion,
+                    ))
+                    // The server answers "null" when it has nothing and the helper returns "Error" on failure.
+                    if (json == "Error") return@thread reply.error("WATCH_FACE_MARKET", "Watch face server request failed")
+                    val themes = if (json.isNullOrBlank() || json == "null") JSONArray() else JSONArray(json)
+                    reply.success((0 until themes.length()).map { themes.getJSONObject(it) }
+                        .filter { it.optBoolean("available", true) }
+                        .map { mapOf("previewUrl" to it.optString("previewUrl"), "fileUrl" to it.optString("fileUrl")) })
                 } catch (e: Exception) {
                     reply.error("WATCH_FACE_MARKET", "Fetching market watch faces failed: ${e.message}")
                 }
