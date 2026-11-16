@@ -51,7 +51,8 @@ internal class YcHealth(private val sink: (String) -> EventChannel.EventSink?) {
         const val T_SPO2 = 2
         const val T_TEMP = 4
         const val T_GLUCOSE = 5
-        const val HISTORY_TIMEOUT_MS = 30_000L
+        const val HISTORY_TIMEOUT_MS = 6_000L
+        const val CACHE_MS = 20_000L
     }
 
     fun start() {
@@ -370,11 +371,11 @@ internal class YcHealth(private val sink: (String) -> EventChannel.EventSink?) {
     private fun history(type: Int, onRows: (List<Map<*, *>>) -> Unit) {
         var done = false
         val finish = { rows: List<Map<*, *>> -> if (!done) { done = true; onRows(rows) } }
-        main.postDelayed({ finish(emptyList()) }, HISTORY_TIMEOUT_MS)
+        main.postDelayed({ if (!done) VPLogger.d("YC history type=$type: no callback in ${HISTORY_TIMEOUT_MS}ms"); finish(emptyList()) }, HISTORY_TIMEOUT_MS)
         try {
             YCBTClient.healthHistoryData(type, BleDataResponse { code, _, map ->
                 val rows = if (code == 0) (map?.get("data") as? List<*>)?.filterIsInstance<Map<*, *>>() else null
-                VPLogger.d("YC history type=$type code=$code rows=${rows?.size}")
+                VPLogger.d("YC history type=$type code=$code rows=${rows?.size} raw=${map.toString().take(600)}")
                 main.post { finish(rows ?: emptyList()) }
             })
         } catch (e: Exception) {
@@ -383,48 +384,69 @@ internal class YcHealth(private val sink: (String) -> EventChannel.EventSink?) {
         }
     }
 
-    /** Sequentially reads the history types and merges them into per-timestamp records. */
+    // The app reads day 2, 1, 0 in a row; one device read serves all three, so cache it briefly and
+    // let concurrent callers share the in-flight read.
+    private var cachedRecs: List<Rec>? = null
+    private var cachedAt = 0L
+    private var waiting: MutableList<(List<Rec>) -> Unit>? = null
+
+    /** Reads all history types in parallel (the SDK queues them) and merges them per timestamp. */
     private fun readRecords(onDone: (List<Rec>) -> Unit, progress: (Float) -> Unit = {}) {
+        cachedRecs?.let { if (now() - cachedAt < CACHE_MS) { onDone(it); return } }
+        waiting?.let { it.add(onDone); return }
+        waiting = mutableListOf(onDone)
+
         val recs = LinkedHashMap<Long, Rec>()
         fun rec(sec: Long): Rec { val ms = toMillis(sec); return recs.getOrPut(ms) { Rec(ms) } }
+        var pending = 4
 
-        history(Constants.DATATYPE.Health_HistoryHeart) { heart ->
-            heart.forEach { r -> num(r, "heartStartTime")?.let { rec(it.toLong()).heart = int(r, "heartValue") } }
-            progress(0.25f)
-            history(Constants.DATATYPE.Health_HistoryBlood) { blood ->
-                blood.forEach { r ->
-                    num(r, "bloodStartTime")?.let { rec(it.toLong()).apply { sys = int(r, "bloodSBP"); dia = int(r, "bloodDBP") } }
-                }
-                progress(0.5f)
-                history(Constants.DATATYPE.Health_HistorySport) { sport ->
-                    sport.forEach { r ->
-                        num(r, "sportStartTime")?.let {
-                            rec(it.toLong()).apply {
-                                steps = int(r, "sportStep"); distance = int(r, "sportDistance").toDouble(); calories = int(r, "sportCalorie").toDouble()
-                            }
-                        }
-                    }
-                    progress(0.75f)
-                    // "Combined" only for what the single types lack: oxygen, respiration, temperature, glucose, HRV.
-                    history(Constants.DATATYPE.Health_HistoryAll) { all ->
-                        all.forEach { r ->
-                            num(r, "startTime")?.let {
-                                rec(it.toLong()).apply {
-                                    int(r, "OOValue").takeIf { v -> v > 0 }?.let { v -> spo2 = v }
-                                    int(r, "respiratoryRateValue").takeIf { v -> v > 0 }?.let { v -> resp = v }
-                                    int(r, "hrvValue").takeIf { v -> v > 0 }?.let { v -> hrv = v }
-                                    val ti = int(r, "tempIntValue")
-                                    if (ti > 0) temp = "$ti.${int(r, "tempFloatValue")}".toDoubleOrNull()
-                                    // blood sugar is mmol/L * 10; Veepoo reports mg/dL
-                                    int(r, "bloodSugarValue").takeIf { v -> v > 0 }?.let { v -> glucose = (v / 10.0 * 18.0).toInt() }
-                                }
-                            }
-                        }
-                        progress(1f)
-                        onDone(recs.values.sortedBy { it.ts })
+        fun oneDone() {
+            pending--
+            progress(1f - pending / 4f)
+            if (pending > 0) return
+            val out = recs.values.sortedBy { it.ts }
+            cachedRecs = out; cachedAt = now()
+            val callbacks = waiting.orEmpty()
+            waiting = null
+            callbacks.forEach { it(out) }
+        }
+
+        history(Constants.DATATYPE.Health_HistoryHeart) { rows ->
+            rows.forEach { r -> num(r, "heartStartTime")?.let { rec(it.toLong()).heart = int(r, "heartValue") } }
+            oneDone()
+        }
+        history(Constants.DATATYPE.Health_HistoryBlood) { rows ->
+            rows.forEach { r ->
+                num(r, "bloodStartTime")?.let { rec(it.toLong()).apply { sys = int(r, "bloodSBP"); dia = int(r, "bloodDBP") } }
+            }
+            oneDone()
+        }
+        history(Constants.DATATYPE.Health_HistorySport) { rows ->
+            rows.forEach { r ->
+                num(r, "sportStartTime")?.let {
+                    rec(it.toLong()).apply {
+                        steps = int(r, "sportStep"); distance = int(r, "sportDistance").toDouble(); calories = int(r, "sportCalorie").toDouble()
                     }
                 }
             }
+            oneDone()
+        }
+        // "Combined" only for what the single types lack: oxygen, respiration, temperature, glucose, HRV.
+        history(Constants.DATATYPE.Health_HistoryAll) { rows ->
+            rows.forEach { r ->
+                num(r, "startTime")?.let {
+                    rec(it.toLong()).apply {
+                        int(r, "OOValue").takeIf { v -> v > 0 }?.let { v -> spo2 = v }
+                        int(r, "respiratoryRateValue").takeIf { v -> v > 0 }?.let { v -> resp = v }
+                        int(r, "hrvValue").takeIf { v -> v > 0 }?.let { v -> hrv = v }
+                        val ti = int(r, "tempIntValue")
+                        if (ti > 0) temp = "$ti.${int(r, "tempFloatValue")}".toDoubleOrNull()
+                        // blood sugar is mmol/L * 10; Veepoo reports mg/dL
+                        int(r, "bloodSugarValue").takeIf { v -> v > 0 }?.let { v -> glucose = (v / 10.0 * 18.0).toInt() }
+                    }
+                }
+            }
+            oneDone()
         }
     }
 
