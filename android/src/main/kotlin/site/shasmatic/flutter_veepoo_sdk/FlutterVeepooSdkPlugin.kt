@@ -56,9 +56,7 @@ class FlutterVeepooSdkPlugin: FlutterPlugin, ActivityAware {
     initializeChannels(flutterPluginBinding.binaryMessenger)
     methodChannelHandler.yc = YcMethodChannelHandler(
       flutterPluginBinding.applicationContext,
-      { methodChannelHandler.scanSink() },
-      { methodChannelHandler.connectionSink() },
-    )
+    ) { methodChannelHandler.sink(it) }
   }
 
   private fun initializeChannels(messenger: BinaryMessenger) {

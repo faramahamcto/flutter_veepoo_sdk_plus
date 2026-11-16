@@ -25,9 +25,9 @@ import site.shasmatic.flutter_veepoo_sdk.VPLogger
  */
 class YcMethodChannelHandler(
     private val context: Context,
-    private val scanSink: () -> EventChannel.EventSink?,
-    private val connectionSink: () -> EventChannel.EventSink?,
+    private val sink: (String) -> EventChannel.EventSink?,
 ) {
+    private val health = YcHealth(sink)
     private val main = Handler(Looper.getMainLooper())
     private val discovered = LinkedHashMap<String, Map<String, Any?>>()
     private var pendingConnect: MethodChannel.Result? = null
@@ -41,11 +41,6 @@ class YcMethodChannelHandler(
         private const val SCAN_SECONDS = 10
         private const val CONNECT_TIMEOUT_MS = 20_000L
 
-        val supports = setOf(
-            "scanDevices", "stopScanDevices", "connectDevice", "disconnectDevice", "bindDevice",
-            "getCurrentStatus", "getCurrentDeviceAddress", "getAddress", "isDeviceConnected",
-            "isDeviceBinded", "readBattery", "getDeviceInfo",
-        )
     }
 
     /** Initializes the YC client once (safe to call repeatedly). */
@@ -55,6 +50,7 @@ class YcMethodChannelHandler(
         // Same init as the vendor demo (initClient(ctx, true)); no setReconnect override.
         YCBTClient.initClient(context, true)
         YCBTClient.registerBleStateChange(stateResponse)
+        health.start()
     }
 
     private val isConnected get() = YCBTClient.connectState() == Constants.BLEState.ReadWriteOK
@@ -73,7 +69,7 @@ class YcMethodChannelHandler(
                 "address" to address,
                 "timestamp" to System.currentTimeMillis(),
             )
-            main.post { connectionSink()?.success(event) }
+            main.post { sink("connection")?.success(event) }
             pendingConnect?.let { r ->
                 pendingConnect = null
                 main.post {
@@ -115,7 +111,8 @@ class YcMethodChannelHandler(
                 "isDeviceBinded" -> result.success(isConnected)
                 "readBattery" -> readBattery(result)
                 "getDeviceInfo" -> getDeviceInfo(result)
-                else -> result.error("UNSUPPORTED_BRAND", "${call.method} is not supported for the YC brand yet", null)
+                else -> if (!health.handle(call, result))
+                    result.error("UNSUPPORTED_BRAND", "${call.method} is not supported for the YC brand yet", null)
             }
         } catch (e: Exception) {
             result.error("YC_ERROR", "${call.method} failed: ${e.message}", null)
@@ -128,7 +125,7 @@ class YcMethodChannelHandler(
             val mac = bean?.deviceMac ?: return@BleScanResponse
             discovered[mac] = mapOf("name" to bean.deviceName, "address" to mac, "rssi" to bean.deviceRssi)
             val list = discovered.values.toList()
-            main.post { scanSink()?.success(list) }
+            main.post { sink("scan")?.success(list) }
         }, SCAN_SECONDS)
         result.success(null)
     }

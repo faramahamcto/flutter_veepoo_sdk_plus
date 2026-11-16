@@ -72,8 +72,22 @@ class VPMethodChannelHandler(
     /** YC backend, installed by the plugin. */
     var yc: YcMethodChannelHandler? = null
 
-    internal fun scanSink() = scanBluetoothEventSink
-    internal fun connectionSink() = connectionStatusEventSink
+    /** Event sinks by name, for the YC backend (sinks are replaced when Dart re-listens, so look up per event). */
+    internal fun sink(name: String): EventChannel.EventSink? = when (name) {
+        "scan" -> scanBluetoothEventSink
+        "connection" -> connectionStatusEventSink
+        "heart" -> detectHeartEventSink
+        "spoh" -> detectSpohEventSink
+        "temperature" -> detectTemperatureEventSink
+        "ecg" -> detectEcgEventSink
+        "bloodPressure" -> detectBloodPressureEventSink
+        "bloodGlucose" -> detectBloodGlucoseEventSink
+        "originProgress" -> originDataProgressEventSink
+        "bloodComponent" -> detectBloodComponentEventSink
+        "bodyComponent" -> detectBodyComponentEventSink
+        "miniCheckup" -> miniCheckupEventSink
+        else -> null
+    }
 
     // Brand-agnostic Android calls (permissions / adapter) that stay on the Veepoo path for both brands.
     private val brandAgnostic = setOf(
