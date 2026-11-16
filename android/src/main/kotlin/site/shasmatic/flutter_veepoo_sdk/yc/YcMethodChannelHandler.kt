@@ -51,8 +51,8 @@ class YcMethodChannelHandler(
     fun start() {
         if (started) return
         started = true
-        YCBTClient.initClient(context, false)
-        YCBTClient.setReconnect(false)
+        // Same init as the vendor demo (initClient(ctx, true)); no setReconnect override.
+        YCBTClient.initClient(context, true)
         YCBTClient.registerBleStateChange(stateResponse)
     }
 
