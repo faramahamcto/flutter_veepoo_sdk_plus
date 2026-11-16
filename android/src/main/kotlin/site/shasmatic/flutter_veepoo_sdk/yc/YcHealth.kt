@@ -147,16 +147,68 @@ internal class YcHealth(private val sink: (String) -> EventChannel.EventSink?) {
 
     // ---------------------------------------------------------------- live measurements
 
+    // Some firmwares (E810) answer the start-measurement command with 0xFC (unsupported). They still
+    // stream live values in "real data" mode, so fall back to that and finish after a few valid readings.
+    private var realMode: Int? = null
+    private var validReadings = 0
+
+    private fun realModeFor(type: Int): Int? = when (type) {
+        T_HEART -> 0x01
+        T_SPO2 -> 0x02
+        T_BP -> 0x03
+        T_TEMP -> 0x07
+        else -> null
+    }
+
     private fun startMeasure(type: Int, result: MethodChannel.Result) {
         activeType = type
+        realMode = null; validReadings = 0
         lastHeart = 0; lastSys = 0; lastDia = 0; lastSpo2 = 0; lastTemp = null; lastGlucose = null
         emitState(type, measuring = true, complete = false, failed = false)
-        ack(result, "MEASURE_FAILED") { YCBTClient.appStartMeasurement(1, type, it) }
+        YCBTClient.appStartMeasurement(1, type, BleDataResponse { code, _, _ ->
+            if (code == 0) { main.post { result.success(null) }; return@BleDataResponse }
+            val mode = realModeFor(type)
+            VPLogger.d("YC start measurement type=$type code=$code, fallback real-data mode=$mode")
+            if (mode == null) {
+                main.post {
+                    activeType = null
+                    emitState(type, measuring = false, complete = false, failed = true)
+                    result.error("MEASURE_FAILED", "This watch does not support measurement type $type (code=$code)", null)
+                }
+                return@BleDataResponse
+            }
+            YCBTClient.appRealDataFromDevice(1, mode, BleDataResponse { c, _, _ ->
+                main.post {
+                    if (c == 0) { realMode = mode; result.success(null) }
+                    else {
+                        activeType = null
+                        emitState(type, measuring = false, complete = false, failed = true)
+                        result.error("MEASURE_FAILED", "YC real-data start failed (code=$c)", null)
+                    }
+                }
+            })
+        })
     }
 
     private fun stopMeasure(type: Int, result: MethodChannel.Result) {
         if (activeType == type) activeType = null
-        ack(result, "MEASURE_FAILED") { YCBTClient.appStartMeasurement(0, type, it) }
+        val mode = realMode
+        realMode = null
+        // Stopping is best-effort: an unsupported command must not surface as an error.
+        if (mode != null) YCBTClient.appRealDataFromDevice(0, mode, BleDataResponse { _, _, _ -> })
+        YCBTClient.appStartMeasurement(0, type, BleDataResponse { _, _, _ -> main.post { result.success(null) } })
+    }
+
+    /** One more valid live reading: keep "measuring", or finish after three in real-data mode. */
+    private fun liveTick(type: Int) {
+        if (realMode != null && ++validReadings >= 3) {
+            emitState(type, measuring = false, complete = true, failed = false)
+            realMode?.let { YCBTClient.appRealDataFromDevice(0, it, BleDataResponse { _, _, _ -> }) }
+            realMode = null
+            activeType = null
+        } else {
+            emitState(type, measuring = true, complete = false, failed = false)
+        }
     }
 
     /** Emits the current state of measurement [type] on its event channel, in the Veepoo shape. */
@@ -221,23 +273,23 @@ internal class YcHealth(private val sink: (String) -> EventChannel.EventSink?) {
         when (dataType) {
             Constants.DATATYPE.Real_UploadHeart -> {
                 lastHeart = int(map, "heartValue")
-                if (activeType == T_HEART && lastHeart > 0) emitState(T_HEART, measuring = true, complete = false, failed = false)
+                if (activeType == T_HEART && lastHeart > 0) liveTick(T_HEART)
             }
             Constants.DATATYPE.Real_UploadBlood -> {
                 lastSys = int(map, "bloodSBP"); lastDia = int(map, "bloodDBP")
                 val hr = int(map, "heartValue")
                 if (ecgActive) ecgHeart = hr
                 if (hr > 0) lastHeart = hr
-                if (activeType == T_BP) emitState(T_BP, measuring = true, complete = false, failed = false)
+                if (activeType == T_BP && lastSys > 0 && lastDia > 0) liveTick(T_BP)
             }
             Constants.DATATYPE.Real_UploadBloodOxygen -> {
                 lastSpo2 = int(map, "bloodOxygenValue")
-                if (activeType == T_SPO2) emitState(T_SPO2, measuring = true, complete = false, failed = false)
+                if (activeType == T_SPO2 && lastSpo2 > 0) liveTick(T_SPO2)
             }
             Constants.DATATYPE.Real_UploadComprehensive -> {
                 val i = num(map, "tempInteger"); val f = num(map, "tempFloat")
                 if (i != null && f != null) lastTemp = "${i.toInt()}.${f.toInt()}".toDoubleOrNull()
-                if (activeType == T_TEMP) emitState(T_TEMP, measuring = true, complete = false, failed = false)
+                if (activeType == T_TEMP && lastTemp != null) liveTick(T_TEMP)
                 // Glucose has no documented real-time type; keep every unknown key visible for tuning.
                 num(map, "bloodSugarValue")?.let {
                     lastGlucose = it.toDouble() / 10.0
