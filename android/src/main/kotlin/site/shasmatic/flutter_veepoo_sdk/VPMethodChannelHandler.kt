@@ -33,6 +33,7 @@ import site.shasmatic.flutter_veepoo_sdk.utils.Temperature
 import site.shasmatic.flutter_veepoo_sdk.utils.OriginDataReader
 import site.shasmatic.flutter_veepoo_sdk.utils.VPBluetoothManager
 import site.shasmatic.flutter_veepoo_sdk.utils.WatchFace
+import site.shasmatic.flutter_veepoo_sdk.yc.YcMethodChannelHandler
 
 /**
  * Handles method calls from Flutter to perform various operations related to Bluetooth management,
@@ -65,6 +66,20 @@ class VPMethodChannelHandler(
     private var watchFaceProgressEventSink: EventChannel.EventSink? = null
     private lateinit var result: MethodChannel.Result
 
+    /** Active vendor SDK. Set from Dart with `setBrand`; Veepoo unless told otherwise. */
+    var brand: WatchBrand = WatchBrand.VEEPOO
+        private set
+    /** YC backend, installed by the plugin. */
+    var yc: YcMethodChannelHandler? = null
+
+    internal fun scanSink() = scanBluetoothEventSink
+    internal fun connectionSink() = connectionStatusEventSink
+
+    // Brand-agnostic Android calls (permissions / adapter) that stay on the Veepoo path for both brands.
+    private val brandAgnostic = setOf(
+        "requestBluetoothPermissions", "openAppSettings", "isBluetoothEnabled", "openBluetooth", "closeBluetooth",
+    )
+
     @RequiresApi(Build.VERSION_CODES.S)
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
         val address = call.argument<String>("address")
@@ -74,6 +89,24 @@ class VPMethodChannelHandler(
         val low = call.argument<Int>("low")
         val open = call.argument<Boolean>("open")
         this.result = result
+
+        if (call.method == "setBrand") {
+            val next = WatchBrand.from(call.argument<String>("brand"))
+            if (next == null) result.error("INVALID_ARGUMENT", "Unknown brand", null)
+            else {
+                brand = next
+                if (next == WatchBrand.YC) yc?.start()
+                result.success(null)
+            }
+            return
+        }
+        if (call.method == "getBrand") { result.success(brand.name.lowercase()); return }
+        if (brand == WatchBrand.YC && call.method !in brandAgnostic) {
+            val handler = yc
+            if (handler == null) result.error("UNSUPPORTED_BRAND", "YC backend is not available", null)
+            else handler.onMethodCall(call, result)
+            return
+        }
 
         when(call.method) {
             "requestBluetoothPermissions" -> handleRequestBluetoothPermissions()

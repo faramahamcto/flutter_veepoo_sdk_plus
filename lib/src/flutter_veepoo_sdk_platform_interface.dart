@@ -22,6 +22,16 @@ abstract class FlutterVeepooSdkPlatform extends PlatformInterface {
     _instance = instance;
   }
 
+  /// Selects the native SDK (watch vendor) all other calls are routed to.
+  Future<void> setBrand(WatchBrand brand) {
+    throw UnimplementedError('setBrand() has not been implemented.');
+  }
+
+  /// The currently selected [WatchBrand].
+  Future<WatchBrand> getBrand() {
+    throw UnimplementedError('getBrand() has not been implemented.');
+  }
+
   /// Requests the necessary permissions to use Bluetooth.
   Future<PermissionStatuses?> requestBluetoothPermissions() {
     throw UnimplementedError(

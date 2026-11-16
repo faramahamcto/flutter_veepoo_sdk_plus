@@ -11,6 +11,7 @@ import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodChannel
 import site.shasmatic.flutter_veepoo_sdk.utils.DeviceStorage
+import site.shasmatic.flutter_veepoo_sdk.yc.YcMethodChannelHandler
 
 /**
  * Flutter plugin for integrating with Veepoo SDK on Android.
@@ -53,6 +54,11 @@ class FlutterVeepooSdkPlugin: FlutterPlugin, ActivityAware {
     vpManager = VPOperateManager.getInstance()
     vpSpGetUtil = VpSpGetUtil.getVpSpVariInstance(flutterPluginBinding.applicationContext)
     initializeChannels(flutterPluginBinding.binaryMessenger)
+    methodChannelHandler.yc = YcMethodChannelHandler(
+      flutterPluginBinding.applicationContext,
+      { methodChannelHandler.scanSink() },
+      { methodChannelHandler.connectionSink() },
+    )
   }
 
   private fun initializeChannels(messenger: BinaryMessenger) {

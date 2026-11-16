@@ -11,6 +11,16 @@ class VeepooSDK {
 
   final FlutterVeepooSdkPlatform _platform = FlutterVeepooSdkPlatform.instance;
 
+  /// Selects which watch vendor's SDK handles every other call. Call it once at startup (or
+  /// after the user picks their watch model), before scanning. Defaults to [WatchBrand.veepoo].
+  ///
+  /// [WatchBrand.yc] currently covers scan / connect / battery / device info only; other calls throw
+  /// a [VeepooException] (`UNSUPPORTED_BRAND`) until they are ported.
+  Future<void> setBrand(WatchBrand brand) => _platform.setBrand(brand);
+
+  /// The currently selected [WatchBrand].
+  Future<WatchBrand> getBrand() => _platform.getBrand();
+
   /// Requests the necessary permissions to use Bluetooth.
   Future<PermissionStatuses?> requestBluetoothPermissions() {
     try {

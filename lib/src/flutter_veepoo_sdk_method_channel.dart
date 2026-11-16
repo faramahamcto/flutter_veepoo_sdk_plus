@@ -53,6 +53,34 @@ class MethodChannelFlutterVeepooSdk extends FlutterVeepooSdkPlatform {
   Stream<MiniCheckupEvent?>? _miniCheckupStream;
   Stream<int>? _watchFaceProgressStream;
 
+  @override
+  Future<void> setBrand(WatchBrand brand) async {
+    try {
+      await methodChannel.invokeMethod<void>('setBrand', {'brand': brand.name});
+    } on MissingPluginException {
+      // Native side without brand support (iOS: Veepoo only) - Veepoo is already what it uses.
+      if (brand != WatchBrand.veepoo) {
+        throw VeepooException(message: '${brand.name} is not supported on this platform');
+      }
+    } on PlatformException catch (error, stackTrace) {
+      throw VeepooException(
+        message: 'Failed to set brand ${brand.name}: ${error.message}',
+        details: error.details,
+        stacktrace: stackTrace,
+      );
+    }
+  }
+
+  @override
+  Future<WatchBrand> getBrand() async {
+    try {
+      final name = await methodChannel.invokeMethod<String>('getBrand');
+      return WatchBrand.values.firstWhere((b) => b.name == name, orElse: () => WatchBrand.veepoo);
+    } on MissingPluginException {
+      return WatchBrand.veepoo;
+    }
+  }
+
   /// Requests Bluetooth permissions.
   ///
   /// Returns a [PermissionStatuses] if the request is successful, otherwise null.

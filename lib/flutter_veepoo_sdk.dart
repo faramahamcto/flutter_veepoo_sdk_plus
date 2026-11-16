@@ -14,6 +14,7 @@ part 'src/enums/heart_statuses.dart';
 part 'src/enums/permission_statuses.dart';
 part 'src/enums/power_statuses.dart';
 part 'src/enums/spoh_statuses.dart';
+part 'src/enums/watch_brand.dart';
 part 'src/exceptions/veepoo_exception.dart';
 part 'src/models/auto_measure_data.dart';
 part 'src/models/battery.dart';

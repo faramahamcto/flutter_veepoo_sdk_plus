@@ -659,3 +659,19 @@ If you encounter any issues or have questions:
 ## Acknowledgments
 
 Based on the Veepoo Android SDK by HBandSDK. Flutter implementation by the Flutter Veepoo SDK Plus team.
+
+
+## Multiple watch brands (experimental)
+
+The plugin can talk to two vendor SDKs through the same Dart API. Choose one before scanning
+(for example after asking the user which watch they own); every later call goes to that SDK:
+
+```dart
+await VeepooSDK.instance.setBrand(WatchBrand.yc); // default: WatchBrand.veepoo
+await VeepooSDK.instance.scanDevices();
+```
+
+`WatchBrand.yc` (Yucheng, Android only) currently supports: scan, connect/disconnect, bind
+(connection = bound), current address/status, battery and device info. Anything else throws
+`VeepooException` (`UNSUPPORTED_BRAND`) until it is ported. Native code lives in
+`android/.../yc/YcMethodChannelHandler.kt`; results use the same maps as the Veepoo handler.
