@@ -39,6 +39,7 @@ class YcMethodChannelHandler(
         private const val VP_CONNECTED = 2
         private const val VP_DISCONNECTED = 0
         private const val SCAN_SECONDS = 10
+        private const val CONNECT_TIMEOUT_MS = 20_000L
 
         val supports = setOf(
             "scanDevices", "stopScanDevices", "connectDevice", "disconnectDevice", "bindDevice",
@@ -61,7 +62,10 @@ class YcMethodChannelHandler(
     private val stateResponse = BleConnectResponse { code ->
         VPLogger.i("YC connection state=$code")
         val connected = code == Constants.BLEState.ReadWriteOK
-        val disconnected = code == Constants.BLEState.Disconnect || code == Constants.BLEState.TimeOut
+        // TimeOut (1) is emitted transiently at the start of a connect (seen on E810: 4,5,1,6..10),
+        // so it is not a failure; real timeouts are handled by connectTimeout.
+        val disconnected = code == Constants.BLEState.Disconnect
+        if (connected) main.removeCallbacks(connectTimeout)
         if (connected || disconnected) {
             val address = pendingAddress ?: YCBTClient.getBindDeviceMac()
             val event = mapOf<String, Any?>(
@@ -77,6 +81,14 @@ class YcMethodChannelHandler(
                     else r.error("CONNECT_FAILED", "YC connection failed (state=$code)", null)
                 }
             }
+        }
+    }
+
+    private val connectTimeout = Runnable {
+        pendingConnect?.let {
+            pendingConnect = null
+            YCBTClient.disconnectBle()
+            it.error("CONNECT_FAILED", "YC connection timed out", null)
         }
     }
 
@@ -127,6 +139,8 @@ class YcMethodChannelHandler(
         pendingConnect?.error("CONNECT_CANCELLED", "Superseded by a new connect", null)
         pendingConnect = result
         pendingAddress = address
+        main.removeCallbacks(connectTimeout)
+        main.postDelayed(connectTimeout, CONNECT_TIMEOUT_MS)
         // The per-call callback is unused: the global stateResponse decides the outcome.
         YCBTClient.connectBle(address, BleConnectResponse { })
     }
