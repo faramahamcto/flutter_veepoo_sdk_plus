@@ -38,6 +38,8 @@ internal class YcHealth(private val sink: (String) -> EventChannel.EventSink?) {
     private var ecgActive = false
     private var ecgHeart = 0
     private val ecgBuffer = ArrayList<Int>()
+    private var ecgStartedAt = 0L
+    private var lastEcgChunk: List<Int>? = null
     private var liveSteps: Triple<Int, Int, Int>? = null // steps, meters, kcal
     private var profileHeightCm = 0
     private var profileWeightKg = 0
@@ -53,6 +55,8 @@ internal class YcHealth(private val sink: (String) -> EventChannel.EventSink?) {
         const val T_GLUCOSE = 5
         const val HISTORY_TIMEOUT_MS = 6_000L
         const val CACHE_MS = 20_000L
+        const val LIVE_TIMEOUT_MS = 40_000L
+        const val ECG_NO_SIGNAL_MS = 20_000L
     }
 
     fun start() {
@@ -154,6 +158,7 @@ internal class YcHealth(private val sink: (String) -> EventChannel.EventSink?) {
     // stream live values in "real data" mode, so fall back to that and finish after a few valid readings.
     private var realMode: Int? = null
     private var validReadings = 0
+    private var liveGen = 0
 
     private fun realModeFor(type: Int): Int? = when (type) {
         T_HEART -> 0x01
@@ -193,7 +198,7 @@ internal class YcHealth(private val sink: (String) -> EventChannel.EventSink?) {
 
     private fun doStartMeasure(type: Int, result: MethodChannel.Result) {
         activeType = type
-        realMode = null; validReadings = 0
+        realMode = null; validReadings = 0; liveGen++
         lastHeart = 0; lastSys = 0; lastDia = 0; lastSpo2 = 0; lastTemp = null; lastGlucose = null
         emitState(type, measuring = true, complete = false, failed = false)
         YCBTClient.appStartMeasurement(1, type, BleDataResponse { code, _, _ ->
@@ -212,12 +217,23 @@ internal class YcHealth(private val sink: (String) -> EventChannel.EventSink?) {
             realMode = mode
             YCBTClient.appRealDataFromDevice(1, mode, BleDataResponse { _, _, _ -> })
             if (type == T_TEMP) pollTemp()
+            // No valid value in time (not worn, or this watch has no such sensor): report failure, do not hang.
+            val gen = ++liveGen
+            main.postDelayed({
+                if (gen == liveGen && activeType == type && realMode != null) {
+                    emitState(type, measuring = false, complete = false, failed = true)
+                    realMode?.let { YCBTClient.appRealDataFromDevice(0, it, BleDataResponse { _, _, _ -> }) }
+                    realMode = null
+                    activeType = null
+                }
+            }, LIVE_TIMEOUT_MS)
             main.post { result.success(null) }
         })
     }
 
     private fun stopMeasure(type: Int, result: MethodChannel.Result) {
         if (activeType == type) activeType = null
+        liveGen++
         val mode = realMode
         realMode = null
         // Stopping is best-effort: an unsupported command must not surface as an error.
@@ -372,7 +388,7 @@ internal class YcHealth(private val sink: (String) -> EventChannel.EventSink?) {
     // ---------------------------------------------------------------- ECG
 
     private fun startEcg(result: MethodChannel.Result) {
-        ecgBuffer.clear(); ecgHeart = 0; ecgActive = true
+        ecgBuffer.clear(); ecgHeart = 0; ecgActive = true; ecgStartedAt = now(); lastEcgChunk = null
         emitEcg("measuring", emptyList(), measuring = true, progress = 0)
         YCBTClient.appEcgTestStart(BleDataResponse { code, _, _ ->
             main.post {
@@ -380,18 +396,27 @@ internal class YcHealth(private val sink: (String) -> EventChannel.EventSink?) {
                 else { ecgActive = false; result.error("ECG_FAILED", "YC ECG start failed (code=$code)", null) }
             }
         }, realData)
+        main.postDelayed({
+            if (ecgActive && ecgBuffer.isEmpty()) emitEcg("poorSignal", emptyList(), measuring = true, progress = 0)
+        }, ECG_NO_SIGNAL_MS)
     }
 
     private fun onEcgChunk(chunk: List<Int>) {
+        // The SDK delivers every chunk twice (global + per-call callback); drop the repeat.
+        if (chunk == lastEcgChunk) return
+        lastEcgChunk = chunk
         ecgBuffer.addAll(chunk)
-        // The device streams ~1500 raw samples per 30 s; progress is capped below 100 until stopped.
-        val progress = (ecgBuffer.size / 30).coerceAtMost(99)
+        // A reading takes ~30 s; report time-based progress, capped below 100 until stopped.
+        val progress = ((now() - ecgStartedAt) / 300).toInt().coerceIn(0, 99)
         emitEcg("measuring", chunk, measuring = true, progress = progress)
     }
 
     private fun stopEcg(result: MethodChannel.Result) {
         ecgActive = false
         YCBTClient.appEcgTestEnd(BleDataResponse { code, _, _ ->
+            // E810 keeps streaming ECG (and refuses other live data) until the waveform upload is switched off too.
+            YCBTClient.appControlWave(0, 0x01, BleDataResponse { _, _, _ -> })
+            YCBTClient.appControlWave(0, 0x00, BleDataResponse { _, _, _ -> })
             main.post {
                 emitEcg(if (ecgBuffer.isEmpty()) "failed" else "complete", emptyList(), measuring = false, progress = 100)
                 if (code == 0) result.success(null) else result.error("ECG_FAILED", "YC ECG stop failed (code=$code)", null)
