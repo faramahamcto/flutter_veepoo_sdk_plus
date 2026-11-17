@@ -487,8 +487,15 @@ internal class YcHealth(private val sink: (String) -> EventChannel.EventSink?) {
         var steps: Int? = null, var distance: Double? = null, var calories: Double? = null,
     )
 
-    /** YC history timestamps are unix seconds; tolerate the 2000-based epoch some firmwares use. */
-    private fun toMillis(sec: Long): Long = (if (sec < 1_000_000_000L) sec + YCBTClient.SecFrom30Year else sec) * 1000L
+    /**
+     * History timestamps: the E810 already reports unix milliseconds (13 digits) although the docs say seconds.
+     * Accept ms, unix seconds, and the 2000-based epoch some firmwares use.
+     */
+    private fun toMillis(v: Long): Long = when {
+        v >= 100_000_000_000L -> v
+        v >= 1_000_000_000L -> v * 1000L
+        else -> (v + YCBTClient.SecFrom30Year) * 1000L
+    }
 
     private fun history(type: Int, onRows: (List<Map<*, *>>) -> Unit) {
         var done = false
@@ -563,8 +570,7 @@ internal class YcHealth(private val sink: (String) -> EventChannel.EventSink?) {
                         int(r, "hrvValue").takeIf { v -> v > 0 }?.let { v -> hrv = v }
                         val ti = int(r, "tempIntValue")
                         if (ti > 0) temp = "$ti.${int(r, "tempFloatValue")}".toDoubleOrNull()
-                        // blood sugar is mmol/L * 10; Veepoo reports mg/dL
-                        int(r, "bloodSugarValue").takeIf { v -> v > 0 }?.let { v -> glucose = (v / 10.0 * 18.0).toInt() }
+                        // bloodSugarValue is ignored on purpose: the watch reports bloodSugar=0 (unsupported), so it is an estimate
                     }
                 }
             }
@@ -606,6 +612,31 @@ internal class YcHealth(private val sink: (String) -> EventChannel.EventSink?) {
     // ---------------------------------------------------------------- steps / sleep
 
     private fun readStepData(result: MethodChannel.Result, from: Long = dayStart(0), to: Long? = null) {
+        if (to != null) return readStepHistory(result, from, to) // past day: history only
+        getNowStep { live ->
+            if (live != null) liveSteps = live
+            readStepHistory(result, from, to)
+        }
+    }
+
+    /** The watch's own step counter for today. Keys are tolerant: firmwares differ. */
+    private fun getNowStep(cb: (Triple<Int, Int, Int>?) -> Unit) {
+        var done = false
+        main.postDelayed({ if (!done) { done = true; cb(null) } }, 4_000)
+        YCBTClient.getNowStep(BleDataResponse { code, _, map ->
+            VPLogger.d("YC getNowStep code=$code map=$map")
+            main.post {
+                if (done) return@post
+                done = true
+                val d = (map?.get("data") as? Map<*, *>) ?: map
+                fun pick(vararg keys: String) = keys.firstNotNullOfOrNull { k -> (d?.get(k) as? Number)?.toInt() } ?: 0
+                val steps = pick("sportStep", "step", "steps", "nowStep")
+                cb(if (code == 0 && steps > 0) Triple(steps, pick("sportDistance", "distance"), pick("sportCalorie", "calorie", "calories")) else null)
+            }
+        })
+    }
+
+    private fun readStepHistory(result: MethodChannel.Result, from: Long, to: Long?) {
         history(Constants.DATATYPE.Health_HistorySport) { rows ->
             var steps = 0; var meters = 0; var kcal = 0; var seconds = 0L
             rows.forEach { r ->
