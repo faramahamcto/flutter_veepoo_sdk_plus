@@ -816,13 +816,15 @@ internal class YcHealth(private val sink: (String) -> EventChannel.EventSink?) {
                 val m = profileHeightCm / 100.0
                 profileWeightKg / (m * m)
             } else null
-            if (fat == null && bmi == null) {
+            // BMI alone is NOT a result: the app uploads every missing metric as 0 (fat, muscle, water, bone,
+            // protein...) and would store a wrong body analysis. Without a real body-fat value report failure.
+            if (fat == null) {
                 emit("bodyComponent", mapOf("state" to "failed", "isMeasuring" to false, "progress" to 100, "timestamp" to now()))
             } else {
                 emit(
                     "bodyComponent",
                     mapOf(
-                        "bmi" to bmi, "bodyFatRate" to fat, "state" to "complete",
+                        "bmi" to bmi, "bodyFatRate" to fat, "fatRate" to fat, "state" to "complete",
                         "isMeasuring" to false, "progress" to 100, "timestamp" to now(),
                     ),
                 )
