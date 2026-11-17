@@ -584,6 +584,14 @@ internal class YcHealth(private val sink: (String) -> EventChannel.EventSink?) {
     }.timeInMillis
 
     private fun readOrigin(days: List<Int>, result: MethodChannel.Result, single: Boolean) {
+        if (0 !in days) return readOriginDays(days, result, single)
+        getNowStep { live ->
+            if (live != null) liveSteps = live
+            readOriginDays(days, result, single)
+        }
+    }
+
+    private fun readOriginDays(days: List<Int>, result: MethodChannel.Result, single: Boolean) {
         val labels = { d: Int -> when (d) { 0 -> "Today"; 1 -> "Yesterday"; 2 -> "2 Days Ago"; else -> "$d Days Ago" } }
         readRecords({ recs ->
             val dateFmt = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
@@ -601,7 +609,15 @@ internal class YcHealth(private val sink: (String) -> EventChannel.EventSink?) {
                         "bloodGlucose" to r.glucose, "respirationRate" to r.resp, "hrvValue" to r.hrv,
                     )
                 }
-                aggregateDailyData(d, records) + ("dayLabel" to labels(d))
+                val day = aggregateDailyData(d, records) + ("dayLabel" to labels(d))
+                val live = liveSteps
+                if (d == 0 && live != null && live.first > ((day["totalSteps"] as? Number)?.toInt() ?: 0)) {
+                    day + mapOf(
+                        "totalSteps" to live.first,
+                        "totalDistance" to live.second.toDouble(),
+                        "totalCalories" to live.third.toDouble(),
+                    )
+                } else day
             }
             main.post { if (single) result.success(daily.first()) else result.success(daily) }
         }, progress = { p ->
@@ -631,7 +647,7 @@ internal class YcHealth(private val sink: (String) -> EventChannel.EventSink?) {
                 val d = (map?.get("data") as? Map<*, *>) ?: map
                 fun pick(vararg keys: String) = keys.firstNotNullOfOrNull { k -> (d?.get(k) as? Number)?.toInt() } ?: 0
                 val steps = pick("sportStep", "step", "steps", "nowStep")
-                cb(if (code == 0 && steps > 0) Triple(steps, pick("sportDistance", "distance"), pick("sportCalorie", "calorie", "calories")) else null)
+                cb(if (code == 0 && steps > 0) Triple(steps, pick("nowDistance", "sportDistance", "distance"), pick("nowCalorie", "sportCalorie", "calorie", "calories")) else null)
             }
         })
     }
