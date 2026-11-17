@@ -63,7 +63,9 @@ internal class YcHealth(private val sink: (String) -> EventChannel.EventSink?) {
     }
 
     /** Returns false when the method is not a health method (caller answers UNSUPPORTED_BRAND). */
-    fun handle(call: MethodCall, result: MethodChannel.Result): Boolean {
+    fun handle(call: MethodCall, rawResult: MethodChannel.Result): Boolean {
+        // YC callbacks can fire repeatedly (ECG streams, late timeouts); a second reply crashes the app.
+        val result = OnceResult(rawResult)
         try {
             when (call.method) {
                 "startDetectHeart" -> startMeasure(T_HEART, result)
@@ -88,6 +90,7 @@ internal class YcHealth(private val sink: (String) -> EventChannel.EventSink?) {
                 }
                 "setUserProfile" -> setUserProfile(call, result)
                 "enableAllAutoMeasurements" -> enableAllAutoMeasurements(result)
+                "ycProbe" -> probe(result)
                 "readHeartWarning" -> result.success(null) // Veepoo only logs the value
                 "startDetectBloodComponent" -> startBloodComponent(result)
                 "stopDetectBloodComponent" -> { bloodPollGen++; result.success(null) }
@@ -161,6 +164,34 @@ internal class YcHealth(private val sink: (String) -> EventChannel.EventSink?) {
     }
 
     private fun startMeasure(type: Int, result: MethodChannel.Result) {
+        if (type != T_GLUCOSE) return doStartMeasure(type, result)
+        supports("bloodSugar") { ok ->
+            if (ok) doStartMeasure(type, result)
+            else {
+                emitNotSupported("bloodGlucose")
+                result.error("UNSUPPORTED_BRAND", "This watch cannot measure blood glucose", null)
+            }
+        }
+    }
+
+    /** Reads the watch's own capability flags (getMeasurementFunction); unknown or no reply counts as supported. */
+    private fun supports(key: String, cb: (Boolean) -> Unit) {
+        var done = false
+        main.postDelayed({ if (!done) { done = true; cb(true) } }, 3_000)
+        YCBTClient.getMeasurementFunction(BleDataResponse { code, _, map ->
+            main.post {
+                if (!done) {
+                    done = true
+                    cb(code != 0 || ((map?.get(key) as? Number)?.toInt() ?: 1) != 0)
+                }
+            }
+        })
+    }
+
+    private fun emitNotSupported(channel: String) =
+        emit(channel, mapOf("state" to "notSupported", "isMeasuring" to false, "progress" to 0, "timestamp" to now()))
+
+    private fun doStartMeasure(type: Int, result: MethodChannel.Result) {
         activeType = type
         realMode = null; validReadings = 0
         lastHeart = 0; lastSys = 0; lastDia = 0; lastSpo2 = 0; lastTemp = null; lastGlucose = null
@@ -177,16 +208,11 @@ internal class YcHealth(private val sink: (String) -> EventChannel.EventSink?) {
                 }
                 return@BleDataResponse
             }
-            YCBTClient.appRealDataFromDevice(1, mode, BleDataResponse { c, _, _ ->
-                main.post {
-                    if (c == 0) { realMode = mode; result.success(null) }
-                    else {
-                        activeType = null
-                        emitState(type, measuring = false, complete = false, failed = true)
-                        result.error("MEASURE_FAILED", "YC real-data start failed (code=$c)", null)
-                    }
-                }
-            })
+            // The watch streams values without acknowledging this command, so do not wait for a reply.
+            realMode = mode
+            YCBTClient.appRealDataFromDevice(1, mode, BleDataResponse { _, _, _ -> })
+            if (type == T_TEMP) pollTemp()
+            main.post { result.success(null) }
         })
     }
 
@@ -197,6 +223,22 @@ internal class YcHealth(private val sink: (String) -> EventChannel.EventSink?) {
         // Stopping is best-effort: an unsupported command must not surface as an error.
         if (mode != null) YCBTClient.appRealDataFromDevice(0, mode, BleDataResponse { _, _, _ -> })
         YCBTClient.appStartMeasurement(0, type, BleDataResponse { _, _, _ -> main.post { result.success(null) } })
+    }
+
+    /** Some watches report body temperature only when asked (getRealTemp) while a measurement is open. */
+    private fun pollTemp() {
+        main.postDelayed({
+            if (activeType != T_TEMP) return@postDelayed
+            YCBTClient.getRealTemp(BleDataResponse { code, _, map ->
+                VPLogger.d("YC getRealTemp code=$code map=$map")
+                val raw = map?.get("tempValue")
+                val t = (raw as? Number)?.toDouble() ?: (raw as? String)?.toDoubleOrNull()
+                main.post {
+                    if (code == 0 && t != null && t > 0 && activeType == T_TEMP) { lastTemp = t; liveTick(T_TEMP) }
+                    pollTemp()
+                }
+            })
+        }, 2_000)
     }
 
     /** One more valid live reading: keep "measuring", or finish after three in real-data mode. */
@@ -268,7 +310,10 @@ internal class YcHealth(private val sink: (String) -> EventChannel.EventSink?) {
         }
     }
 
+    private var probeLog = false
+
     private val realData = BleRealDataResponse { dataType, raw ->
+        if (probeLog) VPLogger.d("YC probe real type=$dataType map=$raw")
         val map = raw as? Map<*, *> ?: return@BleRealDataResponse
         when (dataType) {
             Constants.DATATYPE.Real_UploadHeart -> {
@@ -427,7 +472,7 @@ internal class YcHealth(private val sink: (String) -> EventChannel.EventSink?) {
         try {
             YCBTClient.healthHistoryData(type, BleDataResponse { code, _, map ->
                 val rows = if (code == 0) (map?.get("data") as? List<*>)?.filterIsInstance<Map<*, *>>() else null
-                VPLogger.d("YC history type=$type code=$code rows=${rows?.size} raw=${map.toString().take(600)}")
+                VPLogger.d("YC history type=$type code=$code rows=${rows?.size} raw=${"$map".take(600)}")
                 main.post { finish(rows ?: emptyList()) }
             })
         } catch (e: Exception) {
@@ -652,6 +697,18 @@ internal class YcHealth(private val sink: (String) -> EventChannel.EventSink?) {
      * record. So: start the uric-acid measurement and poll that history for a record newer than the start.
      */
     private fun startBloodComponent(result: MethodChannel.Result) {
+        supports("uricAcid") { uric ->
+            supports("bloodFat") { fat ->
+                if (uric || fat) doStartBloodComponent(result)
+                else {
+                    emitNotSupported("bloodComponent")
+                    result.error("UNSUPPORTED_BRAND", "This watch cannot measure blood components", null)
+                }
+            }
+        }
+    }
+
+    private fun doStartBloodComponent(result: MethodChannel.Result) {
         val gen = ++bloodPollGen
         val startedAt = now()
         emitBlood("measuring")
@@ -699,4 +756,35 @@ internal class YcHealth(private val sink: (String) -> EventChannel.EventSink?) {
             }
         }
     }
+
+    // ---------------------------------------------------------------- debug probe
+
+    /** Logs what the watch supports and every live-data frame for ~25 s (debug aid, see tool/yc_probe.dart). */
+    private fun probe(result: MethodChannel.Result) {
+        probeLog = true
+        YCBTClient.getMeasurementFunction(BleDataResponse { code, _, map ->
+            VPLogger.d("YC probe getMeasurementFunction code=$code map=$map")
+            YCBTClient.appRealDataFromDevice(1, 0x01, BleDataResponse { c, _, m ->
+                VPLogger.d("YC probe appRealDataFromDevice(heart) code=$c map=$m")
+            })
+        })
+        YCBTClient.getAllRealDataFromDevice(BleDataResponse { code, _, map ->
+            VPLogger.d("YC probe getAllRealDataFromDevice code=$code map=$map")
+        })
+        main.postDelayed({
+            YCBTClient.appRealDataFromDevice(0, 0x01, BleDataResponse { _, _, _ -> })
+            probeLog = false
+            result.success("probe finished")
+        }, 25_000)
+    }
+}
+
+/** Forwards only the first reply; later ones are dropped. */
+private class OnceResult(private val delegate: MethodChannel.Result) : MethodChannel.Result {
+    private var used = false
+    override fun success(result: Any?) { if (!used) { used = true; delegate.success(result) } }
+    override fun error(errorCode: String, errorMessage: String?, errorDetails: Any?) {
+        if (!used) { used = true; delegate.error(errorCode, errorMessage, errorDetails) }
+    }
+    override fun notImplemented() { if (!used) { used = true; delegate.notImplemented() } }
 }
