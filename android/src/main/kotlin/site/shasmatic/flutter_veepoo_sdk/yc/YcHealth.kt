@@ -605,7 +605,7 @@ internal class YcHealth(private val sink: (String) -> EventChannel.EventSink?) {
                         "heartRate" to r.heart?.takeIf { it > 0 }, "systolic" to r.sys?.takeIf { it > 0 },
                         "diastolic" to r.dia?.takeIf { it > 0 }, "temperature" to r.temp,
                         "bloodOxygen" to r.spo2, "steps" to r.steps?.takeIf { it > 0 },
-                        "calories" to r.calories?.takeIf { it > 0 }, "distance" to r.distance?.takeIf { it > 0 },
+                        "calories" to r.calories?.takeIf { it > 0 }, "distance" to r.distance?.takeIf { it > 0 }?.div(1000.0), // Veepoo reports km; YC reports metres
                         "bloodGlucose" to r.glucose, "respirationRate" to r.resp, "hrvValue" to r.hrv,
                     )
                 }
@@ -614,7 +614,7 @@ internal class YcHealth(private val sink: (String) -> EventChannel.EventSink?) {
                 if (d == 0 && live != null && live.first > ((day["totalSteps"] as? Number)?.toInt() ?: 0)) {
                     day + mapOf(
                         "totalSteps" to live.first,
-                        "totalDistance" to live.second.toDouble(),
+                        "totalDistance" to live.second / 1000.0, // km, like Veepoo
                         "totalCalories" to live.third.toDouble(),
                     )
                 } else day
@@ -665,7 +665,8 @@ internal class YcHealth(private val sink: (String) -> EventChannel.EventSink?) {
             if (to == null) liveSteps?.let { (s, d, c) -> if (s > steps) { steps = s; meters = d; kcal = c } }
             result.success(
                 mapOf<String, Any?>(
-                    "steps" to steps, "distanceMeters" to meters.toDouble(), "calories" to kcal.toDouble(),
+                    // distanceMeters carries km (Veepoo's unit, shown as km by the app)
+                    "steps" to steps, "distanceMeters" to meters / 1000.0, "calories" to kcal.toDouble(),
                     "activeMinutes" to (seconds / 60).toInt(), "timestamp" to now(),
                 ),
             )
