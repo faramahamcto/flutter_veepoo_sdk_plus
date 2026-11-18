@@ -169,32 +169,8 @@ internal class YcHealth(private val sink: (String) -> EventChannel.EventSink?) {
     }
 
     private fun startMeasure(type: Int, result: MethodChannel.Result) {
-        if (type != T_GLUCOSE) return doStartMeasure(type, result)
-        supports("bloodSugar") { ok ->
-            if (ok) doStartMeasure(type, result)
-            else {
-                emitNotSupported("bloodGlucose")
-                result.error("UNSUPPORTED_BRAND", "This watch cannot measure blood glucose", null)
-            }
-        }
+        doStartMeasure(type, result)
     }
-
-    /** Reads the watch's own capability flags (getMeasurementFunction); unknown or no reply counts as supported. */
-    private fun supports(key: String, cb: (Boolean) -> Unit) {
-        var done = false
-        main.postDelayed({ if (!done) { done = true; cb(true) } }, 3_000)
-        YCBTClient.getMeasurementFunction(BleDataResponse { code, _, map ->
-            main.post {
-                if (!done) {
-                    done = true
-                    cb(code != 0 || ((map?.get(key) as? Number)?.toInt() ?: 1) != 0)
-                }
-            }
-        })
-    }
-
-    private fun emitNotSupported(channel: String) =
-        emit(channel, mapOf("state" to "notSupported", "isMeasuring" to false, "progress" to 0, "timestamp" to now()))
 
     private fun doStartMeasure(type: Int, result: MethodChannel.Result) {
         activeType = type
@@ -205,6 +181,10 @@ internal class YcHealth(private val sink: (String) -> EventChannel.EventSink?) {
             if (code == 0) { main.post { result.success(null) }; return@BleDataResponse }
             val mode = realModeFor(type)
             VPLogger.d("YC start measurement type=$type code=$code, fallback real-data mode=$mode")
+            if (mode == null && type == T_GLUCOSE) {
+                main.post { glucoseFromHistory(result) }
+                return@BleDataResponse
+            }
             if (mode == null) {
                 main.post {
                     activeType = null
@@ -229,6 +209,23 @@ internal class YcHealth(private val sink: (String) -> EventChannel.EventSink?) {
             }, LIVE_TIMEOUT_MS)
             main.post { result.success(null) }
         })
+    }
+
+    /**
+     * E810 rejects an on-demand glucose measurement (252) but measures by itself ("health monitoring") and stores
+     * the value in the combined history. Report the latest stored value if it is fresh, otherwise failure.
+     */
+    private fun glucoseFromHistory(result: MethodChannel.Result) {
+        result.success(null)
+        history(Constants.DATATYPE.Health_HistoryAll) { rows ->
+            val latest = rows.filter { int(it, "bloodSugarValue") > 0 }
+                .maxByOrNull { toMillis(num(it, "startTime")?.toLong() ?: 0) }
+            val ts = latest?.let { toMillis(num(it, "startTime")?.toLong() ?: 0) }
+            val fresh = latest != null && ts != null && now() - ts <= FRESH_READING_MS
+            lastGlucose = if (fresh) int(latest!!, "bloodSugarValue") / 10.0 else null
+            activeType = null
+            emitState(T_GLUCOSE, measuring = false, complete = fresh, failed = !fresh)
+        }
     }
 
     private fun stopMeasure(type: Int, result: MethodChannel.Result) {
@@ -327,6 +324,7 @@ internal class YcHealth(private val sink: (String) -> EventChannel.EventSink?) {
     }
 
     private var probeLog = false
+    private val FRESH_READING_MS = 90 * 60_000L
 
     private val realData = BleRealDataResponse { dataType, raw ->
         if (probeLog) VPLogger.d("YC probe real type=$dataType map=$raw")
@@ -570,7 +568,8 @@ internal class YcHealth(private val sink: (String) -> EventChannel.EventSink?) {
                         int(r, "hrvValue").takeIf { v -> v > 0 }?.let { v -> hrv = v }
                         val ti = int(r, "tempIntValue")
                         if (ti > 0) temp = "$ti.${int(r, "tempFloatValue")}".toDoubleOrNull()
-                        // bloodSugarValue is ignored on purpose: the watch reports bloodSugar=0 (unsupported), so it is an estimate
+                        // bloodSugarValue = mmol/L * 10, measured by the watch itself (health monitoring); Veepoo reports mg/dL
+                        int(r, "bloodSugarValue").takeIf { v -> v > 0 }?.let { v -> glucose = (v / 10.0 * 18.0).toInt() }
                     }
                 }
             }
@@ -770,29 +769,22 @@ internal class YcHealth(private val sink: (String) -> EventChannel.EventSink?) {
      * record. So: start the uric-acid measurement and poll that history for a record newer than the start.
      */
     private fun startBloodComponent(result: MethodChannel.Result) {
-        supports("uricAcid") { uric ->
-            supports("bloodFat") { fat ->
-                if (uric || fat) doStartBloodComponent(result)
-                else {
-                    emitNotSupported("bloodComponent")
-                    result.error("UNSUPPORTED_BRAND", "This watch cannot measure blood components", null)
-                }
-            }
-        }
+        doStartBloodComponent(result)
     }
 
     private fun doStartBloodComponent(result: MethodChannel.Result) {
         val gen = ++bloodPollGen
-        val startedAt = now()
         emitBlood("measuring")
-        ack(result, "MEASURE_FAILED") { YCBTClient.appStartMeasurement(1, 6, it) }
+        // Best effort: E810 rejects it (252) yet records uric acid / lipids by itself, so do not fail on the reply.
+        YCBTClient.appStartMeasurement(1, 6, BleDataResponse { _, _, _ -> })
+        main.post { result.success(null) }
         fun poll(attempt: Int) {
             if (gen != bloodPollGen) return
             if (attempt > 9) { emitBlood("failed"); return } // ~90 s
             main.postDelayed({
                 if (gen != bloodPollGen) return@postDelayed
                 history(Constants.DATATYPE.Health_HistoryComprehensiveMeasureData) { rows ->
-                    val latest = rows.filter { toMillis(num(it, "time")?.toLong() ?: 0) >= startedAt - 5_000 }
+                    val latest = rows.filter { toMillis(num(it, "time")?.toLong() ?: 0) >= now() - FRESH_READING_MS }
                         .maxByOrNull { num(it, "time")?.toLong() ?: 0 }
                     if (latest == null) { emitBlood("measuring", progress = (attempt + 1) * 10); poll(attempt + 1); return@history }
                     val chol = "${int(latest, "cholesterolInteger")}.${int(latest, "cholesterolFloat")}".toDoubleOrNull()?.takeIf { it > 0 }
@@ -846,11 +838,32 @@ internal class YcHealth(private val sink: (String) -> EventChannel.EventSink?) {
         YCBTClient.getAllRealDataFromDevice(BleDataResponse { code, _, map ->
             VPLogger.d("YC probe getAllRealDataFromDevice code=$code map=$map")
         })
+        // raw history the watch itself holds (glucose / body fat / uric acid / lipids live here when measured on the watch)
+        listOf(1289 to "All", 1327 to "Comprehensive", 1331 to "BodyData", 1282 to "Sport", 1284 to "Sleep").forEachIndexed { i, (t, name) ->
+            main.postDelayed({
+                YCBTClient.healthHistoryData(t, BleDataResponse { code, _, map ->
+                    VPLogger.d("YC probe history $name($t) code=$code raw=${"$map".take(1800)}")
+                })
+            }, 1_500L * (i + 1))
+        }
+        YCBTClient.getDeviceSupportFunction(BleDataResponse { code, _, map ->
+            VPLogger.d("YC probe getDeviceSupportFunction code=$code map=$map")
+        })
+        // does the watch accept single measurements for glucose / uric acid / ketone, and does comprehensive real data carry them?
+        listOf(5, 6, 7).forEachIndexed { i, t ->
+            main.postDelayed({
+                YCBTClient.appStartMeasurement(1, t, BleDataResponse { c, _, m -> VPLogger.d("YC probe appStartMeasurement(type=$t) code=$c map=$m") })
+            }, 9_000L + 8_000L * i)
+        }
         main.postDelayed({
+            YCBTClient.appRealDataFromDevice(1, 0x07, BleDataResponse { c, _, m -> VPLogger.d("YC probe appRealDataFromDevice(comprehensive) code=$c map=$m") })
+        }, 36_000)
+        main.postDelayed({
+            YCBTClient.appRealDataFromDevice(0, 0x07, BleDataResponse { _, _, _ -> })
             YCBTClient.appRealDataFromDevice(0, 0x01, BleDataResponse { _, _, _ -> })
             probeLog = false
             result.success("probe finished")
-        }, 25_000)
+        }, 60_000)
     }
 }
 
