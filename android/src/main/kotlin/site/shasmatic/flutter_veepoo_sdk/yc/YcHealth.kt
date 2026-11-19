@@ -444,7 +444,7 @@ internal class YcHealth(private val sink: (String) -> EventChannel.EventSink?) {
 
     /** Turns on the monitors the app relies on; reports one AutoMeasureData-shaped map per monitor. */
     private fun enableAllAutoMeasurements(result: MethodChannel.Result) {
-        val interval = 10 // minutes
+        val interval = 5 // minutes (SDK range 1-60)
         val jobs = listOf<Pair<Int, ((BleDataResponse) -> Unit)>>(
             0 to { r: BleDataResponse -> YCBTClient.settingHeartMonitor(0x01, interval, r) },
             5 to { r: BleDataResponse -> YCBTClient.settingTemperatureMonitor(true, interval, r) },
@@ -721,7 +721,7 @@ internal class YcHealth(private val sink: (String) -> EventChannel.EventSink?) {
         val type = call.argument<Int>("type")
         val enabled = call.argument<Boolean>("enabled")
         if (type == null || enabled == null) return result.error("INVALID_ARGUMENT", "type and enabled are required", null)
-        val interval = call.argument<Int>("measureInterval") ?: auto[type]?.second ?: 10
+        val interval = call.argument<Int>("measureInterval") ?: auto[type]?.second ?: 5
         val command: ((BleDataResponse) -> Unit) = when (type) {
             0 -> { r: BleDataResponse -> YCBTClient.settingHeartMonitor(if (enabled) 1 else 0, interval, r) }
             5 -> { r: BleDataResponse -> YCBTClient.settingTemperatureMonitor(enabled, interval, r) }
