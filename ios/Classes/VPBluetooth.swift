@@ -15,11 +15,36 @@ final class VPBluetooth {
   private var isScanning = false
   private var scanGeneration = 0
   private var pendingConnect: (address: String, reply: Reply)?
+  /// The connect call in progress, whatever path it took; answered as soon as the SDK reports
+  /// that watch connected (its own automatic reconnect often gets there first).
+  private var awaitingConnect: (address: String, reply: Reply)?
 
   /// Outcome of the password check the SDK runs by itself after each connect (nil = not yet known).
   private var verified: Bool?
   private var verifyWaiters: [(Bool) -> Void] = []
   private var lastAddress: String?
+
+
+  /// Fails [reply] after [seconds] unless it was answered; clears a connect still waiting for a scan.
+  private func connectTimeout(_ reply: Reply, after seconds: Double) {
+    DispatchQueue.main.asyncAfter(deadline: .now() + seconds) { [weak self] in
+      guard !reply.isDone else { return }
+      if let pending = self?.pendingConnect, pending.reply === reply { self?.pendingConnect = nil }
+      reply.error("OPERATION_TIMEOUT", "Operation timed out after \(Int(seconds * 1000))ms")
+    }
+  }
+
+  /// The Veepoo GATT services (the vendor demo only lists the first; the SDK binary also uses the
+  /// others, AE00 being JieLi-chip watches). A watch paired in the phone's Bluetooth settings
+  /// (calls, notifications) stays connected to iOS and stops advertising, so a scan never finds
+  /// it. iOS hands such peripherals out through retrieveConnectedPeripherals instead; this is the
+  /// vendor demo's `VPCustomScanManage.connectFromSystem`.
+  private static let veepooServices = [
+    "F0020001-0451-4000-B000-000000000000",
+    "F0030001-0451-4000-B000-000000000000",
+    "F0080001-0451-4000-B000-000000000000",
+    "AE00",
+  ].map { CBUUID(string: $0) }
 
   init(scanEvents: EventStream, connectionEvents: EventStream) {
     self.scanEvents = scanEvents
@@ -130,16 +155,107 @@ final class VPBluetooth {
     scanEvents.send(Array(devices.values))
   }
 
+  // MARK: System-connected (paired) watches
+
+  private func retrieveSystemPeripherals() -> [CBPeripheral] {
+    guard let central = VPSdk.ble.centralManager, central.state == .poweredOn else { return [] }
+    return central.retrieveConnectedPeripherals(withServices: Self.veepooServices)
+  }
+
+  /// MAC this app saw for the peripheral before, else its iOS identifier (MACs are only known
+  /// from advertisements or after connecting).
+  private func key(for peripheral: CBPeripheral) -> String {
+    VPDeviceStorage.mac(for: peripheral.identifier) ?? peripheral.identifier.uuidString.uppercased()
+  }
+
+  /// The system-connected watch for a saved address: by identifier or remembered MAC, else, for a
+  /// MAC this phone never mapped (paired before the app saw it), the only Veepoo watch connected.
+  private func systemPeripheral(for key: String) -> CBPeripheral? {
+    let connected = retrieveSystemPeripherals()
+    if let match = connected.first(where: { self.key(for: $0) == key || $0.identifier.uuidString.uppercased() == key }) {
+      return match
+    }
+    let isMac = key.contains(":")
+    if isMac, connected.count == 1, VPDeviceStorage.mac(for: connected[0].identifier) == nil { return connected[0] }
+    return nil
+  }
+
+  /// Connects a peripheral iOS is already connected to. The vendor's self-scan connect is the
+  /// documented way; if it fails, the regular connect with a model built from the peripheral.
+  private func connectSystem(_ peripheral: CBPeripheral, _ reply: Reply, fallback: Bool = true) {
+    if isScanning { finishScan() }
+    verified = nil
+    let handle: (DeviceConnectState) -> Void = { [weak self] state in
+      switch state.rawValue {
+      case 2: reply("Connected to device")
+      case 4: onMain { self?.setVerified(true) }
+      case 5: onMain { self?.setVerified(false) }
+      case 0: reply.error("BLUETOOTH_DISABLED", "Bluetooth is not enabled")
+      case 3, 6, 7:
+        if fallback && state.rawValue != 7 {
+          onMain {
+            guard let self = self, !reply.isDone else { return }
+            VPSdk.ble.veepooSDKConnectDevice(VPPeripheralModel(peripher: peripheral)) { state in
+              self.connectStateResult(state, reply)
+            }
+          }
+        } else {
+          reply.error("CONNECT_FAILED", "Failed to connect to device (state \(state.rawValue))")
+        }
+      default: break
+      }
+    }
+    VPSdk.ble.veepooSDKSelfScanConnectDevice(peripheral, deviceConnect: handle)
+  }
+
+  /// Whether the SDK's connected watch is the one saved under [key] (MAC or iOS identifier).
+  private func isCurrentDevice(_ key: String) -> Bool {
+    guard let current = VPSdk.connectedAddress else { return false }
+    if current.uppercased() == key { return true }
+    guard let peripheral = VPSdk.ble.peripheralModel?.peripheral else { return false }
+    return peripheral.identifier.uuidString.uppercased() == key || VPDeviceStorage.mac(for: peripheral.identifier) == key
+  }
+
+  /// Answers the connect in progress once the SDK reports its watch connected (by that connect,
+  /// or by the SDK's own automatic reconnect getting there first).
+  private func resolvePendingIfConnected() {
+    guard let waiting = awaitingConnect, !waiting.reply.isDone, isCurrentDevice(waiting.address) else { return }
+    awaitingConnect = nil
+    if let pending = pendingConnect, pending.reply === waiting.reply {
+      pendingConnect = nil
+      if isScanning { finishScan() }
+    }
+    waiting.reply("Connected to device")
+  }
+
   // MARK: Connect / bind
 
   func connect(address: String, _ reply: Reply) {
     whenPoweredOn(reply) {
-      reply.timeout(after: 30, code: "OPERATION_TIMEOUT", "Operation timed out after 30000ms")
       let key = address.uppercased()
+      // The SDK reconnects to the last watch by itself (automaticConnection), usually within
+      // seconds of launch; a connected watch stops advertising, so scanning for it would only
+      // time out.
+      if self.isCurrentDevice(key) {
+        return reply("Connected to device")
+      }
+      self.awaitingConnect = (key, reply)
       if let model = self.models[key] {
+        self.connectTimeout(reply, after: 30)
         self.connect(model, reply)
+      } else if let peripheral = self.systemPeripheral(for: key) {
+        // Paired in the phone's Bluetooth settings: connected to iOS, not advertising.
+        // Two attempts (self-scan connect, then the model connect) of up to 30 s each.
+        self.connectTimeout(reply, after: 65)
+        // On launch the SDK is usually reconnecting to this watch already; starting a second
+        // connect on the same peripheral races it. Give it a few seconds first.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 4) {
+          guard !reply.isDone else { return }
+          self.connectSystem(peripheral, reply)
+        }
       } else {
         // Not seen in this app session yet (e.g. reconnecting to the saved watch on launch): scan for it.
+        self.connectTimeout(reply, after: 30)
         self.pendingConnect = (key, reply)
         if !self.isScanning { self.startScan() }
       }
@@ -149,18 +265,28 @@ final class VPBluetooth {
   private func connect(_ model: VPPeripheralModel, _ reply: Reply) {
     if isScanning { finishScan() }
     verified = nil
-    VPSdk.ble.veepooSDKConnectDevice(model) { [weak self] state in
-      // DeviceConnectState: 0 BLE off, 1 connecting, 2 connected, 3 failed, 4/5 password ok/failed,
-      // 6 timeout, 7 not confirmed on the watch.
-      switch state.rawValue {
-      case 2: reply("Connected to device")
-      case 4: onMain { self?.setVerified(true) }
-      case 5: onMain { self?.setVerified(false) }
-      case 0: reply.error("BLUETOOTH_DISABLED", "Bluetooth is not enabled")
-      case 3, 6, 7: reply.error("CONNECT_FAILED", "Failed to connect to device (state \(state.rawValue))")
-      default: break
-      }
+    VPSdk.ble.veepooSDKConnectDevice(model) { [weak self] state in self?.connectStateResult(state, reply) }
+  }
+
+  /// DeviceConnectState: 0 BLE off, 1 connecting, 2 connected, 3 failed, 4/5 password ok/failed,
+  /// 6 timeout, 7 not confirmed on the watch.
+  private func connectStateResult(_ state: DeviceConnectState, _ reply: Reply) {
+    switch state.rawValue {
+    case 2: reply("Connected to device")
+    case 4: onMain { self.setVerified(true) }
+    case 5: onMain { self.setVerified(false) }
+    case 0: reply.error("BLUETOOTH_DISABLED", "Bluetooth is not enabled")
+    case 3, 6, 7: reply.error("CONNECT_FAILED", "Failed to connect to device (state \(state.rawValue))")
+    default: break
     }
+  }
+
+  /// Remembers which iOS peripheral identifier belongs to which MAC, so a later system-connected
+  /// (not advertising) watch can be matched to the address the app saved.
+  private func rememberPeripheral() {
+    guard let model = VPSdk.ble.peripheralModel, let mac = model.deviceAddress, !mac.isEmpty,
+          let peripheral = model.peripheral else { return }
+    VPDeviceStorage.save(mac: mac, for: peripheral.identifier)
   }
 
   func bind(password: String, is24H: Bool, _ reply: Reply) {
@@ -234,9 +360,14 @@ final class VPBluetooth {
         self.flushVerifyWaiters(false)
         self.emit("disconnected")
       case 2:
-        self.lastAddress = VPSdk.ble.peripheralModel?.deviceAddress
+        self.lastAddress = VPSdk.connectedAddress
+        self.rememberPeripheral()
         self.emit("connected")
-      case 3: self.setVerified(true)
+        self.resolvePendingIfConnected()
+      case 3:
+        self.rememberPeripheral()
+        self.setVerified(true)
+        self.resolvePendingIfConnected()
       case 4: self.setVerified(false)
       default: break
       }

@@ -2,7 +2,9 @@ package site.shasmatic.flutter_veepoo_sdk.utils
 
 import android.app.Activity
 import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
+import android.bluetooth.BluetoothProfile
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -474,6 +476,7 @@ class VPBluetoothManager(
             VPLogger.i("Bluetooth scan started")
             VPLogger.i("Event sink is: ${if (bluetoothEventSink == null) "NULL" else "SET"}")
             discoveredDevices.clear()
+            addSystemConnectedDevices()
         }
 
         override fun onDeviceFounded(result: SearchResult?) {
@@ -505,6 +508,31 @@ class VPBluetoothManager(
         }
 
         override fun onSearchCanceled() = VPLogger.i("Bluetooth scan canceled")
+    }
+
+    /**
+     * A watch paired in the phone's Bluetooth settings (calls / notifications) can be held
+     * connected by the system and stop advertising, so the scan never reports it. List the BLE
+     * devices the phone is already connected to as well; connecting by their MAC works as usual.
+     */
+    private fun addSystemConnectedDevices() {
+        val manager = activity.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager ?: return
+        val connected = try {
+            manager.getConnectedDevices(BluetoothProfile.GATT)
+        } catch (e: SecurityException) {
+            VPLogger.w("Cannot list system-connected devices: ${e.message}")
+            return
+        }
+        var added = false
+        for (device in connected) {
+            val (type, name) = try { device.type to device.name } catch (e: SecurityException) { continue }
+            if (type == BluetoothDevice.DEVICE_TYPE_CLASSIC) continue
+            VPLogger.i("System-connected device: name=$name, address=${device.address}")
+            if (discoveredDevices.containsKey(device.address)) continue
+            discoveredDevices[device.address] = mapOf("name" to (name ?: ""), "address" to device.address, "rssi" to 0)
+            added = true
+        }
+        if (added) sendEvent.sendBluetoothEvent(discoveredDevices.values.toList())
     }
 
     private val bleConnectStatusListener = object : IABleConnectStatusListener() {

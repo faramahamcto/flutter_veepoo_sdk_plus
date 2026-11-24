@@ -178,10 +178,11 @@ enum VPSdk {
 
   /// MAC of the connected watch, or nil. Also the `tableID` for every VPDataBaseOperation query.
   static var connectedAddress: String? {
-    guard configured, ble.isConnected, let address = ble.peripheralModel?.deviceAddress, !address.isEmpty else {
-      return nil
-    }
-    return address
+    guard configured, ble.isConnected, let model = ble.peripheralModel else { return nil }
+    if let address = model.deviceAddress, !address.isEmpty { return address }
+    // Connected through iOS (paired watch): the SDK may not know the MAC from an advertisement.
+    guard let peripheral = model.peripheral else { return nil }
+    return VPDeviceStorage.mac(for: peripheral.identifier) ?? peripheral.identifier.uuidString.uppercased()
   }
 }
 
@@ -195,6 +196,19 @@ enum VPDeviceStorage {
   static func save(password: String, is24H: Bool) {
     UserDefaults.standard.set(password, forKey: passwordKey)
     UserDefaults.standard.set(is24H, forKey: is24HKey)
+  }
+
+  /// iOS peripheral identifier → watch MAC, learned on each connect.
+  private static let peripheralMacsKey = "flutter_veepoo_sdk.peripheralMacs"
+
+  static func mac(for identifier: UUID) -> String? {
+    (UserDefaults.standard.dictionary(forKey: peripheralMacsKey) as? [String: String])?[identifier.uuidString]
+  }
+
+  static func save(mac: String, for identifier: UUID) {
+    var map = UserDefaults.standard.dictionary(forKey: peripheralMacsKey) as? [String: String] ?? [:]
+    map[identifier.uuidString] = mac.uppercased()
+    UserDefaults.standard.set(map, forKey: peripheralMacsKey)
   }
 }
 
