@@ -20,7 +20,7 @@ final class VPWatchFace {
   func read(_ reply: Reply) {
     reply.timeout(after: 15, code: "WATCH_FACE_TIMEOUT", "Reading watch face timed out")
     readModel(reply) { model in
-      let size = model.configModel?.screenSize ?? .zero
+      let size = model.configModel.screenSize
       let raw = NSNumber(value: model.screenType.rawValue)
       let positions: [Int]
       if VPPhotoDialModel.topMiddleBottomTypes().contains(raw) {
@@ -33,7 +33,7 @@ final class VPWatchFace {
       reply(payload([
         "width": Int(size.width),
         "height": Int(size.height),
-        "isRound": model.configModel?.isCircle ?? false,
+        "isRound": model.configModel.isCircle,
         "isJL": self.isJL,
         "positions": positions,
         "timePosition": max(Int(model.timePosition.rawValue) - 1, 0),
@@ -59,7 +59,8 @@ final class VPWatchFace {
       model.timeBottomPosition = VPPhotoDialTimeTopAndBottomElement(rawValue: UInt(args["downElement"] as? Int ?? 0)) ?? .hidden
       model.setColor = String(format: "%06X", args["color"] as? Int ?? 0xFFFFFF)
       model.isDefaultBG = image == nil && (args["useDefaultBackground"] as? Bool ?? false)
-      if let image = image, let size = model.configModel?.screenSize {
+      if let image = image {
+        let size = model.configModel.screenSize
         model.transformImage = Self.resize(image, to: size)
       }
 
