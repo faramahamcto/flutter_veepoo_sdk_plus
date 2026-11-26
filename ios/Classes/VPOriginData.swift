@@ -21,7 +21,7 @@ enum VPOriginData {
     let hrv = ints(records, "hrvValue")
     return payload([
       "date": date,
-      "dayLabel": dayLabel(day),
+      "dayLabel": dayLabel(day), // TEMP
       "avgHeartRate": average(heart),
       "maxHeartRate": heart.max(),
       "minHeartRate": heart.min(),
@@ -85,23 +85,20 @@ enum VPOriginData {
 
   // MARK: Records
 
-  /// One map per time slot, sorted by time, with the OriginHealthData keys.
+  /// One map per base-data slot (5 minutes), sorted by time, with the OriginHealthData keys.
+  ///
+  /// Like Android (one record per OriginData3), only the 5-minute base data creates records. The
+  /// other tables, some stored every minute (blood oxygen), are merged into the slot their reading
+  /// falls in and averaged; on their own they made a step-less record per minute, which buried the
+  /// slots that carry steps / calories / distance / MET.
   static func records(date: String, mac: String) -> [[String: Any]] {
     var slots: [String: [String: Any]] = [:]
-    func merge(_ rawTime: Any?, _ fields: [String: Any?]) {
-      guard let time = slotTime(rawTime) else { return }
-      var record = slots[time] ?? ["date": date, "time": time]
-      for (key, value) in fields where record[key] == nil {
-        if let value = value { record[key] = value }
-      }
-      slots[time] = record
-    }
 
     // 5-minute base data, keyed "HH:mm".
     if let base = VPDataBaseOperation.veepooSDKGetOriginalData(withDate: date, andTableID: mac) as? [String: Any] {
-      for (time, value) in base {
-        guard let d = value as? [String: Any] else { continue }
-        merge(time, [
+      for (rawTime, value) in base {
+        guard let d = value as? [String: Any], let time = slotTime(rawTime) else { continue }
+        let fields: [String: Any?] = [
           // Vendor rule: use heartValue; without it the per-minute ppgs, then ecgs.
           "heartRate": reading(d["heartValue"]) ?? firstReading(d["ppgs"]) ?? firstReading(d["ecgs"]),
           "systolic": reading(d["systolic"]),
@@ -115,22 +112,27 @@ enum VPOriginData {
           "ecgValues": intList(d["ecgs"]),
           "met": positive(d["met"]),
           "pressure": positiveInt(d["stress"]),
-        ])
+        ]
+        slots[time] = fields.compactMapValues { $0 }.merging(["date": date, "time": time]) { a, _ in a }
+      }
+    }
+    let slotTimes = slots.keys.sorted()
+
+    // Other tables: collected per base slot, combined below.
+    var extra: [String: [String: [Any]]] = [:]
+    func add(_ rawTime: Any?, _ fields: [String: Any?]) {
+      guard let time = slotTime(rawTime), let slot = baseSlot(containing: time, in: slotTimes) else { return }
+      for (key, value) in fields {
+        if let value = value { extra[slot, default: [:]][key, default: []].append(value) }
       }
     }
 
-    // HRV is stored per minute; average it into the 5-minute slots.
-    var hrvSlots: [String: [Int]] = [:]
     for d in table(VPDataBaseOperation.veepooSDKGetDeviceHrvData(withDate: date, andTableID: mac)) {
-      guard let time = slotTime(d["time"], roundToFive: true), let value = reading(d["hrvValue"]) else { continue }
-      hrvSlots[time, default: []].append(value)
-    }
-    for (time, values) in hrvSlots {
-      merge(time, ["hrvValue": values.reduce(0, +) / values.count])
+      add(d["time"], ["hrvValue": reading(d["hrvValue"])])
     }
 
     for d in table(VPDataBaseOperation.veepooSDKGetDeviceOxygenData(withDate: date, andTableID: mac)) {
-      merge(d["Time"], [
+      add(d["Time"], [
         "bloodOxygen": reading(d["OxygenValue"]),
         "respirationRate": reading(d["RespirationRate"]),
         "heartRate": reading(d["HeartValue"]),
@@ -144,12 +146,12 @@ enum VPOriginData {
 
     for d in table(VPDataBaseOperation.veepooSDKGetDeviceTemperatureData(withDate: date, andTableID: mac)) {
       guard let hour = int(d["hour"]), let minute = int(d["minute"]) else { continue }
-      merge(String(format: "%02d:%02d", hour, minute), ["temperature": positive(d["value"])])
+      add(String(format: "%02d:%02d", hour, minute), ["temperature": positive(d["value"])])
     }
 
     for d in table(VPDataBaseOperation.veepooSDKGetDeviceBloodGlucoseData(withDate: date, andTableID: mac)) {
       let level = firstPositive(d["bloodGlucoseLevels"]).map { Int($0) }
-      merge(d["time"], [
+      add(d["time"], [
         // mmol/L like the Android value the app converts with ×18; Dart reads it as an int.
         "bloodGlucose": firstPositive(d["bloodGlucoses"]),
         "bloodGlucoseRiskLevel": level.map { ["NONE", "LOW", "MIDDLE", "HIGH"][min($0, 3)] },
@@ -157,7 +159,7 @@ enum VPOriginData {
     }
 
     for m in VPDataBaseOperation.veepooSDKGetDeviceBloodAnalysisData(withDate: date, andTableID: mac) ?? [] {
-      merge(m.time, [
+      add(m.time, [
         "uricAcid": firstPositive(m.uricAcids),
         "totalCholesterol": firstPositive(m.totalCholesterols),
         "triglyceride": firstPositive(m.triglycerides),
@@ -167,10 +169,43 @@ enum VPOriginData {
     }
 
     for d in table(VPDataBaseOperation.veepooSDKGetBloodData(withDate: date, andTableID: mac)) {
-      merge(d["Time"], ["systolic": reading(d["systolic"]), "diastolic": reading(d["diastolic"])])
+      add(d["Time"], ["systolic": reading(d["systolic"]), "diastolic": reading(d["diastolic"])])
     }
 
-    return slots.keys.sorted().compactMap { slots[$0] }
+    for (slot, fields) in extra {
+      guard var record = slots[slot] else { continue }
+      // The base data's own value wins (e.g. its heart rate over the oxygen table's).
+      for (key, values) in fields where record[key] == nil {
+        if let value = combine(key, values) { record[key] = value }
+      }
+      slots[slot] = record
+    }
+    return slotTimes.compactMap { slots[$0] }
+  }
+
+  /// Keys whose readings are whole numbers; the rest of the numeric keys are averaged as decimals.
+  private static let intKeys: Set<String> = [
+    "heartRate", "systolic", "diastolic", "bloodOxygen", "respirationRate", "hrvValue",
+  ]
+
+  private static func combine(_ key: String, _ values: [Any]) -> Any? {
+    if values.first is [Any] { return values.flatMap { $0 as? [Any] ?? [] } }
+    let numbers = values.compactMap { num($0) }
+    guard !numbers.isEmpty else { return values.first } // e.g. bloodGlucoseRiskLevel
+    let mean = numbers.reduce(0, +) / Double(numbers.count)
+    return intKeys.contains(key) ? Int(mean.rounded()) : mean
+  }
+
+  /// The base slot a reading at [time] belongs to: the last slot at or before it, if it started
+  /// less than 10 minutes earlier (base data is every 5 minutes; a gap means the watch was off).
+  private static func baseSlot(containing time: String, in slotTimes: [String]) -> String? {
+    let minutes: (String) -> Int = { t in
+      let p = t.split(separator: ":").compactMap { Int($0) }
+      return p.count == 2 ? p[0] * 60 + p[1] : -1
+    }
+    let t = minutes(time)
+    guard let slot = slotTimes.last(where: { minutes($0) <= t }), t - minutes(slot) < 10 else { return nil }
+    return slot
   }
 
   private static func table(_ rows: [Any]?) -> [[String: Any]] {
@@ -178,11 +213,10 @@ enum VPOriginData {
   }
 
   /// "HH:mm" from "HH:mm", "HH:mm:ss" or "yyyy-MM-dd HH:mm".
-  private static func slotTime(_ raw: Any?, roundToFive: Bool = false) -> String? {
+  private static func slotTime(_ raw: Any?) -> String? {
     guard let text = raw as? String,
           let clock = text.split(separator: " ").last?.split(separator: ":"), clock.count >= 2,
-          let hour = Int(clock[0]), var minute = Int(clock[1]) else { return nil }
-    if roundToFive { minute -= minute % 5 }
+          let hour = Int(clock[0]), let minute = Int(clock[1]) else { return nil }
     return String(format: "%02d:%02d", hour, minute)
   }
 

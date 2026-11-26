@@ -55,6 +55,9 @@ final class VPDataReader {
       guard let self = self, self.syncGeneration == generation else { return }
       self.finishSync(false)
     }
+    // The SDK only keeps the 5-minute packets' MET byte when metType >= 2, and some watches (ET585)
+    // report 1 although they send it; Android reads it regardless. Raise it so iOS stores MET too.
+    if let model = model, model.metType < 2 { model.metType = 2 }
     VPSdk.manage.veepooSdkStartReadDeviceAllData { [weak self] state, totalDay, currentDay, dayProgress in
       onMain {
         guard let self = self, self.syncGeneration == generation else { return }
