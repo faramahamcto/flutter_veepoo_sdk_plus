@@ -64,7 +64,8 @@ android {
         // Yucheng (YC) SDK: ycbtsdk-release.jar is classes.jar taken from the vendor ycbtsdk-release.aar
         // (same .aar -> .jar conversion as the Veepoo jars). It needs okhttp3 at runtime; its Jieli
         // classes resolve to the newer jl_* jars already in libs/. OTA/Alibaba-IoT classes are not
-        // bundled (Nordic DFU, AliAgent) - those YC features are not wired up.
+        // bundled (Nordic DFU, AliAgent) - those YC features are not wired up. ycbtsdk still touches
+        // AliAgent on every Jieli-watch disconnect, so no-op stubs live in src/main/kotlin/com/alibaba/.
         implementation "com.squareup.okhttp3:okhttp:4.12.0"
         // vpprotocol-2.3.71.15 unconditionally calls McuMgrOtaManager.init() on every BLE
         // connect (added for Nordic-chip OTA support), referencing classes under
